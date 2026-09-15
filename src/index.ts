@@ -5,14 +5,14 @@ import { loadConfig } from './config/env.js';
 import { RedisCache } from './services/cache.js';
 import { PrismaConversationStore, PrismaDatabase } from './database/client.js';
 import { DisabledSportsProvider } from './sports/provider.js';
-import { UnsupportedSportyBetProvider } from './sportybet/provider.js';
+import { createSportyBetProvider } from './sportybet/provider.js';
 import { createLogger } from './utils/logger.js';
 
 const config = loadConfig();
 const logger = createLogger(config);
 const cache = new RedisCache(config.REDIS_URL);
 const sports = new DisabledSportsProvider();
-const sportyBet = new UnsupportedSportyBetProvider();
+const sportyBet = createSportyBetProvider(config);
 const metrics = new MetricsService();
 const database = new PrismaDatabase();
 const conversations = new PrismaConversationStore(database.client);

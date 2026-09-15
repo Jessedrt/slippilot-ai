@@ -15,9 +15,10 @@ export function nameSimilarity(left: string, right: string): number {
   if (a === b) return 1;
   if (!a || !b) return 0;
   const grams = (value: string) =>
-    new Set(Array.from({ length: value.length - 1 }, (_, i) => value.slice(i, i + 2)));
+    new Set(Array.from({ length: Math.max(0, value.length - 1) }, (_, i) => value.slice(i, i + 2)));
   const ga = grams(a);
   const gb = grams(b);
+  if (!ga.size || !gb.size) return 0;
   const overlap = [...ga].filter((gram) => gb.has(gram)).length;
   return (2 * overlap) / (ga.size + gb.size);
 }
@@ -63,6 +64,7 @@ export class SportyBetMarketMapper {
       marketId: market.providerMarketId,
       selectionId: market.providerSelectionId,
       odds: market.odds,
+      specifier: market.specifier,
     };
   }
 }

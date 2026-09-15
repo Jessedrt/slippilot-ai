@@ -27,6 +27,7 @@ export class SportyBetSlipBuilder {
       const events = await this.provider.findEvents(
         selection.fixture.homeTeam,
         selection.fixture.awayTeam,
+        selection.sport,
       );
       const event = this.events.match(selection, events);
       if (!event || event.status !== 'scheduled') {

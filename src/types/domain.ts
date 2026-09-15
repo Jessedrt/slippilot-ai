@@ -24,6 +24,7 @@ export interface NormalizedMarket {
   selectionName: string;
   odds: number;
   line?: number;
+  specifier?: string;
   status: 'active' | 'suspended' | 'settled';
   lastUpdated: Date;
 }

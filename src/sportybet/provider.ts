@@ -1,3 +1,4 @@
+import type { AppConfig } from '../config/env.js';
 import type { NormalizedMarket } from '../types/domain.js';
 import {
   SportyBetCapabilityError,
@@ -5,12 +6,8 @@ import {
   type SportyBetEvent,
   type SportyBetProvider,
 } from './contracts.js';
+import { SportyBetWebProvider } from './web-provider.js';
 
-/**
- * Safe default adapter. SportyBet's public browser UI was inspected, but no official public API
- * contract for fixture ingestion or code creation was verified. A deployment must inject a
- * compliant adapter rather than relying on guessed or scraped endpoints.
- */
 export class UnsupportedSportyBetProvider implements SportyBetProvider {
   readonly name = 'SportyBet' as const;
   findEvents(): Promise<SportyBetEvent[]> {
@@ -32,7 +29,7 @@ export class UnsupportedSportyBetProvider implements SportyBetProvider {
     return Promise.reject(
       new SportyBetCapabilityError(
         'resolve-code',
-        'SportyBet booking-code resolution is not available through a verified interface.',
+        'SportyBet booking-code resolution is not configured.',
       ),
     );
   }
@@ -40,11 +37,32 @@ export class UnsupportedSportyBetProvider implements SportyBetProvider {
     return Promise.reject(
       new SportyBetCapabilityError(
         'create-code',
-        'SportyBet booking-code creation is not available through a verified interface.',
+        'SportyBet booking-code creation is not configured.',
       ),
     );
   }
   health(): Promise<{ ok: boolean; detail: string }> {
-    return Promise.resolve({ ok: false, detail: 'No verified provider adapter configured' });
+    return Promise.resolve({ ok: false, detail: 'SportyBet provider disabled' });
   }
+}
+
+const marketIds = (value: string) =>
+  [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))];
+
+export function createSportyBetProvider(config: AppConfig): SportyBetProvider {
+  if (!config.SPORTYBET_PROVIDER_ENABLED) return new UnsupportedSportyBetProvider();
+  return new SportyBetWebProvider({
+    apiBaseUrl: config.SPORTYBET_API_BASE_URL,
+    region: config.SPORTYBET_REGION,
+    timeoutMs: config.SPORTYBET_TIMEOUT_MS,
+    minIntervalMs: config.SPORTYBET_MIN_INTERVAL_MS,
+    maxConcurrency: config.SPORTYBET_MAX_CONCURRENCY,
+    maxRetries: config.SPORTYBET_MAX_RETRIES,
+    cacheTtlMs: config.SPORTYBET_CACHE_TTL_MS,
+    timelineHours: config.SPORTYBET_TIMELINE_HOURS,
+    pageSize: config.SPORTYBET_PAGE_SIZE,
+    maxPages: config.SPORTYBET_MAX_PAGES,
+    footballMarketIds: marketIds(config.SPORTYBET_FOOTBALL_MARKET_IDS),
+    basketballMarketIds: marketIds(config.SPORTYBET_BASKETBALL_MARKET_IDS),
+  });
 }
