@@ -1,0 +1,49 @@
+{
+  "name": "slippilot-ai",
+  "version": "1.0.0",
+  "description": "SlipPilot AI - intelligent Telegram assistant for sports analysis and supported SportyBet slip workflows.",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run --configLoader native",
+    "test:watch": "vitest --configLoader native",
+    "test:integration": "vitest run --configLoader native tests/integration",
+    "prisma:generate": "prisma generate",
+    "prisma:validate": "prisma validate"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@fastify/rate-limit": "^11.2.0",
+    "@fastify/sensible": "^6.0.5",
+    "@prisma/client": "^6.19.0",
+    "fastify": "^5.12.4",
+    "ioredis": "^6.0.0",
+    "pino": "^10.3.1",
+    "telegraf": "^4.16.3",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.5.1",
+    "@vitest/coverage-v8": "^5.0.0",
+    "eslint": "^10.10.0",
+    "prettier": "^3.9.6",
+    "prisma": "^6.19.0",
+    "tsx": "^4.23.13",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.0",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.0"
+  }
+}
