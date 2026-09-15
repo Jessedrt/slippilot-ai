@@ -250,8 +250,25 @@ export function createBot(deps: BotDependencies): Telegraf | null {
   });
   bot.on('text', async (ctx) => {
     const userId = String(ctx.from.id);
-    const intent = await parser.parse(ctx.message.text.slice(0, 2000));
     const state = await deps.conversations.get(userId);
+    const text = ctx.message.text.slice(0, 2000).trim();
+    const customCount = /^(?:[1-9]|[12]\d|30)$/.test(text) ? Number(text) : undefined;
+    if (customCount && state.lastIntent?.action === 'discover') {
+      const intent = { ...state.lastIntent, gameCount: customCount };
+      const nextState: ConversationState = { ...state, lastIntent: intent };
+      await deps.conversations.set(userId, nextState);
+      await sendLiveSlip(
+        deps,
+        userId,
+        nextState,
+        intent.sport ?? state.lastSport ?? 'football',
+        customCount,
+        intent.targetOdds,
+        (message) => ctx.reply(message),
+      );
+      return;
+    }
+    const intent = await parser.parse(text);
     const nextState: ConversationState = {
       ...state,
       lastIntent: intent,
@@ -338,3 +355,4 @@ export function createBot(deps: BotDependencies): Telegraf | null {
   bot.catch((error) => deps.logger.error({ err: error }, 'SlipPilot AI Telegram handler failed'));
   return bot;
 }
+
