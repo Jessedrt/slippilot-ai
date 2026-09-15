@@ -14,6 +14,9 @@ class TestProvider implements SportyBetProvider {
   readonly name = 'SportyBet' as const;
   code = 'TEST123';
   constructor(public market: NormalizedMarket) {}
+  listEvents(): Promise<SportyBetEvent[]> {
+    return this.findEvents();
+  }
   findEvents(): Promise<SportyBetEvent[]> {
     return Promise.resolve([
       {

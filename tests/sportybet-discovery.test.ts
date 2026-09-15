@@ -1,0 +1,49 @@
+import { describe, expect, it } from 'vitest';
+import { buildLiveSlipSnapshot } from '../src/sportybet/discovery.js';
+import type { SportyBetProvider } from '../src/sportybet/contracts.js';
+
+const event = (id: string, hoursFromNow = 2) => ({
+  providerEventId: id,
+  homeTeam: `Home ${id}`,
+  awayTeam: `Away ${id}`,
+  startsAt: new Date(Date.now() + hoursFromNow * 3_600_000),
+  status: 'scheduled' as const,
+});
+
+const provider: SportyBetProvider = {
+  name: 'SportyBet',
+  listEvents: () => Promise.resolve([event('sr:match:1'), event('sr:match:2')]),
+  findEvents: () => Promise.resolve([]),
+  getEvent: () => Promise.resolve(null),
+  getMarkets: (eventId) =>
+    Promise.resolve([
+      {
+        providerMarketId: '219',
+        providerSelectionId: `pick-${eventId}`,
+        eventId,
+        sport: 'basketball',
+        category: 'Winner',
+        marketName: 'Winner (incl. overtime)',
+        selectionName: 'Home',
+        odds: 1.5,
+        status: 'active',
+        lastUpdated: new Date(),
+      },
+    ]),
+  resolveBookingCode: () => Promise.resolve([]),
+  createBookingCode: () => Promise.resolve('TEST123'),
+  health: () => Promise.resolve({ ok: true, detail: 'test' }),
+};
+
+describe('SportyBet live discovery', () => {
+  it('builds a live slip without inventing fixtures or odds', async () => {
+    const snapshot = await buildLiveSlipSnapshot(provider, 'basketball', 2, 2.25);
+    expect(snapshot.combinedOdds).toBe(2.25);
+    expect(snapshot.slip.selections).toHaveLength(2);
+    expect(snapshot.slip.selections[0]).toMatchObject({
+      odds: 1.5,
+      fixture: { id: 'sr:match:1', sport: 'basketball' },
+      reasoning: ['Live SportyBet market snapshot.', expect.any(String)],
+    });
+  });
+});

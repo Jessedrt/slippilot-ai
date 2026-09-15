@@ -2,12 +2,13 @@ import { Markup, Telegraf } from 'telegraf';
 import type { Logger } from 'pino';
 import { IntentParser } from '../ai/intent-parser.js';
 import type { AppConfig } from '../config/env.js';
-import type { ConversationStore } from '../services/conversation-store.js';
+import type { ConversationState, ConversationStore } from '../services/conversation-store.js';
 import { plans } from '../subscriptions/plans.js';
 import { HELP_MESSAGE, START_MESSAGE } from './messages.js';
 import type { SportyBetProvider } from '../sportybet/contracts.js';
 import { SportyBetSlipBuilder } from '../booking/workflow.js';
 import type { SportsResearchService } from '../research/sports-research.js';
+import { buildLiveSlipSnapshot } from '../sportybet/discovery.js';
 
 interface BotDependencies {
   config: AppConfig;
@@ -19,9 +20,48 @@ interface BotDependencies {
 }
 
 const chooseCount = Markup.inlineKeyboard([
-  [Markup.button.callback('3', 'count:3'), Markup.button.callback('5', 'count:5')],
-  [Markup.button.callback('10', 'count:10'), Markup.button.callback('Custom', 'count:custom')],
+  [
+    Markup.button.callback('2', 'count:2'),
+    Markup.button.callback('3', 'count:3'),
+    Markup.button.callback('5', 'count:5'),
+  ],
+  [
+    Markup.button.callback('7', 'count:7'),
+    Markup.button.callback('10', 'count:10'),
+    Markup.button.callback('Custom', 'count:custom'),
+  ],
 ]);
+
+async function sendLiveSlip(
+  deps: BotDependencies,
+  userId: string,
+  state: ConversationState,
+  sport: 'football' | 'basketball',
+  gameCount: number,
+  targetOdds: number | undefined,
+  reply: (message: string) => Promise<unknown>,
+): Promise<void> {
+  try {
+    const snapshot = await buildLiveSlipSnapshot(deps.sportyBet, sport, gameCount, targetOdds);
+    await deps.conversations.set(userId, {
+      ...state,
+      lastSport: sport,
+      currentSlip: snapshot.slip,
+    });
+    const rows = snapshot.slip.selections.map(
+      (selection, index) =>
+        `${index + 1}. ${selection.fixture.homeTeam} vs ${selection.fixture.awayTeam}\n${selection.marketName}: ${selection.selectionName} @ ${selection.odds.toFixed(2)}`,
+    );
+    await reply(
+      `📊 Live ${sport} market snapshot\n\n${rows.join('\n\n')}\n\nCombined odds: ${snapshot.combinedOdds.toFixed(2)}${targetOdds ? `\nRequested target: ${targetOdds.toFixed(2)}` : ''}\n\nOdds can change. These are market-based selections, not guaranteed predictions. No wager was placed.`,
+    );
+  } catch (error) {
+    deps.logger.warn({ err: error, sport, gameCount }, 'Live SportyBet discovery failed');
+    await reply(
+      'Current fixtures or active markets are temporarily unavailable. Please try again shortly.',
+    );
+  }
+}
 
 export function createBot(deps: BotDependencies): Telegraf | null {
   if (!deps.config.TELEGRAM_BOT_TOKEN) {
@@ -74,27 +114,40 @@ export function createBot(deps: BotDependencies): Telegraf | null {
       `🎟 Slip ready\n\n${state.currentSlip.selections.length} selections\n\nNo wager has been submitted.`,
       Markup.inlineKeyboard([
         [Markup.button.callback('Generate SportyBet Code', 'sportybet:generate')],
-        [Markup.button.callback('Remove Weakest', 'slip:remove-weakest'), Markup.button.callback('Explore Markets', 'slip:markets')],
+        [
+          Markup.button.callback('Remove Weakest', 'slip:remove-weakest'),
+          Markup.button.callback('Explore Markets', 'slip:markets'),
+        ],
       ]),
     );
   });
   bot.command('history', (ctx) => ctx.reply('🕘 No saved history is available in this session.'));
   bot.action(/^count:(\d+)$/, async (ctx) => {
     const count = Number(ctx.match[1]);
-    const state = await deps.conversations.get(String(ctx.from.id));
-    await deps.conversations.set(String(ctx.from.id), {
+    const userId = String(ctx.from.id);
+    const state = await deps.conversations.get(userId);
+    const intent = {
+      marketPreferences: [],
+      screenshotIntent: false,
+      ...state.lastIntent,
+      action: 'discover' as const,
+      gameCount: count,
+      ...(state.lastSport ? { sport: state.lastSport } : {}),
+    };
+    const nextState: ConversationState = {
       ...state,
-      lastIntent: {
-        action: 'discover',
-        gameCount: count,
-        ...(state.lastSport ? { sport: state.lastSport } : {}),
-        marketPreferences: [],
-        screenshotIntent: false,
-      },
-    });
-    await ctx.answerCbQuery();
-    await ctx.reply(
-      `✅ ${count} ${state.lastSport ?? 'sports'} games requested.\n\nCurrent fixtures require a configured sports provider; I won’t invent matches or live odds.`,
+      lastIntent: intent,
+    };
+    await deps.conversations.set(userId, nextState);
+    await ctx.answerCbQuery('Loading live markets…');
+    await sendLiveSlip(
+      deps,
+      userId,
+      nextState,
+      state.lastSport ?? 'football',
+      count,
+      intent.targetOdds,
+      (message) => ctx.reply(message),
     );
   });
   bot.action('count:custom', async (ctx) => {
@@ -125,7 +178,10 @@ export function createBot(deps: BotDependencies): Telegraf | null {
           `⚠ Odds changed\n\nOld: ${preparation.previousOdds.toFixed(2)}\nCurrent: ${preparation.currentOdds.toFixed(2)}`,
           Markup.inlineKeyboard([
             [Markup.button.callback('Generate Anyway', 'sportybet:generate-anyway')],
-            [Markup.button.callback('Re-optimize', 'slip:reoptimize'), Markup.button.callback('Cancel', 'sportybet:cancel')],
+            [
+              Markup.button.callback('Re-optimize', 'slip:reoptimize'),
+              Markup.button.callback('Cancel', 'sportybet:cancel'),
+            ],
           ]),
         );
         return;
@@ -133,7 +189,9 @@ export function createBot(deps: BotDependencies): Telegraf | null {
       const code = await slipBuilder.createCode(preparation);
       await ctx.reply(
         `✅ SportyBet booking code created\n\nCode:\n${code}\n\nSelections: ${preparation.selections.length}\nOdds at creation: ${preparation.currentOdds.toFixed(2)}\n\nNo wager was submitted.`,
-        Markup.inlineKeyboard([[Markup.button.callback('Analyze Again', 'sportybet:analyze-again')]]),
+        Markup.inlineKeyboard([
+          [Markup.button.callback('Analyze Again', 'sportybet:analyze-again')],
+        ]),
       );
     } catch (error) {
       deps.logger.warn({ err: error }, 'SportyBet code creation failed');
@@ -194,13 +252,26 @@ export function createBot(deps: BotDependencies): Telegraf | null {
     const userId = String(ctx.from.id);
     const intent = await parser.parse(ctx.message.text.slice(0, 2000));
     const state = await deps.conversations.get(userId);
-    await deps.conversations.set(userId, {
+    const nextState: ConversationState = {
       ...state,
       lastIntent: intent,
       ...(intent.sport ? { lastSport: intent.sport } : {}),
-    });
+    };
+    await deps.conversations.set(userId, nextState);
     if (intent.action === 'discover' && !intent.gameCount && !intent.minimumGameCount) {
       await ctx.reply('How many games do you want?', chooseCount);
+      return;
+    }
+    if (intent.action === 'discover') {
+      await sendLiveSlip(
+        deps,
+        userId,
+        nextState,
+        intent.sport ?? state.lastSport ?? 'football',
+        intent.gameCount ?? intent.minimumGameCount ?? 3,
+        intent.targetOdds,
+        (message) => ctx.reply(message),
+      );
       return;
     }
     if (intent.action === 'show_sources') {
@@ -216,7 +287,11 @@ export function createBot(deps: BotDependencies): Telegraf | null {
       const teamMatch = /(?:team news for|research)\s+(.+)/i.exec(ctx.message.text);
       const subject = teamMatch?.[1]?.trim() ?? state.lastFixture ?? ctx.message.text;
       const result = await deps.research.researchTeam(subject);
-      await deps.conversations.set(userId, { ...state, lastIntent: intent, recentResearch: result });
+      await deps.conversations.set(userId, {
+        ...state,
+        lastIntent: intent,
+        recentResearch: result,
+      });
       const context = result.sources
         .slice(0, 3)
         .map((source) => `• ${source.snippet ?? source.title}`)
@@ -238,7 +313,9 @@ export function createBot(deps: BotDependencies): Telegraf | null {
         );
       } catch (error) {
         deps.logger.info({ err: error }, 'SportyBet code could not be resolved');
-        await ctx.reply('I could not load that SportyBet code. Check the code or try again shortly.');
+        await ctx.reply(
+          'I could not load that SportyBet code. Check the code or try again shortly.',
+        );
       }
       return;
     }

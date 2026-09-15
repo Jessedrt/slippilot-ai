@@ -15,6 +15,10 @@ export class BrowserSportyBetProvider implements SportyBetProvider {
     this.client = new SportyBetClient(options);
   }
 
+  listEvents(sport: 'football' | 'basketball'): Promise<SportyBetEvent[]> {
+    return this.client.fetchFixtures(sport);
+  }
+
   async findEvents(homeTeam: string, awayTeam: string): Promise<SportyBetEvent[]> {
     const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, '');
     const targetHome = normalize(homeTeam);
@@ -25,7 +29,8 @@ export class BrowserSportyBetProvider implements SportyBetProvider {
     ]);
     return [...football, ...basketball].filter(
       (event) =>
-        normalize(event.homeTeam).includes(targetHome) && normalize(event.awayTeam).includes(targetAway),
+        normalize(event.homeTeam).includes(targetHome) &&
+        normalize(event.awayTeam).includes(targetAway),
     );
   }
 
@@ -55,6 +60,11 @@ export class BrowserSportyBetProvider implements SportyBetProvider {
  */
 export class UnsupportedSportyBetProvider implements SportyBetProvider {
   readonly name = 'SportyBet' as const;
+  listEvents(): Promise<SportyBetEvent[]> {
+    return Promise.reject(
+      new SportyBetCapabilityError('events', 'SportyBet event integration is not configured.'),
+    );
+  }
   findEvents(): Promise<SportyBetEvent[]> {
     return Promise.reject(
       new SportyBetCapabilityError('events', 'SportyBet event integration is not configured.'),

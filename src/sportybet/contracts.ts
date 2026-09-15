@@ -1,4 +1,4 @@
-import type { NormalizedMarket } from '../types/domain.js';
+import type { NormalizedMarket, Sport } from '../types/domain.js';
 
 export interface SportyBetEvent {
   providerEventId: string;
@@ -19,6 +19,7 @@ export interface ProviderSelection {
 
 export interface SportyBetProvider {
   readonly name: 'SportyBet';
+  listEvents(sport: Sport): Promise<SportyBetEvent[]>;
   findEvents(homeTeam: string, awayTeam: string): Promise<SportyBetEvent[]>;
   getEvent(eventId: string): Promise<SportyBetEvent | null>;
   getMarkets(eventId: string): Promise<NormalizedMarket[]>;
