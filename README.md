@@ -116,6 +116,11 @@ npx prisma migrate dev --name init
 | `REDIS_URL`                             | yes               | Redis connection URL                             |
 | `AI_PROVIDER`, `AI_API_KEY`, `AI_MODEL` | for AI/vision     | Structured intent and screenshot provider        |
 | `SPORTS_PROVIDER`, `SPORTS_API_KEY`     | for live analysis | Selected sports provider                         |
+| `YOU_API_ENABLED`, `YDC_API_KEY`        | for web research  | You.com evidence layer; key is never logged      |
+| `YOU_SEARCH_ENABLED`                    | no                | Enables current Search API                       |
+| `YOU_RESEARCH_ENABLED`                  | no                | Enables multi-step Research API                  |
+| `YOU_TIMEOUT_MS`, `YOU_MAX_RESULTS`     | no                | You.com request and result limits                |
+| `YOU_CACHE_TTL_MS`                      | no                | Redis research-cache lifetime                    |
 | `SPORTYBET_PROVIDER_ENABLED`            | no                | Feature gate; an adapter is still required       |
 | `LOG_LEVEL`                             | yes               | Pino log level                                   |
 | `ADMIN_SECRET`                          | production admin  | At least 16 characters; sent in `x-admin-secret` |
@@ -171,6 +176,14 @@ the shape in `intentSchema`; Zod rejects invalid responses and the deterministic
 handles common instructions when AI is unavailable. Vision providers should return
 `screenshotExtractionSchema` data and preserve uncertainty.
 
+## You.com sports research
+
+You.com is a separate freshness and citations layer, not SlipPilot AI's primary LLM or structured
+sports provider. It enriches injury, lineup, suspension, coaching, congestion, travel, availability,
+postponement, and major-news uncertainty. Results are source-ranked, deduplicated, conflict-aware,
+cached in Redis, and persisted as citation metadata without unnecessary page content. Failures do not
+block structured analysis. See [the verified architecture and endpoints](docs/you-com-integration.md).
+
 ## SportyBet integration architecture
 
 The public Nigeria browser experience and its current first-party bundles were independently inspected
@@ -214,6 +227,12 @@ The explicitly opt-in, non-staking live test is excluded from CI:
 
 ```bash
 SPORTYBET_LIVE_SMOKE=true npm run sportybet:smoke
+```
+
+You.com Search has a separate opt-in smoke test and is never called by CI:
+
+```bash
+YOU_API_ENABLED=true YOU_LIVE_SMOKE=true YDC_API_KEY=... npm run you:smoke
 ```
 
 ## Docker

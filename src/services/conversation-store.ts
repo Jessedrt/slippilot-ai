@@ -1,5 +1,6 @@
 import type { ParsedIntent } from '../ai/intent-schema.js';
 import type { SlipDraft, Sport } from '../types/domain.js';
+import type { SportsResearchResult } from '../you/types.js';
 
 export interface ConversationState {
   currentSlipId?: string;
@@ -10,6 +11,7 @@ export interface ConversationState {
   lastMarketCategory?: string;
   preferences: Record<string, unknown>;
   lastIntent?: ParsedIntent;
+  recentResearch?: SportsResearchResult;
 }
 
 export interface ConversationStore {

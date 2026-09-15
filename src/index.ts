@@ -7,10 +7,28 @@ import { PrismaConversationStore, PrismaDatabase } from './database/client.js';
 import { DisabledSportsProvider } from './sports/provider.js';
 import { BrowserSportyBetProvider, UnsupportedSportyBetProvider } from './sportybet/provider.js';
 import { createLogger } from './utils/logger.js';
+import { YouClient } from './you/client.js';
+import { DisabledWebResearchProvider, YouProvider } from './you/provider.js';
+import { SportsResearchService } from './research/sports-research.js';
+import { PrismaResearchSnapshotStore } from './research/store.js';
 
 const config = loadConfig();
 const logger = createLogger(config);
 const cache = new RedisCache(config.REDIS_URL);
+const webResearch = config.YOU_API_ENABLED && config.YDC_API_KEY
+  ? new YouProvider(
+      new YouClient({
+        apiKey: config.YDC_API_KEY,
+        timeoutMs: config.YOU_TIMEOUT_MS,
+        maxResults: config.YOU_MAX_RESULTS,
+        cacheTtlMs: config.YOU_CACHE_TTL_MS,
+        cache,
+        logger,
+      }),
+      config.YOU_SEARCH_ENABLED,
+      config.YOU_RESEARCH_ENABLED,
+    )
+  : new DisabledWebResearchProvider();
 const sports = new DisabledSportsProvider();
 const sportyBet = config.SPORTYBET_PROVIDER_ENABLED
   ? new BrowserSportyBetProvider({
@@ -25,10 +43,15 @@ const sportyBet = config.SPORTYBET_PROVIDER_ENABLED
   : new UnsupportedSportyBetProvider();
 const metrics = new MetricsService();
 const database = new PrismaDatabase();
+const research = new SportsResearchService(
+  webResearch,
+  config.YOU_MAX_RESULTS,
+  new PrismaResearchSnapshotStore(database.client),
+);
 const conversations = new PrismaConversationStore(database.client);
 
 const app = await createServer(logger, { config, metrics, cache, database, sports, sportyBet });
-const bot = createBot({ config, logger, conversations, sportyBet });
+const bot = createBot({ config, logger, conversations, sportyBet, research });
 
 const shutdown = async (signal: string) => {
   logger.info({ signal }, 'Stopping SlipPilot AI');

@@ -2,6 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { IntentParser, deterministicParse } from '../src/ai/intent-parser.js';
 
 describe('intent parsing', () => {
+  it('recognizes fresh sports research requests', () => {
+    expect(deterministicParse('Check team news for Arsenal').action).toBe('research');
+    expect(deterministicParse('Any injuries in this game?').action).toBe('research');
+    expect(deterministicParse('Refresh news').action).toBe('research');
+  });
+
+  it('recognizes source follow-ups', () => {
+    expect(deterministicParse('Show sources').action).toBe('show_sources');
+  });
+
   it('parses sport, game count, target odds and confidence', () => {
     expect(
       deterministicParse('Give me 7 football games around 10 odds with at least 70% confidence'),

@@ -69,7 +69,9 @@ export function deterministicParse(input: string): ParsedIntent {
   );
 
   let action: ParsedIntent['action'] = 'unknown';
-  if (/screenshot|photo|image/.test(lower)) action = 'read_screenshot';
+  if (/show (?:the )?sources|sources checked|citations?/.test(lower)) action = 'show_sources';
+  else if (/team news|injur|suspension|expected lineup|research this|refresh news|player availability|why did you choose/.test(lower)) action = 'research';
+  else if (/screenshot|photo|image/.test(lower)) action = 'read_screenshot';
   else if (/generate|book these|booking code|prepare.*code/.test(lower)) action = 'generate_code';
   else if (/readcode|analy[sz]e.*code|^[a-z0-9]{4,12}$/i.test(text)) action = 'read_code';
   else if (/split/.test(lower)) action = 'split_slip';

@@ -10,6 +10,8 @@ export const intentSchema = z.object({
     'read_code',
     'read_screenshot',
     'generate_code',
+    'research',
+    'show_sources',
     'unknown',
   ]),
   sport: z.enum(['football', 'basketball']).optional(),

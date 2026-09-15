@@ -17,6 +17,13 @@ export const envSchema = z.object({
   AI_MODEL: z.preprocess(blankToUndefined, z.string().optional()),
   SPORTS_PROVIDER: z.string().default('disabled'),
   SPORTS_API_KEY: z.preprocess(blankToUndefined, z.string().optional()),
+  YOU_API_ENABLED: z.stringbool().default(false),
+  YDC_API_KEY: z.preprocess(blankToUndefined, z.string().min(8).optional()),
+  YOU_SEARCH_ENABLED: z.stringbool().default(true),
+  YOU_RESEARCH_ENABLED: z.stringbool().default(true),
+  YOU_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(15_000),
+  YOU_MAX_RESULTS: z.coerce.number().int().min(1).max(100).default(8),
+  YOU_CACHE_TTL_MS: z.coerce.number().int().min(1_000).default(300_000),
   SPORTYBET_PROVIDER_ENABLED: z.stringbool().default(false),
   SPORTYBET_REGION: z.string().regex(/^[a-z]{2}$/).default('ng'),
   SPORTYBET_API_BASE_URL: z.string().url().default('https://www.sportybet.com'),
@@ -27,6 +34,14 @@ export const envSchema = z.object({
   SPORTYBET_CACHE_TTL_MS: z.coerce.number().int().positive().default(30_000),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   ADMIN_SECRET: z.preprocess(blankToUndefined, z.string().min(16).optional()),
+}).superRefine((config, context) => {
+  if (config.YOU_API_ENABLED && !config.YDC_API_KEY) {
+    context.addIssue({
+      code: 'custom',
+      path: ['YDC_API_KEY'],
+      message: 'YDC_API_KEY is required when YOU_API_ENABLED=true',
+    });
+  }
 });
 
 export type AppConfig = z.infer<typeof envSchema>;

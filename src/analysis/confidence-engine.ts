@@ -5,6 +5,8 @@ export interface ConfidenceInput {
   dataCompleteness: number;
   sampleSize: number;
   marketVariance: number;
+  researchConfidence?: number;
+  researchConflict?: boolean;
 }
 
 export interface ConfidenceResult {
@@ -20,7 +22,13 @@ export class ConfidenceEngine {
     const completeness = Math.min(1, Math.max(0, input.dataCompleteness));
     const sampleFactor = Math.min(1, Math.max(0, input.sampleSize / 10));
     const qualityScore = completeness * 0.7 + sampleFactor * 0.3;
-    const confidenceScore = Math.round((probability / 100) * qualityScore * 100) / 10;
+    const researchAdjustment = input.researchConfidence === undefined
+      ? 0
+      : (Math.min(100, Math.max(0, input.researchConfidence)) - 50) * 0.008;
+    const conflictPenalty = input.researchConflict ? 0.4 : 0;
+    const confidenceScore = Math.round(
+      Math.max(0, (probability / 100) * qualityScore * 10 + researchAdjustment - conflictPenalty) * 10,
+    ) / 10;
     return {
       modelProbability: probability,
       confidenceScore,

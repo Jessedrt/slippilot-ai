@@ -18,6 +18,7 @@
     "test:watch": "vitest --configLoader native",
     "test:integration": "vitest run --configLoader native tests/integration",
     "sportybet:smoke": "tsx tests/live/sportybet.smoke.ts",
+    "you:smoke": "tsx tests/live/you.smoke.ts",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate"
   },

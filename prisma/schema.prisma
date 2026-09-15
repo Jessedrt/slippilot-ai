@@ -106,6 +106,7 @@ model Fixture {
   markets       MarketSnapshot[]
   analyses      Analysis[]
   selections    Selection[]
+  researchSnapshots ResearchSnapshot[]
 
   @@unique([provider, providerId])
   @@index([sport, startsAt])
@@ -257,4 +258,36 @@ model AuditLog {
 
   @@index([action, createdAt])
   @@index([userId, createdAt])
+}
+
+model ResearchSnapshot {
+  id          String           @id @default(cuid())
+  fixtureId   String
+  query       String
+  summary     String
+  freshness   String
+  confidence  Decimal          @db.Decimal(5, 2)
+  searchedAt  DateTime
+  createdAt   DateTime         @default(now())
+  rawMetadata Json?
+  fixture     Fixture          @relation(fields: [fixtureId], references: [id], onDelete: Cascade)
+  sources     ResearchSource[]
+
+  @@index([fixtureId, searchedAt])
+}
+
+model ResearchSource {
+  id                 String           @id @default(cuid())
+  researchSnapshotId String
+  sourceTitle        String
+  sourceUrl          String
+  publisher          String
+  publishedAt        DateTime?
+  retrievedAt        DateTime         @default(now())
+  confidence         Decimal          @db.Decimal(5, 2)
+  rawMetadata        Json?
+  researchSnapshot   ResearchSnapshot @relation(fields: [researchSnapshotId], references: [id], onDelete: Cascade)
+
+  @@index([researchSnapshotId])
+  @@index([sourceUrl])
 }

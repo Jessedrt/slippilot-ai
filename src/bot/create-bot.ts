@@ -7,12 +7,14 @@ import { plans } from '../subscriptions/plans.js';
 import { HELP_MESSAGE, START_MESSAGE } from './messages.js';
 import type { SportyBetProvider } from '../sportybet/contracts.js';
 import { SportyBetSlipBuilder } from '../booking/workflow.js';
+import type { SportsResearchService } from '../research/sports-research.js';
 
 interface BotDependencies {
   config: AppConfig;
   logger: Logger;
   conversations: ConversationStore;
   sportyBet: SportyBetProvider;
+  research: SportsResearchService;
   intents?: IntentParser;
 }
 
@@ -164,6 +166,16 @@ export function createBot(deps: BotDependencies): Telegraf | null {
       await ctx.reply('SportyBet is temporarily unavailable. Your analyzed slip has been saved.');
     }
   });
+  bot.action('research:sources', async (ctx) => {
+    await ctx.answerCbQuery();
+    const state = await deps.conversations.get(String(ctx.from.id));
+    const sources = state.recentResearch?.sources ?? [];
+    await ctx.reply(
+      sources.length
+        ? `🔎 Sources checked\n\n${sources.map((source, index) => `${index + 1}. ${source.title}\n${source.url}`).join('\n\n')}`
+        : 'No recent research sources are stored for this conversation.',
+    );
+  });
   bot.on('photo', async (ctx) => {
     const state = await deps.conversations.get(String(ctx.from.id));
     await deps.conversations.set(String(ctx.from.id), {
@@ -189,6 +201,32 @@ export function createBot(deps: BotDependencies): Telegraf | null {
     });
     if (intent.action === 'discover' && !intent.gameCount && !intent.minimumGameCount) {
       await ctx.reply('How many games do you want?', chooseCount);
+      return;
+    }
+    if (intent.action === 'show_sources') {
+      const sources = state.recentResearch?.sources ?? [];
+      await ctx.reply(
+        sources.length
+          ? `🔎 Sources checked\n\n${sources.map((source, index) => `${index + 1}. ${source.title}\n${source.url}`).join('\n\n')}`
+          : 'No recent research sources are stored for this conversation.',
+      );
+      return;
+    }
+    if (intent.action === 'research') {
+      const teamMatch = /(?:team news for|research)\s+(.+)/i.exec(ctx.message.text);
+      const subject = teamMatch?.[1]?.trim() ?? state.lastFixture ?? ctx.message.text;
+      const result = await deps.research.researchTeam(subject);
+      await deps.conversations.set(userId, { ...state, lastIntent: intent, recentResearch: result });
+      const context = result.sources
+        .slice(0, 3)
+        .map((source) => `• ${source.snippet ?? source.title}`)
+        .join('\n');
+      await ctx.reply(
+        `📰 Fresh context\n\n${context || result.summary}\n\nConfidence: ${result.confidence}%\nSources checked: ${result.sources.length}${result.conflicting ? '\n⚠ Reports conflict; treated as uncertain.' : ''}`,
+        result.sources.length
+          ? Markup.inlineKeyboard([[Markup.button.callback('Sources', 'research:sources')]])
+          : undefined,
+      );
       return;
     }
     if (intent.action === 'read_code' && intent.bookingCode) {
