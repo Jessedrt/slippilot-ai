@@ -31,7 +31,10 @@ export class RedisCache implements CacheService {
       if (this.client.status === 'wait') await this.client.connect();
       return { ok: (await this.client.ping()) === 'PONG', detail: 'Connected' };
     } catch (error) {
-      return { ok: false, detail: error instanceof Error ? 'Connection unavailable' : 'Unavailable' };
+      return {
+        ok: false,
+        detail: error instanceof Error ? 'Connection unavailable' : 'Unavailable',
+      };
     }
   }
   close(): Promise<void> {

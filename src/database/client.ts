@@ -16,7 +16,10 @@ export class PrismaDatabase implements DatabaseService {
       await this.client.$queryRaw`SELECT 1`;
       return { ok: true, detail: 'Connected' };
     } catch (error) {
-      return { ok: false, detail: error instanceof Error ? 'Connection unavailable' : 'Unavailable' };
+      return {
+        ok: false,
+        detail: error instanceof Error ? 'Connection unavailable' : 'Unavailable',
+      };
     }
   }
   async close(): Promise<void> {
