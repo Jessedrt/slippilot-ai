@@ -173,16 +173,16 @@ handles common instructions when AI is unavailable. Vision providers should retu
 
 ## SportyBet integration architecture
 
-The public Nigeria browser experience was inspected on 15 September 2026. It showed dynamic fixtures,
-SportRadar-style URL references, separate display IDs, extensive market categories, active/suspended
-states, decimal odds, and booking-code loading. No official public server API or supported code-creation
-contract was verified.
+The public Nigeria browser experience and its current first-party bundles were independently inspected
+on 15 September 2026. The feature-gated `SportyBetClient` uses only the verified browser-facing fixture,
+event, outcome-refresh, and share-code routes. It dynamically normalizes football and basketball market
+catalogs, validates provider tuples and specifiers, refreshes odds, creates non-staking codes, and loads
+existing codes. No SportyBet API key or login is used.
 
-Accordingly, SlipPilot AI ships `UnsupportedSportyBetProvider` as the safe default and contains **no
-invented endpoints**. See [the detailed findings](docs/sportybet-integration.md). A production adapter
-must be based on a documented, permitted interface and implement event lookup, current markets,
-code resolution, code creation, and health checks. The workflow always re-resolves IDs and refreshes
-odds before code creation.
+This is an undocumented interface, not an official developer API, so it may change. Conservative rate
+limits, caches, validation, GET-only retries, and zero share-POST retries are built in. The provider is
+disabled by default. See [the detailed findings](docs/sportybet-integration.md), including live
+round-trip evidence and the deployment limitation.
 
 ## Running locally
 
@@ -209,6 +209,12 @@ npm run prisma:validate
 ```
 
 Tests do not need production secrets or live provider access.
+
+The explicitly opt-in, non-staking live test is excluded from CI:
+
+```bash
+SPORTYBET_LIVE_SMOKE=true npm run sportybet:smoke
+```
 
 ## Docker
 
