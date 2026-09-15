@@ -18,6 +18,13 @@ export const envSchema = z.object({
   SPORTS_PROVIDER: z.string().default('disabled'),
   SPORTS_API_KEY: z.preprocess(blankToUndefined, z.string().optional()),
   SPORTYBET_PROVIDER_ENABLED: z.stringbool().default(false),
+  SPORTYBET_REGION: z.string().regex(/^[a-z]{2}$/).default('ng'),
+  SPORTYBET_API_BASE_URL: z.string().url().default('https://www.sportybet.com'),
+  SPORTYBET_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+  SPORTYBET_MIN_INTERVAL_MS: z.coerce.number().int().nonnegative().default(350),
+  SPORTYBET_MAX_CONCURRENCY: z.coerce.number().int().min(1).max(10).default(2),
+  SPORTYBET_MAX_RETRIES: z.coerce.number().int().min(0).max(5).default(2),
+  SPORTYBET_CACHE_TTL_MS: z.coerce.number().int().positive().default(30_000),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   ADMIN_SECRET: z.preprocess(blankToUndefined, z.string().min(16).optional()),
 });

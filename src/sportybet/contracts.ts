@@ -14,6 +14,7 @@ export interface ProviderSelection {
   marketId: string;
   selectionId: string;
   odds: number;
+  specifier?: string | null;
 }
 
 export interface SportyBetProvider {

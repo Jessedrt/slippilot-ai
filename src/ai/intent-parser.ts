@@ -91,7 +91,7 @@ export function deterministicParse(input: string): ParsedIntent {
             ? 'optimize'
             : undefined;
 
-  const possibleCode = /\b([A-Z0-9]{4,12})\b/.exec(text)?.[1];
+  const possibleCode = /\b(?=[a-z0-9]{4,12}\b)(?=[a-z0-9]*\d)[a-z0-9]+\b/i.exec(text)?.[0];
   return intentSchema.parse({
     action,
     ...(sport ? { sport } : {}),
@@ -109,7 +109,7 @@ export function deterministicParse(input: string): ParsedIntent {
         : {}),
     marketPreferences: /goal/.test(lower) ? ['goals'] : [],
     screenshotIntent: action === 'read_screenshot',
-    ...(action === 'read_code' && possibleCode ? { bookingCode: possibleCode } : {}),
+    ...(action === 'read_code' && possibleCode ? { bookingCode: possibleCode.toUpperCase() } : {}),
     ...(operation
       ? {
           modification: {

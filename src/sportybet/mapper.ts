@@ -63,6 +63,7 @@ export class SportyBetMarketMapper {
       marketId: market.providerMarketId,
       selectionId: market.providerSelectionId,
       odds: market.odds,
+      ...(market.specifier ? { specifier: market.specifier } : {}),
     };
   }
 }

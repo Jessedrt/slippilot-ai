@@ -5,11 +5,14 @@ import type { AppConfig } from '../config/env.js';
 import type { ConversationStore } from '../services/conversation-store.js';
 import { plans } from '../subscriptions/plans.js';
 import { HELP_MESSAGE, START_MESSAGE } from './messages.js';
+import type { SportyBetProvider } from '../sportybet/contracts.js';
+import { SportyBetSlipBuilder } from '../booking/workflow.js';
 
 interface BotDependencies {
   config: AppConfig;
   logger: Logger;
   conversations: ConversationStore;
+  sportyBet: SportyBetProvider;
   intents?: IntentParser;
 }
 
@@ -25,6 +28,7 @@ export function createBot(deps: BotDependencies): Telegraf | null {
   }
   const bot = new Telegraf(deps.config.TELEGRAM_BOT_TOKEN);
   const parser = deps.intents ?? new IntentParser();
+  const slipBuilder = new SportyBetSlipBuilder(deps.sportyBet);
   bot.start((ctx) => ctx.reply(START_MESSAGE));
   bot.help((ctx) => ctx.reply(HELP_MESSAGE));
   bot.command('clear', async (ctx) => {
@@ -60,10 +64,16 @@ export function createBot(deps: BotDependencies): Telegraf | null {
   );
   bot.command('slip', async (ctx) => {
     const state = await deps.conversations.get(String(ctx.from.id));
+    if (!state.currentSlip) {
+      await ctx.reply('You do not have an active slip yet.');
+      return;
+    }
     await ctx.reply(
-      state.currentSlip
-        ? `🎯 Active Slip\n\n${state.currentSlip.selections.length} selections. No wager has been submitted.`
-        : 'You do not have an active slip yet.',
+      `🎟 Slip ready\n\n${state.currentSlip.selections.length} selections\n\nNo wager has been submitted.`,
+      Markup.inlineKeyboard([
+        [Markup.button.callback('Generate SportyBet Code', 'sportybet:generate')],
+        [Markup.button.callback('Remove Weakest', 'slip:remove-weakest'), Markup.button.callback('Explore Markets', 'slip:markets')],
+      ]),
     );
   });
   bot.command('history', (ctx) => ctx.reply('🕘 No saved history is available in this session.'));
@@ -88,6 +98,71 @@ export function createBot(deps: BotDependencies): Telegraf | null {
   bot.action('count:custom', async (ctx) => {
     await ctx.answerCbQuery();
     await ctx.reply('Send the number of games you want (1–30).');
+  });
+  bot.action('sportybet:generate', async (ctx) => {
+    await ctx.answerCbQuery('Refreshing SportyBet odds…');
+    const state = await deps.conversations.get(String(ctx.from.id));
+    if (!state.currentSlip) {
+      await ctx.reply('I don’t have an active slip to book.');
+      return;
+    }
+    try {
+      const preparation = await slipBuilder.prepare(state.currentSlip.selections);
+      if (preparation.status === 'unavailable') {
+        await ctx.reply(
+          `⚠ Market unavailable\n\n${preparation.selection.fixture.homeTeam} vs ${preparation.selection.fixture.awayTeam}\n${preparation.selection.selectionName}\n\n${preparation.reason}`,
+          Markup.inlineKeyboard([
+            [Markup.button.callback('Replace Selection', 'slip:replace-unavailable')],
+            [Markup.button.callback('Remove Selection', 'slip:remove-unavailable')],
+          ]),
+        );
+        return;
+      }
+      if (preparation.status === 'odds_changed') {
+        await ctx.reply(
+          `⚠ Odds changed\n\nOld: ${preparation.previousOdds.toFixed(2)}\nCurrent: ${preparation.currentOdds.toFixed(2)}`,
+          Markup.inlineKeyboard([
+            [Markup.button.callback('Generate Anyway', 'sportybet:generate-anyway')],
+            [Markup.button.callback('Re-optimize', 'slip:reoptimize'), Markup.button.callback('Cancel', 'sportybet:cancel')],
+          ]),
+        );
+        return;
+      }
+      const code = await slipBuilder.createCode(preparation);
+      await ctx.reply(
+        `✅ SportyBet booking code created\n\nCode:\n${code}\n\nSelections: ${preparation.selections.length}\nOdds at creation: ${preparation.currentOdds.toFixed(2)}\n\nNo wager was submitted.`,
+        Markup.inlineKeyboard([[Markup.button.callback('Analyze Again', 'sportybet:analyze-again')]]),
+      );
+    } catch (error) {
+      deps.logger.warn({ err: error }, 'SportyBet code creation failed');
+      await ctx.reply(`SportyBet is temporarily unavailable. Your analyzed slip has been saved.`);
+    }
+  });
+  bot.action('sportybet:cancel', async (ctx) => {
+    await ctx.answerCbQuery('Cancelled');
+    await ctx.reply('Code creation cancelled. Your slip is unchanged.');
+  });
+  bot.action('sportybet:generate-anyway', async (ctx) => {
+    await ctx.answerCbQuery('Refreshing once more…');
+    const state = await deps.conversations.get(String(ctx.from.id));
+    if (!state.currentSlip) {
+      await ctx.reply('I don’t have an active slip to book.');
+      return;
+    }
+    try {
+      const preparation = await slipBuilder.prepare(state.currentSlip.selections);
+      if (preparation.status === 'unavailable') {
+        await ctx.reply(`⚠ Market unavailable\n\n${preparation.reason}`);
+        return;
+      }
+      const code = await deps.sportyBet.createBookingCode(preparation.selections);
+      await ctx.reply(
+        `✅ SportyBet booking code created\n\nCode:\n${code}\n\nSelections: ${preparation.selections.length}\nOdds at creation: ${preparation.currentOdds.toFixed(2)}\n\nNo wager was submitted.`,
+      );
+    } catch (error) {
+      deps.logger.warn({ err: error }, 'SportyBet code creation after odds confirmation failed');
+      await ctx.reply('SportyBet is temporarily unavailable. Your analyzed slip has been saved.');
+    }
   });
   bot.on('photo', async (ctx) => {
     const state = await deps.conversations.get(String(ctx.from.id));
@@ -114,6 +189,19 @@ export function createBot(deps: BotDependencies): Telegraf | null {
     });
     if (intent.action === 'discover' && !intent.gameCount && !intent.minimumGameCount) {
       await ctx.reply('How many games do you want?', chooseCount);
+      return;
+    }
+    if (intent.action === 'read_code' && intent.bookingCode) {
+      try {
+        const selections = await deps.sportyBet.resolveBookingCode(intent.bookingCode);
+        const odds = selections.reduce((total, selection) => total * selection.odds, 1);
+        await ctx.reply(
+          `🎟 SportyBet code analysis\n\nCode: ${intent.bookingCode.toUpperCase()}\nSelections: ${selections.length}\nCurrent combined odds: ${odds.toFixed(2)}\n\nOdds may change. No wager was submitted.`,
+        );
+      } catch (error) {
+        deps.logger.info({ err: error }, 'SportyBet code could not be resolved');
+        await ctx.reply('I could not load that SportyBet code. Check the code or try again shortly.');
+      }
       return;
     }
     if (intent.action === 'modify_slip' && !state.currentSlip) {
