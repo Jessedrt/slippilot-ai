@@ -58,6 +58,16 @@ export function createApplication() {
       ? { bot, secret: config.TELEGRAM_WEBHOOK_SECRET }
       : undefined,
   );
+  const webhookRegistrationPromise =
+    bot &&
+    config.TELEGRAM_WEBHOOK_SECRET &&
+    process.env.VERCEL_ENV === 'production' &&
+    process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? bot.telegram.setWebhook(
+          `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}/api/telegram`,
+          { secret_token: config.TELEGRAM_WEBHOOK_SECRET },
+        )
+      : Promise.resolve(false);
 
-  return { appPromise, bot, cache, config, database, logger };
+  return { appPromise, bot, cache, config, database, logger, webhookRegistrationPromise };
 }
