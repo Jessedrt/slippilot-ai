@@ -46,4 +46,41 @@ describe('API failure handling', () => {
       dependencies: { redis: { ok: false }, sportyBetProvider: { ok: false } },
     });
   });
+
+  it('authenticates and processes Telegram webhook updates', async () => {
+    const config = loadConfig({ NODE_ENV: 'test', LOG_LEVEL: 'silent' });
+    const updates: unknown[] = [];
+    const app = await createServer(
+      createLogger(config),
+      {
+        config,
+        metrics: new MetricsService(),
+        cache,
+        database,
+        sports: new DisabledSportsProvider(),
+        sportyBet: new UnsupportedSportyBetProvider(),
+      },
+      {
+        secret: 'test-webhook-secret',
+        bot: { handleUpdate: (update: unknown) => { updates.push(update); return Promise.resolve(); } },
+      },
+    );
+    apps.push(app);
+
+    const rejected = await app.inject({
+      method: 'POST',
+      url: '/api/telegram',
+      payload: { update_id: 1 },
+    });
+    expect(rejected.statusCode).toBe(401);
+
+    const accepted = await app.inject({
+      method: 'POST',
+      url: '/api/telegram',
+      headers: { 'x-telegram-bot-api-secret-token': 'test-webhook-secret' },
+      payload: { update_id: 2 },
+    });
+    expect(accepted.statusCode).toBe(200);
+    expect(updates).toEqual([{ update_id: 2 }]);
+  });
 });

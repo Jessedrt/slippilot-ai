@@ -7,6 +7,10 @@ export const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   HOST: z.string().default('0.0.0.0'),
   TELEGRAM_BOT_TOKEN: z.preprocess(blankToUndefined, z.string().min(10).optional()),
+  TELEGRAM_WEBHOOK_SECRET: z.preprocess(
+    blankToUndefined,
+    z.string().min(16).max(256).regex(/^[A-Za-z0-9_-]+$/).optional(),
+  ),
   DATABASE_URL: z
     .string()
     .url()
@@ -41,6 +45,19 @@ export const envSchema = z.object({
       path: ['YDC_API_KEY'],
       message: 'YDC_API_KEY is required when YOU_API_ENABLED=true',
     });
+  }
+  if (config.NODE_ENV === 'production') {
+    for (const key of ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_WEBHOOK_SECRET'] as const) {
+      if (!config[key]) {
+        context.addIssue({ code: 'custom', path: [key], message: `${key} is required in production` });
+      }
+    }
+    if (config.DATABASE_URL.includes('localhost')) {
+      context.addIssue({ code: 'custom', path: ['DATABASE_URL'], message: 'DATABASE_URL must not use localhost in production' });
+    }
+    if (config.REDIS_URL.includes('localhost')) {
+      context.addIssue({ code: 'custom', path: ['REDIS_URL'], message: 'REDIS_URL must not use localhost in production' });
+    }
   }
 });
 

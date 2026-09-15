@@ -112,6 +112,7 @@ npx prisma migrate dev --name init
 | `NODE_ENV`                              | yes               | `development`, `test`, or `production`           |
 | `PORT`, `HOST`                          | yes               | REST listen address                              |
 | `TELEGRAM_BOT_TOKEN`                    | for bot           | BotFather token                                  |
+| `TELEGRAM_WEBHOOK_SECRET`               | production bot    | Telegram webhook request authentication          |
 | `DATABASE_URL`                          | yes               | PostgreSQL connection URL                        |
 | `REDIS_URL`                             | yes               | Redis connection URL                             |
 | `AI_PROVIDER`, `AI_API_KEY`, `AI_MODEL` | for AI/vision     | Structured intent and screenshot provider        |
