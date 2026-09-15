@@ -1,31 +1,64 @@
-# SportyBet integration findings
+# SportyBet integration
 
 Inspection date: 15 September 2026  
-Region inspected: Nigeria (`https://www.sportybet.com/ng/`)
+Region: Nigeria (`ng`)
 
-## Verified browser-facing behavior
+## Browser-facing contract used by the adapter
 
-- The public sports page showed football and basketball fixtures without authentication.
-- Fixture detail URLs included SportRadar-style event references such as `sr:match:<id>`.
-- The UI also displayed a separate short event ID. These identifiers must not be assumed interchangeable.
-- Fixture pages loaded a large, dynamic market catalog with categories including Main, Goals, Half,
-  Bookings, Corners, Specials, Players, Teams, Minutes, and Match.
-- Active selections displayed decimal odds. Suspended or unavailable selections were visibly marked
-  and did not expose usable odds.
-- The betslip included a booking-code input and described codes as a way to transfer a betslip between
-  devices.
+SlipPilot AI now contains an opt-in adapter for SportyBet's undocumented public web interface. This is
+not an official developer API and may change without notice. The adapter is disabled by default.
 
-## Not verified
+The currently corroborated Nigeria paths are:
 
-- No officially documented public SportyBet API was found during inspection.
-- No supported server-to-server authentication contract was verified.
-- No stable request/response contract for fixture, market, or selection ingestion was verified.
-- No supported unauthenticated booking-code creation interface was verified.
-- Code resolution and code creation were not tested with a real account or wager.
+- `GET /api/ng/factsCenter/pcUpcomingEvents` for upcoming fixtures, markets and odds.
+- `POST /api/ng/orders/share` for anonymous, non-staking booking/share-code creation.
+- `GET /api/ng/orders/share/{code}` for read-only booking-code loading.
 
-## Implementation decision
+Requests use `Accept: application/json`, `Content-Type: application/json`, and `Current-Country: NG`.
+Fixture selections are represented by `eventId`, `marketId`, `outcomeId`, and an optional `specifier`
+(such as `total=2.5`).
 
-SlipPilot AI contains a provider interface, mapping services, odds-refresh workflow, suspended-market
-handling, and an explicit unsupported default adapter. It intentionally contains no guessed SportyBet
-URLs. A deployment may add a compliant adapter only after obtaining documented permission and a stable
-contract. The bot never submits a wager, deposit, or withdrawal.
+## Safety boundary
+
+The adapter never logs in, requests bookmaker credentials, handles deposits or withdrawals, or submits
+a wager. Its only write request is the share-code endpoint. Booking POST requests are single-attempt and
+are never automatically retried.
+
+Before code creation, SlipPilot refreshes each selected event/market/outcome, verifies the outcome is
+active, preserves the market specifier, and rejects duplicate or suspended selections.
+
+## Configuration
+
+Set `SPORTYBET_PROVIDER_ENABLED=true` only after verifying the adapter from the deployment network.
+The remaining `SPORTYBET_*` environment variables control region, base URL, timeout, pacing, retry,
+cache, pagination and requested market IDs. No SportyBet API key is required by this adapter.
+
+Football defaults cover a broad set of result, goals, handicap, half, corners and related markets.
+Basketball defaults currently request Winner incl. OT (`219`), Handicap incl. OT (`223`), Over/Under
+incl. OT (`225`) and Team Totals (`227`,`228`). Market IDs remain configurable because the upstream
+interface is undocumented.
+
+## Verification
+
+Run the normal offline suite first:
+
+```bash
+npm run typecheck
+npm run lint
+npm test
+npm run build
+```
+
+Then, from a network that is allowed to reach SportyBet, run:
+
+```bash
+npm run sportybet:smoke
+```
+
+The smoke script fetches one scheduled football event, selects one active outcome, creates a non-staking
+share code, loads it back, and verifies that the same event/market/outcome is present. It does not stake
+money or place a wager.
+
+A server-side HTTP `403` should be treated as a deployment/network restriction. Do not add anti-bot
+evasion or fabricate alternate endpoints; keep the adapter disabled on that host until the interface can
+be reached legitimately.
