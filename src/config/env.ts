@@ -22,10 +22,12 @@ export const envSchema = z
       .url()
       .default('postgresql://slippilot:slippilot@localhost:5432/slippilot'),
     REDIS_URL: z.string().url().default('redis://localhost:6379'),
+    // Legacy AI_PROVIDER/AI_MODEL are retained for backwards compatibility; text analysis uses YDC.
     AI_PROVIDER: z.string().default('disabled'),
     AI_API_KEY: z.preprocess(blankToUndefined, z.string().optional()),
     GEMINI_API_KEY: z.preprocess(blankToUndefined, z.string().optional()),
     AI_MODEL: z.preprocess(blankToUndefined, z.string().optional()),
+    VISION_MODEL: z.string().min(3).default('gemini-2.5-flash'),
     SPORTS_PROVIDER: z.string().default('disabled'),
     SPORTS_API_KEY: z.preprocess(blankToUndefined, z.string().optional()),
     YOU_API_ENABLED: z.stringbool().default(false),
@@ -123,4 +125,3 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   }
   return parsed.data;
 }
-

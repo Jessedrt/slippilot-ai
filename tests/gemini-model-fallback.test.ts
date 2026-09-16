@@ -73,8 +73,12 @@ describe('Gemini model fallback', () => {
     });
     await expect(analyzer.analyze([candidate])).resolves.toMatchObject({ model: 'available-model' });
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/unavailable-model:generateContent');
-    expect(String(fetchMock.mock.calls[1]?.[0])).toContain('/available-model:generateContent');
+    expect(fetchMock.mock.calls[0]?.[0]).toEqual(
+      expect.stringContaining('/unavailable-model:generateContent'),
+    );
+    expect(fetchMock.mock.calls[1]?.[0]).toEqual(
+      expect.stringContaining('/available-model:generateContent'),
+    );
     expect(fetchMock.mock.calls[1]?.[1]?.headers).toMatchObject({
       'x-goog-api-key': 'primary',
     });

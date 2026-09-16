@@ -1,6 +1,7 @@
 import { MetricsService } from './admin/metrics.js';
 import { createServer } from './api/server.js';
-import { DisabledSlipAnalyzer, GeminiSlipAnalyzer } from './ai/slip-analyzer.js';
+import { DisabledSlipAnalyzer } from './ai/slip-analyzer.js';
+import { YouSlipAnalyzer } from './ai/you-slip-analyzer.js';
 import { DisabledScreenshotAnalyzer, GeminiScreenshotAnalyzer } from './ai/screenshot-analyzer.js';
 import { createBot } from './bot/create-bot.js';
 import { loadConfig } from './config/env.js';
@@ -30,22 +31,22 @@ export function createApplication() {
     config.YDC_API_KEY_9,
     config.YDC_API_KEY_10,
   ].filter((key): key is string => Boolean(key));
-  const webResearch =
+  const youClient =
     config.YOU_API_ENABLED && youApiKeys[0]
-      ? new YouProvider(
-          new YouClient({
-            apiKey: youApiKeys[0],
-            apiKeys: youApiKeys.slice(1),
-            timeoutMs: config.YOU_TIMEOUT_MS,
-            maxResults: config.YOU_MAX_RESULTS,
-            cacheTtlMs: config.YOU_CACHE_TTL_MS,
-            cache,
-            logger,
-          }),
-          config.YOU_SEARCH_ENABLED,
-          config.YOU_RESEARCH_ENABLED,
-        )
-      : new DisabledWebResearchProvider();
+      ? new YouClient({
+          apiKey: youApiKeys[0],
+          apiKeys: youApiKeys.slice(1),
+          // Standard structured Research can take longer than an ordinary web search.
+          timeoutMs: Math.max(config.YOU_TIMEOUT_MS, 45_000),
+          maxResults: config.YOU_MAX_RESULTS,
+          cacheTtlMs: config.YOU_CACHE_TTL_MS,
+          cache,
+          logger,
+        })
+      : null;
+  const webResearch = youClient
+    ? new YouProvider(youClient, config.YOU_SEARCH_ENABLED, config.YOU_RESEARCH_ENABLED)
+    : new DisabledWebResearchProvider();
   const sports = new DisabledSportsProvider();
   const sportyBet = config.SPORTYBET_PROVIDER_ENABLED
     ? new BrowserSportyBetProvider({
@@ -58,26 +59,21 @@ export function createApplication() {
         cacheTtlMs: config.SPORTYBET_CACHE_TTL_MS,
       })
     : new UnsupportedSportyBetProvider();
-  const aiKeys = [
-    ...new Set([config.GEMINI_API_KEY, config.AI_API_KEY].filter(Boolean)),
-  ] as string[];
+  const aiKeys = [...new Set([config.GEMINI_API_KEY, config.AI_API_KEY].filter(Boolean))] as string[];
   const aiKey = aiKeys[0];
+  // YDC is the only provider for text/slip analysis. Never silently fall back to Gemini text.
   const slipAnalyzer =
-    config.AI_PROVIDER === 'gemini' && aiKey
-      ? new GeminiSlipAnalyzer({
-          apiKey: aiKey,
-          apiKeys: aiKeys.slice(1),
-          ...(config.AI_MODEL ? { model: config.AI_MODEL } : {}),
-        })
+    youClient && config.YOU_RESEARCH_ENABLED
+      ? new YouSlipAnalyzer(youClient)
       : new DisabledSlipAnalyzer();
-  const screenshotAnalyzer =
-    config.AI_PROVIDER === 'gemini' && aiKey
-      ? new GeminiScreenshotAnalyzer({
-          apiKey: aiKey,
-          sportyBet,
-          ...(config.AI_MODEL ? { model: config.AI_MODEL } : {}),
-        })
-      : new DisabledScreenshotAnalyzer();
+  // Gemini is only used for image/screenshot understanding, not textual slip decisions.
+  const screenshotAnalyzer = aiKey
+    ? new GeminiScreenshotAnalyzer({
+        apiKey: aiKey,
+        sportyBet,
+        model: config.VISION_MODEL,
+      })
+    : new DisabledScreenshotAnalyzer();
   const metrics = new MetricsService();
   const database = new PrismaDatabase();
   const research = new SportsResearchService(

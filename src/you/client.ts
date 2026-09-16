@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { Logger } from 'pino';
+import { z } from 'zod';
 import type { CacheService } from '../services/cache.js';
 import {
   youAnswerResponseSchema,
@@ -33,6 +34,16 @@ export class YouApiError extends Error {
     this.name = 'YouApiError';
   }
 }
+
+const structuredResearchResponseSchema = z.object({
+  output: z.object({
+    content: z.unknown(),
+    content_type: z.string().optional(),
+    sources: z.array(z.unknown()).default([]),
+  }),
+});
+
+export type StructuredResearchResponse = z.infer<typeof structuredResearchResponseSchema>;
 
 export class YouClient {
   private readonly timeoutMs: number;
@@ -78,6 +89,22 @@ export class YouClient {
       'research',
       { input: query, research_effort: 'lite' },
       (value) => youResearchResponseSchema.parse(value),
+      'https://api.you.com/v1/research',
+    );
+  }
+
+  /** Structured output requires standard (or higher) Research effort; lite returns HTTP 422. */
+  structuredResearch(
+    input: string,
+    outputSchema: Record<string, unknown>,
+  ): Promise<StructuredResearchResponse> {
+    if (!input.trim() || input.length > 40_000) {
+      throw new Error('You.com Research input must contain 1–40,000 characters.');
+    }
+    return this.cached(
+      'structured-research',
+      { input, research_effort: 'standard', output_schema: outputSchema },
+      (value) => structuredResearchResponseSchema.parse(value),
       'https://api.you.com/v1/research',
     );
   }
@@ -198,4 +225,3 @@ export class YouClient {
     }
   }
 }
-
