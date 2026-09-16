@@ -15,6 +15,11 @@ import { SlipSplitter } from '../slips/splitter.js';
 import { combinedOdds } from '../slips/optimizer.js';
 import { editSlip } from '../slips/editor.js';
 import type { SlipDraft } from '../types/domain.js';
+import {
+  buildImportedSlip,
+  parseTypedPicks,
+  screenshotPickRequests,
+} from '../sportybet/importer.js';
 
 interface BotDependencies {
   config: AppConfig;
@@ -46,6 +51,7 @@ async function analyzeEditedSlip(
   state: ConversationState,
   slip: SlipDraft,
   reply: (message: string, extra?: ReturnType<typeof Markup.inlineKeyboard>) => Promise<unknown>,
+  title = '✏️ Updated and re-analyzed slip',
 ): Promise<void> {
   const analysis = await deps.slipAnalyzer.analyze(slip.selections);
   const selections = slip.selections
@@ -79,7 +85,7 @@ async function analyzeEditedSlip(
       `${index + 1}. ${selection.fixture.homeTeam} vs ${selection.fixture.awayTeam}\n${selection.selectionName} @ ${selection.odds.toFixed(2)} · AI ${selection.confidenceScore.toFixed(0)}% · ${selection.riskLevel}`,
   );
   await reply(
-    `✏️ Updated and re-analyzed slip\n\n${rows.join('\n\n')}\n\nCombined odds: ${combinedOdds(selections).toFixed(2)}\nMode: ${analyzedSlip.riskMode}\n\nAI analysis is not a guarantee.`,
+    `${title}\n\n${rows.join('\n\n')}\n\nCombined odds: ${combinedOdds(selections).toFixed(2)}\nMode: ${analyzedSlip.riskMode}\n\nAI analysis is not a guarantee.`,
     Markup.inlineKeyboard([
       [Markup.button.callback('Generate SportyBet Code', 'sportybet:generate')],
     ]),
@@ -288,6 +294,65 @@ export function createBot(deps: BotDependencies): Telegraf | null {
     await ctx.answerCbQuery('Cancelled');
     await ctx.reply('Code creation cancelled. Your slip is unchanged.');
   });
+  bot.action(/^sportybet:split:(\d+)$/, async (ctx) => {
+    const index = Number(ctx.match[1]);
+    await ctx.answerCbQuery('Refreshing this split…');
+    const state = await deps.conversations.get(String(ctx.from.id));
+    const split = state.splitSlips?.[index];
+    if (!split || state.currentSlipAnalysis?.slipId !== state.currentSlip?.id) {
+      await ctx.reply('That split is no longer available or its AI analysis is stale.');
+      return;
+    }
+    try {
+      const preparation = await slipBuilder.prepare(split.selections);
+      if (preparation.status === 'unavailable') {
+        await ctx.reply(
+          `⚠ Split ${String.fromCharCode(65 + index)} cannot be booked: ${preparation.reason}`,
+        );
+        return;
+      }
+      if (preparation.status === 'odds_changed') {
+        await ctx.reply(
+          `⚠ Split ${String.fromCharCode(65 + index)} odds changed from ${preparation.previousOdds.toFixed(2)} to ${preparation.currentOdds.toFixed(2)}.`,
+          Markup.inlineKeyboard([
+            [Markup.button.callback('Generate at New Odds', `sportybet:split-anyway:${index}`)],
+          ]),
+        );
+        return;
+      }
+      const code = await slipBuilder.createCode(preparation);
+      await ctx.reply(
+        `✅ Split ${String.fromCharCode(65 + index)} SportyBet code\n\n${code}\n\nOdds: ${preparation.currentOdds.toFixed(2)}\nNo wager was submitted.`,
+      );
+    } catch (error) {
+      deps.logger.warn({ err: error, index }, 'Split booking code creation failed');
+      await ctx.reply('SportyBet is temporarily unavailable. Your split is still saved.');
+    }
+  });
+  bot.action(/^sportybet:split-anyway:(\d+)$/, async (ctx) => {
+    const index = Number(ctx.match[1]);
+    await ctx.answerCbQuery('Refreshing once more…');
+    const state = await deps.conversations.get(String(ctx.from.id));
+    const split = state.splitSlips?.[index];
+    if (!split || state.currentSlipAnalysis?.slipId !== state.currentSlip?.id) {
+      await ctx.reply('That split is no longer available or its AI analysis is stale.');
+      return;
+    }
+    try {
+      const preparation = await slipBuilder.prepare(split.selections);
+      if (preparation.status === 'unavailable') {
+        await ctx.reply(`⚠ This split cannot be booked: ${preparation.reason}`);
+        return;
+      }
+      const code = await deps.sportyBet.createBookingCode(preparation.selections);
+      await ctx.reply(
+        `✅ Split ${String.fromCharCode(65 + index)} SportyBet code\n\n${code}\n\nOdds: ${preparation.currentOdds.toFixed(2)}\nNo wager was submitted.`,
+      );
+    } catch (error) {
+      deps.logger.warn({ err: error, index }, 'Confirmed split booking code creation failed');
+      await ctx.reply('SportyBet is temporarily unavailable. Your split is still saved.');
+    }
+  });
   bot.action('sportybet:generate-anyway', async (ctx) => {
     await ctx.answerCbQuery('Refreshing once more…');
     const state = await deps.conversations.get(String(ctx.from.id));
@@ -366,6 +431,21 @@ export function createBot(deps: BotDependencies): Telegraf | null {
       await ctx.reply(
         `📸 Screenshot analysis\n\n${summary || 'No sports fixtures were confidently detected.'}`,
       );
+      const requests = screenshotPickRequests(extraction);
+      if (requests.length) {
+        await ctx.reply(
+          '🔎 Matching the readable picks to active SportyBet markets, then running AI analysis…',
+        );
+        const imported = await buildImportedSlip(deps.sportyBet, requests);
+        await analyzeEditedSlip(
+          deps,
+          userId,
+          state,
+          imported.slip,
+          (message, extra) => ctx.reply(message, extra),
+          `📸 Screenshot converted to an AI-analyzed slip${imported.unmatched.length ? `\n\nCould not safely match ${imported.unmatched.length} item(s); they were left out.` : ''}`,
+        );
+      }
     } catch (error) {
       deps.logger.warn({ err: error }, 'Screenshot analysis failed');
       await ctx.reply(
@@ -391,6 +471,31 @@ export function createBot(deps: BotDependencies): Telegraf | null {
         intent.targetOdds,
         (message, extra) => ctx.reply(message, extra),
       );
+      return;
+    }
+    const typedPicks = parseTypedPicks(text);
+    const isTypedPickImport =
+      typedPicks.length >= 2 &&
+      /\n|;/.test(text) &&
+      /(?:book|pick|win|draw|over|under|btts|both teams)/i.test(text);
+    if (isTypedPickImport) {
+      try {
+        await ctx.reply(
+          '📝 Matching your typed picks to live SportyBet markets, then running AI analysis…',
+        );
+        const imported = await buildImportedSlip(deps.sportyBet, typedPicks);
+        await analyzeEditedSlip(
+          deps,
+          userId,
+          state,
+          imported.slip,
+          (message, extra) => ctx.reply(message, extra),
+          `📝 Typed picks converted to an AI-analyzed slip${imported.unmatched.length ? `\n\nCould not safely match ${imported.unmatched.length} line(s); they were left out.` : ''}`,
+        );
+      } catch (error) {
+        deps.logger.warn({ err: error }, 'Typed pick import failed');
+        await ctx.reply(error instanceof Error ? error.message : 'I could not match those picks.');
+      }
       return;
     }
     const intent = await parser.parse(text);
@@ -499,6 +604,14 @@ export function createBot(deps: BotDependencies): Telegraf | null {
         });
         await ctx.reply(
           `🔀 Intelligent split\n\n${sections.join('\n\n')}\n\nBalanced by odds, confidence, risk, sport, league, and kickoff timing. No outcome is guaranteed.`,
+          Markup.inlineKeyboard(
+            splits.map((_, index) => [
+              Markup.button.callback(
+                `Generate Code for Slip ${String.fromCharCode(65 + index)}`,
+                `sportybet:split:${index}`,
+              ),
+            ]),
+          ),
         );
       } catch (error) {
         await ctx.reply(error instanceof Error ? error.message : 'I could not split that slip.');
