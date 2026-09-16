@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#07110f" />
     <meta name="description" content="Build, analyze and prepare supported sports slips in AUREX." />
     <link rel="icon" href="/favicon.svg" />
-    <link rel="stylesheet" href="/app/app.css?v=3.0.3" />
+    <link rel="stylesheet" href="/app/app.css?v=3.0.4" />
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <title>AUREX Mini App</title>
   </head>
@@ -20,12 +20,12 @@
         <section class="view active" id="build-view" aria-labelledby="build-tab">
           <div class="hero-copy">
             <p class="eyebrow">PRIVATE SPORTS INTELLIGENCE</p>
-            <h1>Build with conviction.</h1>
-            <p>AUREX reviews every market before a supported code can be prepared.</p>
+            <h1>Set your odds target.</h1>
+            <p>Choose a sport, enter your combined odds and let AUREX estimate the matches to review from today's fixtures.</p>
           </div>
-          <div class="quick-presets" aria-label="Quick daily builds">
-            <button type="button" data-preset-odds="5" data-preset-games="5"><span>🎯 Daily 5 Odds</span><small>Today’s AI-reviewed target</small></button>
-            <button type="button" data-preset-odds="2" data-preset-games="3"><span>🔁 2 Odds Rollover</span><small>Lower-variance daily target</small></button>
+          <div class="quick-presets" aria-label="Quick odds targets">
+            <button type="button" data-preset-odds="5" data-preset-games="5"><span>🎯 5 Odds</span><small>Set a combined-odds target</small></button>
+            <button type="button" data-preset-odds="2" data-preset-games="3"><span>🔁 2 Odds</span><small>Set a combined-odds target</small></button>
           </div>
           <form id="build-form" class="builder-card">
             <fieldset>
@@ -35,22 +35,14 @@
                 <label><input type="radio" name="sport" value="basketball" /><span>🏀 Basketball</span></label>
               </div>
             </fieldset>
-            <fieldset>
-              <legend>Games</legend>
-              <div class="chips" id="count-chips">
-                <button type="button" data-count="3">3</button>
-                <button type="button" class="selected" data-count="5">5</button>
-                <button type="button" data-count="7">7</button>
-                <button type="button" data-count="10">10</button>
-                <button type="button" id="custom-count-button" data-count="5" aria-controls="custom-count">Custom</button>
-              </div>
-              <label class="custom-count-field" for="custom-count"><span>Custom number of games</span><input id="custom-count" name="customCount" type="number" min="1" step="1" inputmode="numeric" autocomplete="off" placeholder="e.g. 20" /></label>
-              <p class="field-help" id="game-count-help">Today only (Lagos time). If fewer eligible games exist, AUREX will return only those available.</p>
-            </fieldset>
             <div class="form-row">
-              <label class="field"><span>Target odds <small>no maximum</small></span><input id="target-odds" name="targetOdds" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 20 or 150" aria-describedby="target-odds-help" /><small class="field-help" id="target-odds-help">Optional. Enter decimal odds, e.g. 2, 20 or 150.</small></label>
+              <label class="field"><span>Target combined odds</span><input id="target-odds" name="targetOdds" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 2, 10 or 150" aria-describedby="target-odds-help" required /><small class="field-help" id="target-odds-help">Required. Enter decimal odds of at least 1.01.</small></label>
               <label class="field"><span>Risk mode</span><select id="risk-mode"><option value="conservative">Conservative</option><option selected value="balanced">Balanced</option><option value="aggressive">Aggressive</option></select></label>
             </div>
+            <div class="odds-estimate" role="status" aria-live="polite"><div><span>Estimated game count</span><strong id="estimated-games">Enter target odds</strong></div><p>Calculated automatically from your target and risk mode. The final number of AI-approved games and combined odds may differ.</p></div>
+            <p class="field-help">Today's fixtures only (Lagos time). AUREX cannot create matches or guarantee target odds.</p>
+            <!-- Retained solely for compatibility with the existing Mini App event handlers; game count is chosen server-side. -->
+            <div class="chips hidden" id="count-chips" aria-hidden="true"><button type="button" class="selected" data-count="5" tabindex="-1">5</button><button type="button" data-count="3" tabindex="-1">3</button></div>
             <button class="primary" type="submit"><span>Build &amp; analyze</span><b>→</b></button>
           </form>
           <div class="loading-card hidden" id="loading"><div class="pulse"></div><div><b>Reviewing live markets</b><span id="loading-label">Finding suitable fixtures…</span></div></div>
@@ -68,14 +60,14 @@
         <section class="view" id="slip-view" aria-labelledby="slip-tab">
           <div class="section-title"><p class="eyebrow">ACTIVE SLIP</p><h2>Your picks.</h2></div>
           <div id="empty-slip" class="empty-state"><span>◎</span><h3>No active slip</h3><p>Build a new analyzed slip to see it here.</p><button data-go="build">Build a slip</button></div>
-          <div id="slip-content" class="hidden"><div class="slip-summary"><div><span>COMBINED ODDS</span><strong id="combined-odds">—</strong></div><div><span>AVG. AI SCORE</span><strong id="average-confidence">—</strong></div></div><div class="pick-list" id="pick-list"></div><div class="sticky-action"><p>Live markets are refreshed before creating a code.</p><button class="primary" id="generate-code"><span>Generate SportyBet code</span><b>→</b></button></div></div>
+          <div id="slip-content" class="hidden"><div class="slip-summary"><div><span>COMBINED ODDS</span><strong id="combined-odds">—</strong></div><div><span>AVG. AI SCORE</span><strong id="average-confidence">—</strong></div></div><p class="field-help">These are actual returned selections, not a promise to reach the requested odds or game count. AI scores are not winning probabilities.</p><div class="pick-list" id="pick-list"></div><div class="sticky-action"><p>Live markets are refreshed before creating a code.</p><button class="primary" id="generate-code"><span>Generate SportyBet code</span><b>→</b></button></div></div>
           <div class="result-panel hidden" id="code-result"></div>
         </section>
       </main>
       <nav class="bottom-nav" aria-label="Mini app navigation"><button class="active" id="build-tab" data-view="build"><span>＋</span>Build</button><button id="analyze-tab" data-view="analyze"><span>⌕</span>Analyze</button><button id="slip-tab" data-view="slip"><span>▤</span>My slip <i id="slip-count">0</i></button></nav>
     </div>
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="/app/app.js?v=3.0.3"></script>
-    <script type="module" src="/app/miniapp-controls.js?v=3.0.3"></script>
+    <script type="module" src="/app/app.js?v=3.0.4"></script>
+    <script type="module" src="/app/miniapp-controls.js?v=3.0.4"></script>
   </body>
 </html>
