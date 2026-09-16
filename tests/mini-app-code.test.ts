@@ -1,7 +1,7 @@
 import sensible from '@fastify/sensible';
 import Fastify from 'fastify';
 import { createHmac } from 'node:crypto';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerMiniAppRoutes } from '../src/api/mini-app-routes.js';
 import type { NormalizedMarket } from '../src/types/domain.js';
 
@@ -21,6 +21,12 @@ function telegramInitData(): string {
   params.set('hash', createHmac('sha256', secret).update(checkString).digest('hex'));
   return params.toString();
 }
+
+beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  vi.setSystemTime(new Date('2026-09-16T12:00:00Z'));
+});
+afterEach(() => vi.useRealTimers());
 
 describe('Mini App analyzed booking flow', () => {
   it('uses the signed build analysis when creating a code instead of calling AI twice', async () => {
