@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { buildLiveSlipSnapshot, chooseVariedMarket, marketFamily } from '../src/sportybet/discovery.js';
 import type { NormalizedMarket } from '../src/types/domain.js';
 import type { SportyBetProvider } from '../src/sportybet/contracts.js';
@@ -30,28 +30,34 @@ describe('mini app basketball variety', () => {
   });
 
   it('selects multiple real market families rather than repeating Over on every event', async () => {
-    const fixtures = Array.from({ length: 5 }, (_, index) => ({
-      providerEventId: `sr:match:${index + 1}`,
-      homeTeam: `Home ${index + 1}`,
-      awayTeam: `Away ${index + 1}`,
-      startsAt: new Date(Date.now() + 3_600_000),
-      status: 'scheduled' as const,
-    }));
-    const provider = {
-      name: 'SportyBet',
-      listEvents: () => Promise.resolve(fixtures),
-      getMarkets: (id: string) => Promise.resolve(markets(id)),
-      findEvents: () => Promise.resolve([]),
-      getEvent: () => Promise.resolve(null),
-      resolveBookingCode: () => Promise.resolve([]),
-      createBookingCode: () => Promise.resolve('TEST123'),
-      health: () => Promise.resolve({ ok: true, detail: 'test' }),
-    } as SportyBetProvider;
-    const slip = await buildLiveSlipSnapshot(provider, 'basketball', 5, 10);
-    expect(slip.slip.selections).toHaveLength(5);
-    expect(new Set(slip.slip.selections.map((selection) => selection.eventId)).size).toBe(5);
-    expect(new Set(slip.slip.selections.map(marketFamily)).size).toBeGreaterThanOrEqual(3);
-    expect(slip.slip.selections.every((selection) => selection.status === 'active')).toBe(true);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-16T10:00:00Z'));
+    try {
+      const fixtures = Array.from({ length: 5 }, (_, index) => ({
+        providerEventId: `sr:match:${index + 1}`,
+        homeTeam: `Home ${index + 1}`,
+        awayTeam: `Away ${index + 1}`,
+        startsAt: new Date(Date.now() + 3_600_000),
+        status: 'scheduled' as const,
+      }));
+      const provider = {
+        name: 'SportyBet',
+        listEvents: () => Promise.resolve(fixtures),
+        getMarkets: (id: string) => Promise.resolve(markets(id)),
+        findEvents: () => Promise.resolve([]),
+        getEvent: () => Promise.resolve(null),
+        resolveBookingCode: () => Promise.resolve([]),
+        createBookingCode: () => Promise.resolve('TEST123'),
+        health: () => Promise.resolve({ ok: true, detail: 'test' }),
+      } as SportyBetProvider;
+      const slip = await buildLiveSlipSnapshot(provider, 'basketball', 5, 10);
+      expect(slip.slip.selections).toHaveLength(5);
+      expect(new Set(slip.slip.selections.map((selection) => selection.eventId)).size).toBe(5);
+      expect(new Set(slip.slip.selections.map(marketFamily)).size).toBeGreaterThanOrEqual(3);
+      expect(slip.slip.selections.every((selection) => selection.status === 'active')).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('never invents alternative markets when only one active market exists', () => {
@@ -71,5 +77,6 @@ describe('mini app form regression', () => {
     expect(html).toContain('miniapp-controls.js');
     expect(controls).toContain('Number(raw) < 1.01');
     expect(controls).toContain('customButton.dataset.count = value');
+    expect(controls).toContain("customInput.removeAttribute('max')");
   });
 });

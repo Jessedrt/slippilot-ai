@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildLiveSlipSnapshot,
   isAllowedBasketballOverMarket,
@@ -37,6 +37,12 @@ const provider: SportyBetProvider = {
   createBookingCode: () => Promise.resolve('TEST123'),
   health: () => Promise.resolve({ ok: true, detail: 'test' }),
 };
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-09-16T12:00:00Z'));
+});
+afterEach(() => vi.useRealTimers());
 
 describe('SportyBet live discovery', () => {
   it('only allows requested basketball over-market families', () => {
@@ -91,26 +97,20 @@ describe('SportyBet live discovery', () => {
     });
   });
   it('keeps daily presets inside the current Africa/Lagos calendar day', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-09-16T12:00:00Z'));
-    try {
-      const snapshot = await buildLiveSlipSnapshot(
-        {
-          ...provider,
-          listEvents: () =>
-            Promise.resolve([
-              { ...event('today'), startsAt: new Date('2026-09-16T15:00:00Z') },
-              { ...event('tomorrow'), startsAt: new Date('2026-09-17T10:00:00Z') },
-            ]),
-        },
-        'basketball',
-        2,
-        2.25,
-        true,
-      );
-      expect(snapshot.slip.selections.map((selection) => selection.eventId)).toEqual(['today']);
-    } finally {
-      vi.useRealTimers();
-    }
+    const snapshot = await buildLiveSlipSnapshot(
+      {
+        ...provider,
+        listEvents: () =>
+          Promise.resolve([
+            { ...event('today'), startsAt: new Date('2026-09-16T15:00:00Z') },
+            { ...event('tomorrow'), startsAt: new Date('2026-09-17T10:00:00Z') },
+          ]),
+      },
+      'basketball',
+      2,
+      2.25,
+      true,
+    );
+    expect(snapshot.slip.selections.map((selection) => selection.eventId)).toEqual(['today']);
   });
 });

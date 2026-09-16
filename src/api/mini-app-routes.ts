@@ -18,9 +18,9 @@ export interface MiniAppDependencies {
 
 const buildSchema = z.object({
   sport: z.enum(['football', 'basketball']),
-  gameCount: z.number().int().min(1).max(15),
+  gameCount: z.number().int().positive().safe(),
   targetOdds: z.number().finite().min(1.01).optional(),
-  todayOnly: z.boolean().optional().default(false),
+  todayOnly: z.boolean().optional().default(true),
   riskMode: z.enum(['conservative', 'balanced', 'aggressive']).default('balanced'),
 });
 
@@ -41,8 +41,9 @@ const selectionSchema = z.object({
 });
 
 const codeSchema = z.object({
-  selections: z.array(selectionSchema).min(1).max(15),
-  analysisToken: z.string().min(20).max(4096),
+  // No arbitrary 15-leg cap: actual code capacity is determined by SportyBet.
+  selections: z.array(selectionSchema).min(1),
+  analysisToken: z.string().min(20).max(131_072),
   acceptOddsChange: z.boolean().optional(),
 });
 
@@ -203,6 +204,10 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
       slipId: snapshot.slip.id,
       sport: input.sport,
       riskMode: input.riskMode,
+      requestedGames: input.gameCount,
+      availableGames: selections.length,
+      shortfall: Math.max(0, input.gameCount - selections.length),
+      schedule: 'today (Africa/Lagos)',
       selections,
       combinedOdds: selections.reduce((total, selection) => total * selection.odds, 1),
       averageConfidence:
