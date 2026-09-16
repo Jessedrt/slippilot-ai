@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { YouSlipAnalyzer } from '../src/ai/you-slip-analyzer.js';
+import { normalizeResearchScores, YouSlipAnalyzer } from '../src/ai/you-slip-analyzer.js';
 import { YouClient } from '../src/you/client.js';
 import type { CandidateSelection } from '../src/types/domain.js';
 
@@ -30,13 +30,13 @@ const selection: CandidateSelection = {
   reasoning: [],
 };
 
-const result = (indices = [1]) => ({
+const result = (indices = [1], confidence = 84) => ({
   output: {
     content: {
       summary: 'Insufficient statistical evidence; treat this market cautiously.',
       selections: indices.map((index) => ({
         index,
-        confidence: 84,
+        confidence,
         risk: 'medium',
         verdict: 'caution',
         reason: 'Bookmaker odds alone cannot establish outcome probability.',
@@ -57,7 +57,7 @@ function createAnalyzer(body: unknown, status = 200) {
   const client = new YouClient({
     apiKey: 'test-key-do-not-log',
     fetch: fetchMock,
-    sleep: async () => {},
+    sleep: () => Promise.resolve(),
   });
   return { analyzer: new YouSlipAnalyzer(client), fetchMock };
 }
@@ -82,6 +82,20 @@ describe('You.com primary slip analysis', () => {
       type: 'object',
       additionalProperties: false,
     });
+  });
+
+  it('converts consistent fractional scores before displaying them as points out of 100', async () => {
+    const { analyzer } = createAnalyzer(result([1], 0.72));
+    const analysis = await analyzer.analyze([selection]);
+    expect(analysis.selections[0]?.confidence).toBe(72);
+    expect(normalizeResearchScores([0.82, 1, 0])).toEqual([75, 75, 0]);
+  });
+
+  it('rejects ambiguous and mixed score scales instead of showing bogus 0% or 1%', async () => {
+    expect(() => normalizeResearchScores([1, 1])).toThrow('ambiguous');
+    expect(() => normalizeResearchScores([0.72, 68])).toThrow('mixed');
+    const ambiguous = createAnalyzer(result([1], 1));
+    await expect(ambiguous.analyzer.analyze([selection])).rejects.toThrow('ambiguous');
   });
 
   it('rejects missing and duplicate indices rather than silently approving a booking', async () => {
