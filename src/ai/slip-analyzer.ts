@@ -42,8 +42,8 @@ export class GeminiSlipAnalyzer implements SlipAnalyzer {
     this.apiKeys = [...new Set([options.apiKey, ...(options.apiKeys ?? [])].filter(Boolean))];
     this.models = [
       ...new Set([
-        options.model ?? 'gemini-3.6-flash',
-        ...(options.models ?? ['gemini-2.5-flash-lite']),
+        options.model ?? 'gemini-3.5-flash',
+        ...(options.models ?? ['gemini-3.1-flash-lite', 'gemini-3.6-flash']),
       ]),
     ];
     this.fetch = options.fetch ?? globalThis.fetch;
@@ -106,31 +106,38 @@ export class GeminiSlipAnalyzer implements SlipAnalyzer {
     let response: Response | undefined;
     let usedModel: string | undefined;
     let lastError: Error | undefined;
-    const attempts = [
-      ...this.apiKeys.map((apiKey) => ({ apiKey, model: this.models[0]! })),
-      ...this.models.slice(1).map((model) => ({ apiKey: this.apiKeys[0]!, model })),
-    ].slice(0, 3);
-    for (const [index, attempt] of attempts.entries()) {
-      try {
-        const candidate = await this.fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(attempt.model)}:generateContent`,
-          {
-            method: 'POST',
-            headers: { 'content-type': 'application/json', 'x-goog-api-key': attempt.apiKey },
-            body,
-            signal: AbortSignal.timeout(this.timeoutMs),
-          },
-        );
+    let attemptCount = 0;
+    // A 404 can be specific to the model/key combination. Try another model instead of
+    // spending the entire attempt budget on the same missing model with multiple keys.
+    modelLoop: for (const model of this.models) {
+      for (const apiKey of this.apiKeys.slice(0, 2)) {
+        if (attemptCount >= 4) break modelLoop;
+        attemptCount += 1;
+        let candidate: Response;
+        try {
+          candidate = await this.fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+            {
+              method: 'POST',
+              headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
+              body,
+              signal: AbortSignal.timeout(this.timeoutMs),
+            },
+          );
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error('Gemini analysis failed.');
+          continue;
+        }
         if (candidate.ok) {
           response = candidate;
-          usedModel = attempt.model;
-          break;
+          usedModel = model;
+          break modelLoop;
         }
         lastError = new Error(`Gemini analysis failed with HTTP ${candidate.status}.`);
-        if (index === attempts.length - 1) throw lastError;
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error('Gemini analysis failed.');
-        if (index === attempts.length - 1) throw lastError;
+        if (candidate.status === 400 || candidate.status === 422) throw lastError;
+        if (candidate.status === 404) break; // Try a different model immediately.
+        if ([401, 403, 429].includes(candidate.status)) continue; // Try another key.
+        break; // Retryable server failures can use another model, not the same POST.
       }
     }
     if (!response) throw lastError ?? new Error('Gemini analysis failed.');
