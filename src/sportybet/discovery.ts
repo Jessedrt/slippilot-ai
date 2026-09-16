@@ -81,33 +81,44 @@ export function chooseVariedMarket(
   return scored[0]?.market ?? null;
 }
 
+/** Africa/Lagos calendar day: do not interpret "today" as a rolling 24-hour window. */
+export function lagosCalendarDay(date: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Lagos',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
+/**
+ * Every general build is today-only until an explicit future-date feature exists.
+ * The legacy todayOnly=false argument is retained for existing callers, but it must
+ * not silently include tomorrow or later when the user simply asks for games.
+ */
 export async function buildLiveSlipSnapshot(
   provider: SportyBetProvider,
   sport: Sport,
   gameCount: number,
   targetOdds?: number,
-  todayOnly = false,
+  _todayOnly = true,
 ): Promise<LiveSlipSnapshot> {
-  const count = Math.max(1, Math.min(30, gameCount));
+  if (!Number.isSafeInteger(gameCount) || gameCount < 1) {
+    throw new Error('The number of games must be a positive whole number.');
+  }
+  const count = gameCount;
   const now = new Date();
-  const lagosDay = (date: Date) =>
-    new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Africa/Lagos',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(date);
-  const today = lagosDay(now);
+  const today = lagosCalendarDay(now);
   const seenEventIds = new Set<string>();
   const events = (await provider.listEvents(sport))
     .filter((event) => {
       if (event.status !== 'scheduled' || event.startsAt.getTime() <= now.getTime()) return false;
-      if (todayOnly && lagosDay(event.startsAt) !== today) return false;
+      if (lagosCalendarDay(event.startsAt) !== today) return false;
       if (seenEventIds.has(event.providerEventId)) return false;
       seenEventIds.add(event.providerEventId);
       return true;
     })
-    .slice(0, Math.min(90, count * 3));
+    .sort((left, right) => left.startsAt.getTime() - right.startsAt.getTime());
   const availableLegs = Math.max(1, Math.min(count, events.length));
   const desiredPerLeg = Math.max(1.05, Math.pow(targetOdds ?? 3, 1 / availableLegs));
   const candidates: CandidateSelection[] = [];
@@ -117,8 +128,7 @@ export async function buildLiveSlipSnapshot(
   for (let offset = 0; offset < events.length && candidates.length < count;) {
     const batch = events.slice(offset, offset + Math.min(4, count - candidates.length));
     offset += batch.length;
-    // Fetch in parallel, but choose sequentially so each subsequent fixture sees the previous
-    // family's usage. The former parallel selection picked the same basketball over every time.
+    // Network requests are limited by the provider. Choose markets sequentially to retain diversity.
     const results = await Promise.allSettled(batch.map((event) => provider.getMarkets(event.providerEventId)));
     for (const [index, result] of results.entries()) {
       if (result.status !== 'fulfilled') continue;
@@ -158,11 +168,7 @@ export async function buildLiveSlipSnapshot(
   }
   const selections = candidates.slice(0, count);
   if (selections.length === 0) {
-    throw new Error(
-      todayOnly
-        ? `No supported scheduled ${sport} markets are available today.`
-        : `No active scheduled ${sport} markets are available.`,
-    );
+    throw new Error(`No supported scheduled ${sport} markets remain for today in Lagos (WAT). Try fewer games or another sport; later dates were not included.`);
   }
   const combinedOdds = rounded(selections.reduce((total, selection) => total * selection.odds, 1));
   return {
