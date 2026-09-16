@@ -58,7 +58,7 @@ describe('Lagos today-only selection policy', () => {
   it('never substitutes tomorrow when today has no eligible fixtures', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(baseTime);
-    await expect(buildLiveSlipSnapshot(makeProvider(0, 12), 'football', 5, 3, false)).rejects.toThrow(/today in Lagos/);
+    await expect(buildLiveSlipSnapshot(makeProvider(0, 12), 'football', 5, 3, false)).rejects.toThrow(/today in Nigeria/);
   });
 
   it('rejects invalid counts instead of silently clamping them', async () => {
