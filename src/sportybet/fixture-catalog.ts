@@ -21,8 +21,7 @@ const eventSchema = z.object({
 });
 
 const PAGE_SIZE = 100;
-// An operational safety bound, NOT a limit on the user's requested game count.
-// Fail explicitly if the supplier has more pages, rather than claiming full league coverage.
+// Operational bound, not a limit on the user's game count. Never silently report a partial catalogue.
 const MAX_PAGES = 50;
 type RawEvent = z.infer<typeof eventSchema>;
 
@@ -113,6 +112,7 @@ export class SportyBetFixtureCatalog {
               ? 'finished'
               : event.status === 1 || /live|period|quarter|half/i.test(event.matchStatus ?? '')
                 ? 'live' : 'scheduled';
+          const league = event.sport.category?.tournament?.name ?? tournament;
           byId.set(event.eventId, {
             providerEventId: event.eventId,
             ...(event.gameId ? { displayEventId: event.gameId } : {}),
@@ -120,8 +120,7 @@ export class SportyBetFixtureCatalog {
             awayTeam: event.awayTeamName,
             startsAt: new Date(event.estimateStartTime),
             status,
-            ...(event.sport.category?.tournament?.name || tournament
-              ? { league: event.sport.category?.tournament?.name ?? tournament } : {}),
+            ...(league ? { league } : {}),
           });
           return;
         }
@@ -136,9 +135,13 @@ export class SportyBetFixtureCatalog {
       };
       visit(body);
       if (total !== undefined && page * PAGE_SIZE >= total) return [...byId.values()];
-      if (rawEvents.length === 0 || (total === undefined && rawEvents.length < PAGE_SIZE)) {
+      if (rawEvents.length === 0) {
+        if (total !== undefined && (page - 1) * PAGE_SIZE < total) {
+          throw new Error(`SportyBet fixture catalogue incomplete: page ${page} was empty before ${total} listed fixtures were retrieved.`);
+        }
         return [...byId.values()];
       }
+      if (total === undefined && rawEvents.length < PAGE_SIZE) return [...byId.values()];
     }
     throw new Error(`SportyBet fixture catalogue exceeds ${MAX_PAGES} pages; refusing to silently omit leagues.`);
   }
