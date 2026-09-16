@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { IntentParser, deterministicParse } from '../src/ai/intent-parser.js';
+import { automaticGameCount } from '../src/bot/create-bot.js';
 
 describe('intent parsing', () => {
   it('recognizes fresh sports research requests', () => {
@@ -40,6 +41,16 @@ describe('intent parsing', () => {
       gameCount: 10,
       targetOdds: 1_000_000,
     });
+  });
+
+  it('recognizes odds-only requests without requiring an explicit game count', () => {
+    expect(deterministicParse('Give me 25 odds football')).toMatchObject({
+      action: 'discover',
+      sport: 'football',
+      targetOdds: 25,
+    });
+    expect(deterministicParse('Give me 25 odds football').gameCount).toBeUndefined();
+    expect(automaticGameCount(25, 'balanced')).toBeGreaterThanOrEqual(2);
   });
 
   it('parses modification and split instructions', () => {

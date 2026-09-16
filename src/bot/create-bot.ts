@@ -18,6 +18,7 @@ import { editSlip } from '../slips/editor.js';
 import type { SlipDraft } from '../types/domain.js';
 import {
   buildImportedSlip,
+  hydrateBookingCodeSelections,
   parseTypedPicks,
   screenshotPickRequests,
 } from '../sportybet/importer.js';
@@ -49,6 +50,29 @@ const chooseCount = Markup.inlineKeyboard([
     Markup.button.callback('Custom', 'count:custom'),
   ],
 ]);
+
+const importedSlipActions = () =>
+  Markup.inlineKeyboard([
+    [
+      Markup.button.callback('🛡 Make safer', 'slip:make-safer'),
+      Markup.button.callback('🗑 Remove weakest', 'slip:remove-weakest'),
+    ],
+    [
+      Markup.button.callback('🔄 Replace a game', 'slip:replace-prompt'),
+      Markup.button.callback('🎯 Change target odds', 'slip:target-prompt'),
+    ],
+    [
+      Markup.button.callback('✂️ Split into 2', 'quick:split:2'),
+      Markup.button.callback('✂️ Split into 3', 'quick:split:3'),
+    ],
+    [Markup.button.callback('🎟 Generate new code', 'sportybet:generate')],
+  ]);
+
+export function automaticGameCount(targetOdds: number, riskMode: unknown = 'balanced'): number {
+  const desiredLegOdds =
+    riskMode === 'conservative' ? 1.35 : riskMode === 'aggressive' ? 1.8 : 1.55;
+  return Math.max(2, Math.min(12, Math.ceil(Math.log(targetOdds) / Math.log(desiredLegOdds))));
+}
 
 async function analyzeEditedSlip(
   deps: BotDependencies,
@@ -186,6 +210,43 @@ async function sendLiveSlip(
       'I could not complete the required AI analysis, so I did not offer a booking code. Please try again shortly.',
     );
   }
+}
+
+async function importBookingCode(
+  deps: BotDependencies,
+  userId: string,
+  state: ConversationState,
+  code: string,
+  reply: (message: string, extra?: ReturnType<typeof Markup.inlineKeyboard>) => Promise<unknown>,
+): Promise<void> {
+  const imported = await deps.sportyBet.resolveBookingCode(code);
+  const selections = await hydrateBookingCodeSelections(deps.sportyBet, imported);
+  if (!selections.length) {
+    throw new Error('The code has no active selections that can be edited safely.');
+  }
+  const preferredMode = state.preferences.riskMode;
+  const slip: SlipDraft = {
+    id: crypto.randomUUID(),
+    selections,
+    riskMode:
+      preferredMode === 'conservative' ||
+      preferredMode === 'balanced' ||
+      preferredMode === 'aggressive'
+        ? preferredMode
+        : 'balanced',
+  };
+  await analyzeEditedSlip(
+    deps,
+    userId,
+    state,
+    slip,
+    reply,
+    `🎟 Imported code ${code.toUpperCase()} and completed AI review`,
+  );
+  await reply(
+    'What would you like me to do with this slip? Pick an option or type an edit such as “Remove game 3”.',
+    importedSlipActions(),
+  );
 }
 
 export function createBot(deps: BotDependencies): Telegraf | null {
@@ -369,6 +430,50 @@ export function createBot(deps: BotDependencies): Telegraf | null {
     await ctx.reply(
       `${icon} ${riskMode[0]?.toUpperCase()}${riskMode.slice(1)} mode is active. Nothing is guaranteed.`,
       homeMenu(),
+    );
+  });
+  for (const quickEdit of [
+    { action: 'slip:make-safer', instruction: 'Make this slip safer' },
+    { action: 'slip:remove-weakest', instruction: 'Remove the weakest one' },
+  ] as const) {
+    bot.action(quickEdit.action, async (ctx) => {
+      await ctx.answerCbQuery('Updating and re-analyzing…');
+      const userId = String(ctx.from.id);
+      const state = await deps.conversations.get(userId);
+      if (!state.currentSlip) {
+        await ctx.reply('I don’t have an active slip to edit. Paste a code or build one first.');
+        return;
+      }
+      try {
+        await ctx.sendChatAction('typing');
+        const intent = await parser.parse(quickEdit.instruction);
+        const nextState: ConversationState = { ...state, lastIntent: intent };
+        const edited = await editSlip(state.currentSlip, {
+          intent,
+          rawText: quickEdit.instruction,
+          sportyBet: deps.sportyBet,
+        });
+        await analyzeEditedSlip(deps, userId, nextState, edited, (message, extra) =>
+          ctx.reply(message, extra),
+        );
+      } catch (error) {
+        deps.logger.warn({ err: error, action: quickEdit.action }, 'Quick slip edit failed');
+        await ctx.reply(
+          error instanceof Error
+            ? `I could not apply that edit: ${error.message}`
+            : 'I could not apply that edit.',
+        );
+      }
+    });
+  }
+  bot.action('slip:replace-prompt', async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.reply('Which game should I replace? Send, for example: “Replace game 3”.');
+  });
+  bot.action('slip:target-prompt', async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.reply(
+      'What combined odds should I target? Send, for example: “Get this close to 10 odds”.',
     );
   });
   bot.action(/^quick:split:(2|3)$/, async (ctx) => {
@@ -589,11 +694,10 @@ export function createBot(deps: BotDependencies): Telegraf | null {
     await ctx.answerCbQuery('Loading booking code…');
     await ctx.sendChatAction('typing');
     try {
-      const selections = await deps.sportyBet.resolveBookingCode(code);
-      const odds = selections.reduce((total, selection) => total * selection.odds, 1);
-      await ctx.reply(
-        `🎟 SportyBet code analysis\n\nCode:\n<pre>${escapeCode(code)}</pre>\n\nSelections: ${selections.length}\nCurrent combined odds: ${odds.toFixed(2)}\n\nOdds may change. No wager was submitted.`,
-        { parse_mode: 'HTML' },
+      const userId = String(ctx.from.id);
+      const state = await deps.conversations.get(userId);
+      await importBookingCode(deps, userId, state, code, (message, extra) =>
+        ctx.reply(message, extra),
       );
     } catch (error) {
       deps.logger.info({ err: error, code }, 'X post booking code could not be resolved');
@@ -755,17 +859,26 @@ export function createBot(deps: BotDependencies): Telegraf | null {
       ...(intent.sport ? { lastSport: intent.sport } : {}),
     };
     await deps.conversations.set(userId, nextState);
-    if (intent.action === 'discover' && !intent.gameCount && !intent.minimumGameCount) {
+    if (
+      intent.action === 'discover' &&
+      !intent.targetOdds &&
+      !intent.gameCount &&
+      !intent.minimumGameCount
+    ) {
       await ctx.reply('How many games do you want?', chooseCount);
       return;
     }
     if (intent.action === 'discover') {
+      const gameCount =
+        intent.gameCount ??
+        intent.minimumGameCount ??
+        (intent.targetOdds ? automaticGameCount(intent.targetOdds, state.preferences.riskMode) : 3);
       await sendLiveSlip(
         deps,
         userId,
         nextState,
         intent.sport ?? state.lastSport ?? 'football',
-        intent.gameCount ?? intent.minimumGameCount ?? 3,
+        gameCount,
         intent.targetOdds,
         (message, extra) => ctx.reply(message, extra),
       );
@@ -818,10 +931,13 @@ export function createBot(deps: BotDependencies): Telegraf | null {
     }
     if (intent.action === 'read_code' && intent.bookingCode) {
       try {
-        const selections = await deps.sportyBet.resolveBookingCode(intent.bookingCode);
-        const odds = selections.reduce((total, selection) => total * selection.odds, 1);
         await ctx.reply(
-          `🎟 SportyBet code analysis\n\nCode: ${intent.bookingCode.toUpperCase()}\nSelections: ${selections.length}\nCurrent combined odds: ${odds.toFixed(2)}\n\nOdds may change. No wager was submitted.`,
+          `🎟 Loading <pre>${escapeCode(intent.bookingCode.toUpperCase())}</pre>, checking its current markets, and running AI analysis…`,
+          { parse_mode: 'HTML' },
+        );
+        await ctx.sendChatAction('typing');
+        await importBookingCode(deps, userId, nextState, intent.bookingCode, (message, extra) =>
+          ctx.reply(message, extra),
         );
       } catch (error) {
         deps.logger.info({ err: error }, 'SportyBet code could not be resolved');

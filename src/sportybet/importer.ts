@@ -7,6 +7,7 @@ import type {
   Sport,
 } from '../types/domain.js';
 import type { SportyBetEvent, SportyBetProvider } from './contracts.js';
+import type { ProviderSelection } from './contracts.js';
 import { nameSimilarity } from './mapper.js';
 
 export interface PickRequest {
@@ -175,3 +176,46 @@ export async function buildImportedSlip(
     unmatched,
   };
 }
+
+export async function hydrateBookingCodeSelections(
+  provider: SportyBetProvider,
+  imported: ProviderSelection[],
+): Promise<CandidateSelection[]> {
+  const selections: Array<CandidateSelection | null> = await Promise.all(
+    imported.slice(0, 30).map(async (selection): Promise<CandidateSelection | null> => {
+      const [event, markets] = await Promise.all([
+        provider.getEvent(selection.eventId),
+        provider.getMarkets(selection.eventId),
+      ]);
+      const market = markets.find(
+        (candidate) =>
+          candidate.providerMarketId === selection.marketId &&
+          candidate.providerSelectionId === selection.selectionId &&
+          (candidate.specifier ?? null) === (selection.specifier ?? null) &&
+          candidate.status === 'active',
+      );
+      if (!event || !market || event.status !== 'scheduled') return null;
+      const confidence = Math.round(Math.min(95, Math.max(35, 100 / market.odds)));
+      return {
+        ...market,
+        fixture: {
+          id: event.providerEventId,
+          providerId: event.providerEventId,
+          sport: market.sport,
+          league: 'SportyBet',
+          homeTeam: event.homeTeam,
+          awayTeam: event.awayTeam,
+          startsAt: event.startsAt,
+          status: event.status,
+        },
+        modelProbability: confidence,
+        confidenceScore: confidence,
+        dataQuality: 'high' as const,
+        riskLevel: riskLevel(market.odds),
+        reasoning: ['Imported from a SportyBet booking code; pending required AI analysis.'],
+      };
+    }),
+  );
+  return selections.filter((selection): selection is CandidateSelection => selection !== null);
+}
+
