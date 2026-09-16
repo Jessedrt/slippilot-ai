@@ -67,15 +67,29 @@ export function deterministicParse(input: string): ParsedIntent {
     text,
     /split(?:\s+(?:this\s+)?ticket)?\s+(?:into|in\s+to|to)\s*(\d+)/i,
   );
+  const afterTime = /starting after\s+(\d{1,2})(?::\d{2})?\s*(am|pm)?/i.exec(text);
+  const startsAfterHour = afterTime?.[1]
+    ? (Number(afterTime[1]) % 12) + (afterTime[2]?.toLowerCase() === 'pm' ? 12 : 0)
+    : undefined;
 
   let action: ParsedIntent['action'] = 'unknown';
   if (/show (?:the )?sources|sources checked|citations?/.test(lower)) action = 'show_sources';
-  else if (/team news|injur|suspension|expected lineup|research this|refresh news|player availability|why did you choose/.test(lower)) action = 'research';
+  else if (
+    /team news|injur|suspension|expected lineup|research this|refresh news|player availability|why did you choose/.test(
+      lower,
+    )
+  )
+    action = 'research';
   else if (/screenshot|photo|image/.test(lower)) action = 'read_screenshot';
   else if (/generate|book these|booking code|prepare.*code/.test(lower)) action = 'generate_code';
-  else if (/readcode|analy[sz]e.*code|^[a-z0-9]{4,12}$/i.test(text)) action = 'read_code';
+  else if (/readcode|analy[sz]e.*code|^(?=[a-z0-9]*\d)[a-z0-9]{4,12}$/i.test(text))
+    action = 'read_code';
   else if (/split/.test(lower)) action = 'split_slip';
-  else if (/remove|replace|change|keep only|reduce|increase|make.*safer|get.*close/.test(lower))
+  else if (
+    /remove|replace|change|keep only|reduce|increase|make.*safer|get.*close|^(?:conservative|balanced|aggressive)$/.test(
+      lower,
+    )
+  )
     action = 'modify_slip';
   else if (/market|explore/.test(lower)) action = 'explore_markets';
   else if (/analy[sz]e/.test(lower)) action = 'analyze';
@@ -87,9 +101,9 @@ export function deterministicParse(input: string): ParsedIntent {
       ? 'remove'
       : /keep only/.test(lower)
         ? 'keep'
-        : /change.*(?:goal|market)/.test(lower)
+        : /change.*(?:goal|market|safer|alternative)/.test(lower)
           ? 'convert'
-          : /reduce|increase|safer|close/.test(lower)
+          : /reduce|increase|safer|close|^(?:conservative|balanced|aggressive)$/.test(lower)
             ? 'optimize'
             : undefined;
 
@@ -106,9 +120,11 @@ export function deterministicParse(input: string): ParsedIntent {
     ...(minimumConfidence ? { minimumConfidence } : {}),
     ...(lower.includes('conservative') || lower.includes('safer') || lower.includes('safe')
       ? { riskPreference: 'conservative' }
-      : lower.includes('aggressive')
-        ? { riskPreference: 'aggressive' }
-        : {}),
+      : lower.includes('balanced')
+        ? { riskPreference: 'balanced' }
+        : lower.includes('aggressive')
+          ? { riskPreference: 'aggressive' }
+          : {}),
     marketPreferences: /goal/.test(lower) ? ['goals'] : [],
     screenshotIntent: action === 'read_screenshot',
     ...(action === 'read_code' && possibleCode ? { bookingCode: possibleCode.toUpperCase() } : {}),
@@ -120,6 +136,7 @@ export function deterministicParse(input: string): ParsedIntent {
             ...(weakestCount ? { count: weakestCount } : {}),
             ...(minimumConfidence ? { confidenceThreshold: minimumConfidence } : {}),
             ...(/goal/.test(lower) ? { targetMarketCategory: 'goals' } : {}),
+            ...(startsAfterHour !== undefined ? { startsAfterHour } : {}),
             ...(/keep only basketball/.test(lower)
               ? { targetSport: 'basketball' }
               : /keep only football/.test(lower)

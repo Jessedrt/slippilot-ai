@@ -37,6 +37,7 @@ export const intentSchema = z.object({
       confidenceThreshold: z.number().min(0).max(100).optional(),
       targetSport: z.enum(['football', 'basketball']).optional(),
       targetMarketCategory: z.string().max(80).optional(),
+      startsAfterHour: z.number().int().min(0).max(23).optional(),
       description: z.string().max(300).optional(),
     })
     .optional(),

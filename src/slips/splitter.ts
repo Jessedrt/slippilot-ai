@@ -17,10 +17,38 @@ export class SlipSplitter {
     const sorted = [...selections].sort(
       (a, b) => b.odds * (101 - b.modelProbability) - a.odds * (101 - a.modelProbability),
     );
+    const targetSize = selections.length / groups;
+    const targetLogOdds = selections.reduce((sum, item) => sum + Math.log(item.odds), 0) / groups;
+    const targetConfidence = averageConfidence(selections);
     for (const selection of sorted) {
       const bucket = buckets
-        .map((items, index) => ({ items, index, odds: combinedOdds(items) }))
-        .sort((a, b) => a.odds - b.odds || a.items.length - b.items.length)[0];
+        .map((items, index) => {
+          const next = [...items, selection];
+          const logOdds = next.reduce((sum, item) => sum + Math.log(item.odds), 0);
+          const sameLeague = items.filter(
+            (item) => item.fixture.league === selection.fixture.league,
+          ).length;
+          const sameSport = items.filter((item) => item.sport === selection.sport).length;
+          const closeKickoffs = items.filter(
+            (item) =>
+              Math.abs(item.fixture.startsAt.getTime() - selection.fixture.startsAt.getTime()) <
+              7_200_000,
+          ).length;
+          const risk = next.reduce(
+            (sum, item) => sum + { lower: 0, medium: 0.5, higher: 1 }[item.riskLevel],
+            0,
+          );
+          const score =
+            Math.abs(logOdds - targetLogOdds) * 3 +
+            Math.abs(next.length - targetSize) * 2 +
+            Math.abs(averageConfidence(next) - targetConfidence) / 10 +
+            sameLeague * 1.2 +
+            sameSport * 0.15 +
+            closeKickoffs * 0.8 +
+            risk * 0.2;
+          return { items, index, score };
+        })
+        .sort((a, b) => a.score - b.score || a.items.length - b.items.length)[0];
       bucket?.items.push(selection);
     }
     return buckets.map((items) => ({

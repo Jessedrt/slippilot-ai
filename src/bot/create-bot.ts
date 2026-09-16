@@ -9,6 +9,12 @@ import type { SportyBetProvider } from '../sportybet/contracts.js';
 import { SportyBetSlipBuilder } from '../booking/workflow.js';
 import type { SportsResearchService } from '../research/sports-research.js';
 import { buildLiveSlipSnapshot } from '../sportybet/discovery.js';
+import type { SlipAnalyzer } from '../ai/slip-analyzer.js';
+import type { ScreenshotAnalyzer } from '../ai/screenshot-analyzer.js';
+import { SlipSplitter } from '../slips/splitter.js';
+import { combinedOdds } from '../slips/optimizer.js';
+import { editSlip } from '../slips/editor.js';
+import type { SlipDraft } from '../types/domain.js';
 
 interface BotDependencies {
   config: AppConfig;
@@ -16,6 +22,8 @@ interface BotDependencies {
   conversations: ConversationStore;
   sportyBet: SportyBetProvider;
   research: SportsResearchService;
+  slipAnalyzer: SlipAnalyzer;
+  screenshotAnalyzer: ScreenshotAnalyzer;
   intents?: IntentParser;
 }
 
@@ -32,6 +40,52 @@ const chooseCount = Markup.inlineKeyboard([
   ],
 ]);
 
+async function analyzeEditedSlip(
+  deps: BotDependencies,
+  userId: string,
+  state: ConversationState,
+  slip: SlipDraft,
+  reply: (message: string, extra?: ReturnType<typeof Markup.inlineKeyboard>) => Promise<unknown>,
+): Promise<void> {
+  const analysis = await deps.slipAnalyzer.analyze(slip.selections);
+  const selections = slip.selections
+    .map((selection, index) => {
+      const result = analysis.selections.find((item) => item.index === index + 1);
+      if (!result) throw new Error(`AI analysis missing selection ${index + 1}.`);
+      return {
+        selection: {
+          ...selection,
+          modelProbability: result.confidence,
+          confidenceScore: result.confidence,
+          riskLevel: result.risk,
+          reasoning: [result.reason, `AI verdict: ${result.verdict}.`],
+        },
+        verdict: result.verdict,
+      };
+    })
+    .filter((item) => item.verdict !== 'reject')
+    .map((item) => item.selection);
+  if (!selections.length) throw new Error('AI rejected every remaining selection.');
+  const analyzedSlip = { ...slip, selections };
+  await deps.conversations.set(userId, {
+    ...state,
+    currentSlip: analyzedSlip,
+    currentSlipId: analyzedSlip.id,
+    recentAnalysis: analysis.summary,
+    currentSlipAnalysis: { ...analysis, slipId: analyzedSlip.id },
+  });
+  const rows = selections.map(
+    (selection, index) =>
+      `${index + 1}. ${selection.fixture.homeTeam} vs ${selection.fixture.awayTeam}\n${selection.selectionName} @ ${selection.odds.toFixed(2)} · AI ${selection.confidenceScore.toFixed(0)}% · ${selection.riskLevel}`,
+  );
+  await reply(
+    `✏️ Updated and re-analyzed slip\n\n${rows.join('\n\n')}\n\nCombined odds: ${combinedOdds(selections).toFixed(2)}\nMode: ${analyzedSlip.riskMode}\n\nAI analysis is not a guarantee.`,
+    Markup.inlineKeyboard([
+      [Markup.button.callback('Generate SportyBet Code', 'sportybet:generate')],
+    ]),
+  );
+}
+
 async function sendLiveSlip(
   deps: BotDependencies,
   userId: string,
@@ -39,26 +93,56 @@ async function sendLiveSlip(
   sport: 'football' | 'basketball',
   gameCount: number,
   targetOdds: number | undefined,
-  reply: (message: string) => Promise<unknown>,
+  reply: (message: string, extra?: ReturnType<typeof Markup.inlineKeyboard>) => Promise<unknown>,
 ): Promise<void> {
   try {
     const snapshot = await buildLiveSlipSnapshot(deps.sportyBet, sport, gameCount, targetOdds);
+    const analysis = await deps.slipAnalyzer.analyze(snapshot.slip.selections);
+    const analyzedSelections = snapshot.slip.selections.map((selection, index) => {
+      const result = analysis.selections.find((item) => item.index === index + 1);
+      if (!result) throw new Error(`AI analysis missing selection ${index + 1}.`);
+      return {
+        ...selection,
+        modelProbability: result.confidence,
+        confidenceScore: result.confidence,
+        riskLevel: result.risk,
+        reasoning: [result.reason, `AI verdict: ${result.verdict}.`],
+      };
+    });
+    const approvedSelections = analyzedSelections.filter((_, index) => {
+      return analysis.selections[index]?.verdict !== 'reject';
+    });
+    if (approvedSelections.length === 0) {
+      throw new Error('AI rejected every candidate selection.');
+    }
+    const analyzedSlip = { ...snapshot.slip, selections: approvedSelections };
+    const combinedOdds = approvedSelections.reduce((total, selection) => total * selection.odds, 1);
     await deps.conversations.set(userId, {
       ...state,
       lastSport: sport,
-      currentSlip: snapshot.slip,
+      currentSlip: analyzedSlip,
+      currentSlipId: analyzedSlip.id,
+      recentAnalysis: analysis.summary,
+      currentSlipAnalysis: { ...analysis, slipId: analyzedSlip.id },
     });
-    const rows = snapshot.slip.selections.map(
+    const rows = approvedSelections.map(
       (selection, index) =>
-        `${index + 1}. ${selection.fixture.homeTeam} vs ${selection.fixture.awayTeam}\n${selection.marketName}: ${selection.selectionName} @ ${selection.odds.toFixed(2)}`,
+        `${index + 1}. ${selection.fixture.homeTeam} vs ${selection.fixture.awayTeam}\n${selection.marketName}: ${selection.selectionName} @ ${selection.odds.toFixed(2)}\nAI: ${selection.confidenceScore.toFixed(0)}% · ${selection.riskLevel} risk · ${selection.reasoning[0]?.slice(0, 120)}`,
     );
+    const rejected = analyzedSelections.length - approvedSelections.length;
     await reply(
-      `📊 Live ${sport} market snapshot\n\n${rows.join('\n\n')}\n\nCombined odds: ${snapshot.combinedOdds.toFixed(2)}${targetOdds ? `\nRequested target: ${targetOdds.toFixed(2)}` : ''}\n\nOdds can change. These are market-based selections, not guaranteed predictions. No wager was placed.`,
+      `🧠 AI-analyzed live ${sport} slip\n\n${rows.join('\n\n')}\n\nAI summary: ${analysis.summary.slice(0, 300)}${rejected ? `\nRejected and removed: ${rejected}` : ''}\nCombined odds: ${combinedOdds.toFixed(2)}${targetOdds ? `\nRequested target: ${targetOdds.toFixed(2)}` : ''}\n\nOdds can change. Analysis is not a guarantee. No wager was placed.`,
+      Markup.inlineKeyboard([
+        [Markup.button.callback('Generate SportyBet Code', 'sportybet:generate')],
+      ]),
     );
   } catch (error) {
-    deps.logger.warn({ err: error, sport, gameCount }, 'Live SportyBet discovery failed');
+    deps.logger.warn(
+      { err: error, sport, gameCount },
+      'Live discovery or required AI analysis failed',
+    );
     await reply(
-      'Current fixtures or active markets are temporarily unavailable. Please try again shortly.',
+      'I could not complete the required AI analysis, so I did not offer a booking code. Please try again shortly.',
     );
   }
 }
@@ -112,13 +196,11 @@ export function createBot(deps: BotDependencies): Telegraf | null {
     }
     await ctx.reply(
       `🎟 Slip ready\n\n${state.currentSlip.selections.length} selections\n\nNo wager has been submitted.`,
-      Markup.inlineKeyboard([
-        [Markup.button.callback('Generate SportyBet Code', 'sportybet:generate')],
-        [
-          Markup.button.callback('Remove Weakest', 'slip:remove-weakest'),
-          Markup.button.callback('Explore Markets', 'slip:markets'),
-        ],
-      ]),
+      state.currentSlipAnalysis?.slipId === state.currentSlip.id
+        ? Markup.inlineKeyboard([
+            [Markup.button.callback('Generate SportyBet Code', 'sportybet:generate')],
+          ])
+        : undefined,
     );
   });
   bot.command('history', (ctx) => ctx.reply('🕘 No saved history is available in this session.'));
@@ -147,7 +229,7 @@ export function createBot(deps: BotDependencies): Telegraf | null {
       state.lastSport ?? 'football',
       count,
       intent.targetOdds,
-      (message) => ctx.reply(message),
+      (message, extra) => ctx.reply(message, extra),
     );
   });
   bot.action('count:custom', async (ctx) => {
@@ -159,6 +241,10 @@ export function createBot(deps: BotDependencies): Telegraf | null {
     const state = await deps.conversations.get(String(ctx.from.id));
     if (!state.currentSlip) {
       await ctx.reply('I don’t have an active slip to book.');
+      return;
+    }
+    if (state.currentSlipAnalysis?.slipId !== state.currentSlip.id) {
+      await ctx.reply('AI analysis is required before booking. Build a new analyzed slip first.');
       return;
     }
     try {
@@ -209,6 +295,10 @@ export function createBot(deps: BotDependencies): Telegraf | null {
       await ctx.reply('I don’t have an active slip to book.');
       return;
     }
+    if (state.currentSlipAnalysis?.slipId !== state.currentSlip.id) {
+      await ctx.reply('AI analysis is required before booking. Build a new analyzed slip first.');
+      return;
+    }
     try {
       const preparation = await slipBuilder.prepare(state.currentSlip.selections);
       if (preparation.status === 'unavailable') {
@@ -235,18 +325,53 @@ export function createBot(deps: BotDependencies): Telegraf | null {
     );
   });
   bot.on('photo', async (ctx) => {
+    const userId = String(ctx.from.id);
     const state = await deps.conversations.get(String(ctx.from.id));
-    await deps.conversations.set(String(ctx.from.id), {
-      ...state,
-      lastIntent: {
-        action: 'read_screenshot',
-        marketPreferences: [],
-        screenshotIntent: true,
-      },
-    });
-    await ctx.reply(
-      '📸 Screenshot received. Vision extraction requires AI_PROVIDER, AI_API_KEY, and a vision-capable AI_MODEL.',
-    );
+    try {
+      await ctx.reply('📸 Reading the screenshot and matching teams to live fixtures…');
+      const photo = ctx.message.photo.at(-1);
+      if (!photo) throw new Error('Telegram supplied no image.');
+      const fileUrl = await ctx.telegram.getFileLink(photo.file_id);
+      const response = await fetch(fileUrl);
+      if (!response.ok)
+        throw new Error(`Telegram image download failed with HTTP ${response.status}.`);
+      const extraction = await deps.screenshotAnalyzer.analyze(
+        new Uint8Array(await response.arrayBuffer()),
+        response.headers.get('content-type') ?? 'image/jpeg',
+      );
+      const rows = extraction.items.slice(0, 12).map((item, index) => {
+        const details = [
+          item.competition,
+          item.market,
+          item.selection,
+          item.odds ? `@ ${item.odds}` : undefined,
+          item.matchTime,
+        ]
+          .filter(Boolean)
+          .join(' · ');
+        const uncertain = item.uncertainFields.length
+          ? `\n⚠ Uncertain: ${item.uncertainFields.join(', ')}`
+          : '';
+        return `${index + 1}. ${item.homeTeam} vs ${item.awayTeam}${details ? `\n${details}` : ''}\nConfidence: ${Math.round(item.confidence * 100)}%${uncertain}`;
+      });
+      const codeText = extraction.bookingCodes.length
+        ? `\n\nVisible booking codes: ${extraction.bookingCodes.join(', ')}`
+        : '';
+      const summary = `${rows.join('\n\n')}${codeText}`;
+      await deps.conversations.set(userId, {
+        ...state,
+        recentAnalysis: summary,
+        lastIntent: { action: 'read_screenshot', marketPreferences: [], screenshotIntent: true },
+      });
+      await ctx.reply(
+        `📸 Screenshot analysis\n\n${summary || 'No sports fixtures were confidently detected.'}`,
+      );
+    } catch (error) {
+      deps.logger.warn({ err: error }, 'Screenshot analysis failed');
+      await ctx.reply(
+        'I could not read that screenshot confidently. Please send a clearer full-resolution image.',
+      );
+    }
   });
   bot.on('text', async (ctx) => {
     const userId = String(ctx.from.id);
@@ -264,7 +389,7 @@ export function createBot(deps: BotDependencies): Telegraf | null {
         intent.sport ?? state.lastSport ?? 'football',
         customCount,
         intent.targetOdds,
-        (message) => ctx.reply(message),
+        (message, extra) => ctx.reply(message, extra),
       );
       return;
     }
@@ -287,7 +412,22 @@ export function createBot(deps: BotDependencies): Telegraf | null {
         intent.sport ?? state.lastSport ?? 'football',
         intent.gameCount ?? intent.minimumGameCount ?? 3,
         intent.targetOdds,
-        (message) => ctx.reply(message),
+        (message, extra) => ctx.reply(message, extra),
+      );
+      return;
+    }
+    if (intent.action === 'generate_code') {
+      if (!state.currentSlip || state.currentSlipAnalysis?.slipId !== state.currentSlip.id) {
+        await ctx.reply(
+          'AI analysis is required before booking. Ask me to build a new slip first.',
+        );
+        return;
+      }
+      await ctx.reply(
+        'Your slip has passed AI analysis. Use the button below to refresh the odds and create the SportyBet code.',
+        Markup.inlineKeyboard([
+          [Markup.button.callback('Generate SportyBet Code', 'sportybet:generate')],
+        ]),
       );
       return;
     }
@@ -336,8 +476,58 @@ export function createBot(deps: BotDependencies): Telegraf | null {
       }
       return;
     }
+    if (intent.action === 'split_slip') {
+      if (!state.currentSlip) {
+        await ctx.reply('I don’t have an active slip to split.');
+        return;
+      }
+      try {
+        const splits = new SlipSplitter().split(
+          state.currentSlip.selections,
+          intent.splitCount ?? 2,
+        );
+        await deps.conversations.set(userId, { ...nextState, splitSlips: splits });
+        const sections = splits.map((split, index) => {
+          const label = String.fromCharCode(65 + index);
+          const picks = split.selections
+            .map(
+              (selection) =>
+                `• ${selection.fixture.homeTeam} vs ${selection.fixture.awayTeam} — ${selection.selectionName}`,
+            )
+            .join('\n');
+          return `Slip ${label}\n${picks}\nOdds: ${split.combinedOdds.toFixed(2)} · Avg confidence: ${split.averageConfidence.toFixed(0)}%`;
+        });
+        await ctx.reply(
+          `🔀 Intelligent split\n\n${sections.join('\n\n')}\n\nBalanced by odds, confidence, risk, sport, league, and kickoff timing. No outcome is guaranteed.`,
+        );
+      } catch (error) {
+        await ctx.reply(error instanceof Error ? error.message : 'I could not split that slip.');
+      }
+      return;
+    }
     if (intent.action === 'modify_slip' && !state.currentSlip) {
       await ctx.reply('I don’t have an active slip to edit. Build or analyze one first.');
+      return;
+    }
+    if (intent.action === 'modify_slip' && state.currentSlip) {
+      try {
+        await ctx.reply('✏️ Updating the slip, then running the required AI analysis again…');
+        const edited = await editSlip(state.currentSlip, {
+          intent,
+          rawText: text,
+          sportyBet: deps.sportyBet,
+        });
+        await analyzeEditedSlip(deps, userId, nextState, edited, (message, extra) =>
+          ctx.reply(message, extra),
+        );
+      } catch (error) {
+        deps.logger.warn({ err: error }, 'Slip edit failed');
+        await ctx.reply(
+          error instanceof Error
+            ? `I could not apply that edit: ${error.message}`
+            : 'I could not apply that edit.',
+        );
+      }
       return;
     }
     const summary = [
@@ -355,4 +545,3 @@ export function createBot(deps: BotDependencies): Telegraf | null {
   bot.catch((error) => deps.logger.error({ err: error }, 'SlipPilot AI Telegram handler failed'));
   return bot;
 }
-

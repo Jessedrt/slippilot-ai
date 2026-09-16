@@ -1,11 +1,15 @@
 import type { ParsedIntent } from '../ai/intent-schema.js';
 import type { SlipDraft, Sport } from '../types/domain.js';
 import type { SportsResearchResult } from '../you/types.js';
+import type { SlipAnalysis } from '../ai/slip-analyzer.js';
+import type { SplitResult } from '../slips/splitter.js';
 
 export interface ConversationState {
   currentSlipId?: string;
   currentSlip?: SlipDraft;
   recentAnalysis?: string;
+  currentSlipAnalysis?: SlipAnalysis & { slipId: string };
+  splitSlips?: SplitResult[];
   lastSport?: Sport;
   lastFixture?: string;
   lastMarketCategory?: string;

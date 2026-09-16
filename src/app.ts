@@ -1,5 +1,7 @@
 import { MetricsService } from './admin/metrics.js';
 import { createServer } from './api/server.js';
+import { DisabledSlipAnalyzer, GeminiSlipAnalyzer } from './ai/slip-analyzer.js';
+import { DisabledScreenshotAnalyzer, GeminiScreenshotAnalyzer } from './ai/screenshot-analyzer.js';
 import { createBot } from './bot/create-bot.js';
 import { loadConfig } from './config/env.js';
 import { PrismaConversationStore, PrismaDatabase } from './database/client.js';
@@ -16,20 +18,21 @@ export function createApplication() {
   const config = loadConfig();
   const logger = createLogger(config);
   const cache = new RedisCache(config.REDIS_URL);
-  const webResearch = config.YOU_API_ENABLED && config.YDC_API_KEY
-    ? new YouProvider(
-        new YouClient({
-          apiKey: config.YDC_API_KEY,
-          timeoutMs: config.YOU_TIMEOUT_MS,
-          maxResults: config.YOU_MAX_RESULTS,
-          cacheTtlMs: config.YOU_CACHE_TTL_MS,
-          cache,
-          logger,
-        }),
-        config.YOU_SEARCH_ENABLED,
-        config.YOU_RESEARCH_ENABLED,
-      )
-    : new DisabledWebResearchProvider();
+  const webResearch =
+    config.YOU_API_ENABLED && config.YDC_API_KEY
+      ? new YouProvider(
+          new YouClient({
+            apiKey: config.YDC_API_KEY,
+            timeoutMs: config.YOU_TIMEOUT_MS,
+            maxResults: config.YOU_MAX_RESULTS,
+            cacheTtlMs: config.YOU_CACHE_TTL_MS,
+            cache,
+            logger,
+          }),
+          config.YOU_SEARCH_ENABLED,
+          config.YOU_RESEARCH_ENABLED,
+        )
+      : new DisabledWebResearchProvider();
   const sports = new DisabledSportsProvider();
   const sportyBet = config.SPORTYBET_PROVIDER_ENABLED
     ? new BrowserSportyBetProvider({
@@ -42,6 +45,22 @@ export function createApplication() {
         cacheTtlMs: config.SPORTYBET_CACHE_TTL_MS,
       })
     : new UnsupportedSportyBetProvider();
+  const aiKey = config.GEMINI_API_KEY ?? config.AI_API_KEY;
+  const slipAnalyzer =
+    config.AI_PROVIDER === 'gemini' && aiKey
+      ? new GeminiSlipAnalyzer({
+          apiKey: aiKey,
+          ...(config.AI_MODEL ? { model: config.AI_MODEL } : {}),
+        })
+      : new DisabledSlipAnalyzer();
+  const screenshotAnalyzer =
+    config.AI_PROVIDER === 'gemini' && aiKey
+      ? new GeminiScreenshotAnalyzer({
+          apiKey: aiKey,
+          sportyBet,
+          ...(config.AI_MODEL ? { model: config.AI_MODEL } : {}),
+        })
+      : new DisabledScreenshotAnalyzer();
   const metrics = new MetricsService();
   const database = new PrismaDatabase();
   const research = new SportsResearchService(
@@ -50,7 +69,15 @@ export function createApplication() {
     new PrismaResearchSnapshotStore(database.client),
   );
   const conversations = new PrismaConversationStore(database.client);
-  const bot = createBot({ config, logger, conversations, sportyBet, research });
+  const bot = createBot({
+    config,
+    logger,
+    conversations,
+    sportyBet,
+    research,
+    slipAnalyzer,
+    screenshotAnalyzer,
+  });
   const appPromise = createServer(
     logger,
     { config, metrics, cache, database, sports, sportyBet },

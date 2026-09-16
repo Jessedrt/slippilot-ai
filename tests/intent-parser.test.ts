@@ -46,6 +46,23 @@ describe('intent parsing', () => {
     });
   });
 
+  it('parses stateful editing, time filters, and risk modes', () => {
+    expect(deterministicParse('Remove games starting after 10pm')).toMatchObject({
+      action: 'modify_slip',
+      modification: { operation: 'remove', startsAfterHour: 22 },
+    });
+    expect(deterministicParse('Change match winners to safer alternatives')).toMatchObject({
+      action: 'modify_slip',
+      riskPreference: 'conservative',
+      modification: { operation: 'convert' },
+    });
+    expect(deterministicParse('Conservative')).toMatchObject({
+      action: 'modify_slip',
+      riskPreference: 'conservative',
+      modification: { operation: 'optimize' },
+    });
+  });
+
   it('falls back if structured AI output is invalid or unavailable', async () => {
     const invalid = new IntentParser({ parse: () => Promise.resolve({ action: 'impossible' }) });
     const failing = new IntentParser({ parse: () => Promise.reject(new Error('AI down')) });
