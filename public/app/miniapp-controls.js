@@ -1,81 +1,74 @@
-// Small progressive enhancement for the existing AUREX Mini App builder.
-// Keep the real build request in app.js: this module only manages inputs and validation.
+// Odds-first Mini App enhancement. The server re-computes the authoritative count
+// with src/slips/odds-target.ts; this preview must use the same planning heuristic.
 const form = document.querySelector('#build-form');
-const chips = document.querySelector('#count-chips');
-const customButton = document.querySelector('#custom-count-button');
-const customInput = document.querySelector('#custom-count');
 const oddsInput = document.querySelector('#target-odds');
+const riskInput = document.querySelector('#risk-mode');
 const buildError = document.querySelector('#build-error');
+const estimate = document.querySelector('#estimated-games');
 
-if (form && chips && customButton && customInput && oddsInput && buildError) {
+if (form && oddsInput && riskInput && buildError && estimate) {
   const styles = document.createElement('style');
   styles.textContent = `
-    #count-chips { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-    #custom-count-button { font-size: .7rem; padding-inline: 2px; }
-    .custom-count-field { display: block; margin-top: 12px; color: #c7d2cd; font-size: .78rem; }
-    .custom-count-field span { display: block; margin-bottom: 6px; }
-    .custom-count-field input { width: 100%; max-width: 170px; height: 44px; border: 1px solid rgba(255,255,255,.15); border-radius: 6px; background: #07110f; color: #f4f7ef; padding: 0 12px; font: inherit; font-size: 16px; outline: none; }
-    .custom-count-field input:focus { border-color: #c8ff45; }
-    .field-help { display: block; margin: 8px 0 0; color: #91a29b; font-size: .72rem; line-height: 1.45; text-transform: none; letter-spacing: normal; }
-    #target-odds { min-width: 0; font-size: 16px; }
-    @media (max-width: 360px) { #count-chips { gap: 4px; } #count-chips button { font-size: .78rem; } #custom-count-button { font-size: .62rem; } }
+    .field-help { display: block; margin: 8px 0 0; color: #91a29b; font-size: .74rem; line-height: 1.5; text-transform: none; letter-spacing: normal; }
+    #target-odds, #risk-mode { min-width: 0; font-size: 16px; }
+    .odds-estimate { margin-top: 20px; padding: 16px; border: 1px solid rgba(200,255,69,.21); border-radius: 10px; background: rgba(200,255,69,.045); }
+    .odds-estimate > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .odds-estimate span { color: #b8cac0; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+    .odds-estimate strong { color: #c8ff45; font-size: 1.12rem; text-align: right; font-variant-numeric: tabular-nums; }
+    .odds-estimate p { margin: 9px 0 0; color: #91a29b; font-size: .74rem; line-height: 1.5; }
+    @media (max-width: 375px) { .form-row { grid-template-columns: 1fr; } }
   `;
   document.head.append(styles);
 
-  // The number of bookable games is determined by eligible SportyBet fixtures, not a UI cap.
-  customInput.removeAttribute('max');
-  customInput.placeholder = 'Number of games';
-  const countCaption = document.querySelector('.custom-count-field span');
-  if (countCaption) countCaption.textContent = 'Custom number of games';
-  const gameHelp = document.querySelector('#game-count-help');
-  if (gameHelp) gameHelp.textContent = 'Today only (Lagos time). If fewer eligible games exist, AUREX will return only those available.';
+  // Match the Telegram bot's automaticLegCount() for UI feedback only.
+  const estimateGames = (odds, riskMode) => {
+    const desired = riskMode === 'conservative' ? 1.35 : riskMode === 'aggressive' ? 1.8 : 1.55;
+    return Math.max(1, Math.ceil(Math.log(odds) / Math.log(desired)));
+  };
+  const normalizedOdds = () => oddsInput.value.trim().replace(',', '.');
+  const isValidOdds = (raw) =>
+    /^(?:\d+(?:\.\d*)?|\.\d+)$/.test(raw) && Number.isFinite(Number(raw)) && Number(raw) >= 1.01;
 
-  const reportError = (message, input) => {
+  const updateEstimate = () => {
+    const raw = normalizedOdds();
+    if (!isValidOdds(raw)) {
+      estimate.textContent = raw ? 'Enter valid odds' : 'Enter target odds';
+      return;
+    }
+    const count = estimateGames(Number(raw), riskInput.value);
+    estimate.textContent = `About ${count} ${count === 1 ? 'game' : 'games'}`;
+  };
+
+  const reportError = (message) => {
     buildError.textContent = message;
     buildError.classList.remove('hidden');
-    input?.focus();
+    oddsInput.focus();
   };
-  const validCount = (value) => /^\d+$/.test(value) && Number.isSafeInteger(Number(value)) && Number(value) >= 1;
 
-  customButton.addEventListener('click', () => {
-    if (!customInput.value) customInput.value = customButton.dataset.count || '5';
-    customInput.focus();
-  });
-  customInput.addEventListener('input', () => {
-    const value = customInput.value.trim();
-    if (!validCount(value)) return;
-    customButton.dataset.count = value;
-    customButton.textContent = `Custom ${value}`;
-    // The existing delegated chip listener owns gameCount and selected state.
-    customButton.click();
-    buildError.classList.add('hidden');
-  });
-  chips.querySelectorAll('[data-count]:not(#custom-count-button)').forEach((button) => {
-    button.addEventListener('click', () => {
-      customInput.value = '';
-      customButton.textContent = 'Custom';
-    });
-  });
-
-  // iOS Safari's type=number with min=1.01 and step=.1 rejects integer odds such as 20.
+  // A decimal-friendly text field avoids Safari's number/step validation of integer odds.
   oddsInput.type = 'text';
   oddsInput.inputMode = 'decimal';
-  oddsInput.removeAttribute('step');
-  oddsInput.removeAttribute('min');
-  oddsInput.addEventListener('input', () => buildError.classList.add('hidden'));
+  oddsInput.addEventListener('input', () => {
+    buildError.classList.add('hidden');
+    updateEstimate();
+  });
+  oddsInput.addEventListener('invalid', () => reportError('Enter your target combined odds, such as 2, 10 or 150.'));
+  riskInput.addEventListener('change', updateEstimate);
+  document.querySelectorAll('[data-preset-odds]').forEach((button) => {
+    // app.js fills the input in its click listener. Refresh after that listener runs.
+    button.addEventListener('click', updateEstimate);
+  });
+
+  // Capture validation runs before the existing bubble-phase build handler.
   form.addEventListener('submit', (event) => {
-    const raw = oddsInput.value.trim().replace(',', '.');
-    if (raw && (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(raw) || !Number.isFinite(Number(raw)) || Number(raw) < 1.01)) {
+    const raw = normalizedOdds();
+    if (!isValidOdds(raw)) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      reportError('Enter valid decimal odds of at least 1.01, such as 2, 20 or 150.', oddsInput);
+      reportError('Enter valid decimal odds of at least 1.01, such as 2, 10 or 150.');
       return;
     }
     oddsInput.value = raw;
-    if (chips.querySelector('#custom-count-button.selected') && !validCount(customInput.value.trim())) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      reportError('Enter a positive whole number of games.', customInput);
-    }
   }, true);
+  updateEstimate();
 }

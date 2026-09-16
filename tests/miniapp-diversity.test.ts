@@ -67,16 +67,21 @@ describe('mini app basketball variety', () => {
   });
 });
 
-describe('mini app form regression', () => {
+describe('mini app odds-first form regression', () => {
   const html = readFileSync(new URL('../public/app/index.html', import.meta.url), 'utf8');
   const controls = readFileSync(new URL('../public/app/miniapp-controls.js', import.meta.url), 'utf8');
-  it('provides a custom game count and supports integer odds on iOS', () => {
-    expect(html).toContain('id="custom-count"');
-    expect(html).toContain('id="custom-count-button"');
-    expect(html).toMatch(/id="target-odds"[^>]*type="text"[^>]*inputmode="decimal"/);
-    expect(html).toContain('miniapp-controls.js');
-    expect(controls).toContain('Number(raw) < 1.01');
-    expect(controls).toContain('customButton.dataset.count = value');
-    expect(controls).toContain("customInput.removeAttribute('max')");
+  it('asks only for sport, required target odds and risk, not a visible game count', () => {
+    expect(html).toMatch(/id="target-odds"[^>]*type="text"[^>]*inputmode="decimal"[^>]*required/);
+    expect(html).toContain('id="estimated-games"');
+    expect(html).not.toContain('id="custom-count"');
+    expect(html).not.toMatch(/<legend>Games<\/legend>/);
+    expect(html).toMatch(/class="chips hidden" id="count-chips"/);
+    expect(html).toContain('miniapp-controls.js?v=3.0.4');
+  });
+  it('validates decimal odds and previews the bot-equivalent planning heuristic', () => {
+    expect(controls).toContain('Number(raw) >= 1.01');
+    expect(controls).toContain('Math.log(odds) / Math.log(desired)');
+    expect(controls).toContain('About ${count}');
+    expect(controls).not.toContain('customButton');
   });
 });
