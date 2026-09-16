@@ -17,17 +17,14 @@ export const BOT_COMMANDS = [
 
 export const homeMenu = () =>
   Markup.inlineKeyboard([
+    [Markup.button.webApp('⚡ Open SlipPilot Mini App', 'https://slippilot-ai.vercel.app/app/')],
     [
-      Markup.button.callback('⚽ Football Picks', 'home:football'),
-      Markup.button.callback('🏀 Basketball Picks', 'home:basketball'),
+      Markup.button.callback('⚽ Football', 'home:football'),
+      Markup.button.callback('🏀 Basketball', 'home:basketball'),
     ],
     [
-      Markup.button.callback('🎟 My Active Slip', 'home:slip'),
-      Markup.button.callback('📸 Analyze Screenshot', 'home:screenshot'),
-    ],
-    [
-      Markup.button.callback('🛡 Risk Mode', 'home:risk'),
-      Markup.button.callback('✨ Quick Examples', 'home:examples'),
+      Markup.button.callback('🎟 My Slip', 'home:slip'),
+      Markup.button.callback('🛡 Risk', 'home:risk'),
     ],
   ]);
 

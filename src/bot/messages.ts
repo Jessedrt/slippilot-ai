@@ -17,7 +17,7 @@ Talk naturally or use commands:
 /split — intelligently split your active slip
 /code — generate a code after AI analysis
 /risk — choose your risk mode
-/readcode — analyze a supported code
+/readcode — read a code or public X/Twitter post
 /history — recent work
 /subscription — plan and usage
 /pricing — Free and Pro plans
@@ -34,4 +34,4 @@ export const EXAMPLES_MESSAGE = `✨ Try saying:
 • Split this into 2 slips
 • Generate the code
 
-You can also paste typed picks on separate lines or upload a clear betting-slip screenshot.`;
+You can also paste typed picks, a public X/Twitter post link, or upload a clear betting-slip screenshot.`;

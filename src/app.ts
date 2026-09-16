@@ -85,6 +85,12 @@ export function createApplication() {
     bot && config.TELEGRAM_WEBHOOK_SECRET
       ? { bot, secret: config.TELEGRAM_WEBHOOK_SECRET }
       : undefined,
+    {
+      sportyBet,
+      slipAnalyzer,
+      screenshotAnalyzer,
+      ...(config.TELEGRAM_BOT_TOKEN ? { telegramBotToken: config.TELEGRAM_BOT_TOKEN } : {}),
+    },
   );
   const webhookRegistrationPromise =
     bot &&
@@ -97,7 +103,13 @@ export function createApplication() {
             { secret_token: config.TELEGRAM_WEBHOOK_SECRET },
           ),
           bot.telegram.setMyCommands([...BOT_COMMANDS]),
-          bot.telegram.setChatMenuButton({ menuButton: { type: 'commands' } }),
+          bot.telegram.setChatMenuButton({
+            menuButton: {
+              type: 'web_app',
+              text: 'Open SlipPilot',
+              web_app: { url: 'https://slippilot-ai.vercel.app/app/' },
+            },
+          }),
         ]).then(([webhook]) => webhook)
       : Promise.resolve(false);
 

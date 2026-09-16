@@ -7,6 +7,7 @@ import { registerAdminRoutes } from '../admin/routes.js';
 import type { AdminDependencies } from '../admin/routes.js';
 import type { Telegraf } from 'telegraf';
 import { landingPage, landingStyles } from '../web/landing-page.js';
+import { registerMiniAppRoutes, type MiniAppDependencies } from './mini-app-routes.js';
 
 interface TelegramWebhook {
   bot: Pick<Telegraf, 'handleUpdate'>;
@@ -17,8 +18,9 @@ export async function createServer(
   logger: Logger,
   dependencies: AdminDependencies,
   telegram?: TelegramWebhook,
+  miniApp?: MiniAppDependencies,
 ) {
-  const app = Fastify({ loggerInstance: logger, bodyLimit: 1_000_000, requestTimeout: 10_000 });
+  const app = Fastify({ loggerInstance: logger, bodyLimit: 8_500_000, requestTimeout: 60_000 });
   await app.register(sensible);
   await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
   app.get('/', (_request, reply) => reply.type('text/html; charset=utf-8').send(landingPage));
@@ -50,6 +52,6 @@ export async function createServer(
     return { ok: true };
   });
   registerAdminRoutes(app as unknown as FastifyInstance, dependencies);
+  if (miniApp) registerMiniAppRoutes(app as unknown as FastifyInstance, miniApp);
   return app;
 }
-

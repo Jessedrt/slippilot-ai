@@ -21,6 +21,7 @@ import {
   parseTypedPicks,
   screenshotPickRequests,
 } from '../sportybet/importer.js';
+import { extractXPostUrl, XPostReader } from '../social/x-post-reader.js';
 
 interface BotDependencies {
   config: AppConfig;
@@ -157,15 +158,24 @@ async function sendLiveSlip(
       recentAnalysis: analysis.summary,
       currentSlipAnalysis: { ...analysis, slipId: analyzedSlip.id },
     });
-    const rows = approvedSelections.map(
-      (selection, index) =>
-        `${index + 1}. ${selection.fixture.homeTeam} vs ${selection.fixture.awayTeam}\n${selection.marketName}: ${selection.selectionName} @ ${selection.odds.toFixed(2)}\nAI: ${selection.confidenceScore.toFixed(0)}% · ${selection.riskLevel} risk · ${selection.reasoning[0]?.slice(0, 120)}`,
-    );
+    const rows = approvedSelections
+      .slice(0, 6)
+      .map(
+        (selection, index) =>
+          `${index + 1}. ${selection.fixture.homeTeam} vs ${selection.fixture.awayTeam}\n   ${selection.selectionName} @ ${selection.odds.toFixed(2)} · AI ${selection.confidenceScore.toFixed(0)}%`,
+      );
     const rejected = analyzedSelections.length - approvedSelections.length;
+    const hidden = approvedSelections.length - rows.length;
     await reply(
-      `🧠 AI-analyzed live ${sport} slip\n\n${rows.join('\n\n')}\n\nAI summary: ${analysis.summary.slice(0, 300)}${rejected ? `\nRejected and removed: ${rejected}` : ''}\nCombined odds: ${combinedOdds.toFixed(2)}${targetOdds ? `\nRequested target: ${targetOdds.toFixed(2)}` : ''}\n\nOdds can change. Analysis is not a guarantee. No wager was placed.`,
+      `🧠 ${approvedSelections.length} AI-reviewed ${sport} picks\n\n${rows.join('\n')}${hidden ? `\n\n+ ${hidden} more saved in your active slip` : ''}\n\nCombined odds: ${combinedOdds.toFixed(2)} · ${analyzedSlip.riskMode} mode${rejected ? `\nRemoved by AI: ${rejected}` : ''}\n\nEstimates only. No wager was placed.`,
       Markup.inlineKeyboard([
-        [Markup.button.callback('Generate SportyBet Code', 'sportybet:generate')],
+        [Markup.button.callback('🎟 Generate Code', 'sportybet:generate')],
+        [
+          Markup.button.webApp(
+            '⚡ Open Full Slip in Mini App',
+            'https://slippilot-ai.vercel.app/app/',
+          ),
+        ],
       ]),
     );
   } catch (error) {
@@ -187,6 +197,7 @@ export function createBot(deps: BotDependencies): Telegraf | null {
   const bot = new Telegraf(deps.config.TELEGRAM_BOT_TOKEN);
   const parser = deps.intents ?? new IntentParser();
   const slipBuilder = new SportyBetSlipBuilder(deps.sportyBet);
+  const xPostReader = new XPostReader();
   let welcomePhoto = 'https://slippilot-ai.vercel.app/assets/welcome-banner.png';
   bot.start(async (ctx) => {
     try {
@@ -261,7 +272,9 @@ export function createBot(deps: BotDependencies): Telegraf | null {
     ctx.reply('🧠 Send the match, ticket, screenshot, or code to analyze.'),
   );
   bot.command('readcode', (ctx) =>
-    ctx.reply('🎟️ Paste a SportyBet code. I’ll use a supported resolver when one is configured.'),
+    ctx.reply(
+      '🎟️ Paste a SportyBet code or a public X/Twitter post link. I’ll extract any code in the post text and make it easy to copy.',
+    ),
   );
   bot.command('slip', async (ctx) => {
     const state = await deps.conversations.get(String(ctx.from.id));
@@ -559,6 +572,25 @@ export function createBot(deps: BotDependencies): Telegraf | null {
         : 'No recent research sources are stored for this conversation.',
     );
   });
+  bot.action(/^xcode:([A-Z0-9]{4,20})$/, async (ctx) => {
+    const code = ctx.match[1]!;
+    await ctx.answerCbQuery('Loading booking code…');
+    await ctx.sendChatAction('typing');
+    try {
+      const selections = await deps.sportyBet.resolveBookingCode(code);
+      const odds = selections.reduce((total, selection) => total * selection.odds, 1);
+      await ctx.reply(
+        `🎟 SportyBet code analysis\n\nCode:\n<pre>${escapeCode(code)}</pre>\n\nSelections: ${selections.length}\nCurrent combined odds: ${odds.toFixed(2)}\n\nOdds may change. No wager was submitted.`,
+        { parse_mode: 'HTML' },
+      );
+    } catch (error) {
+      deps.logger.info({ err: error, code }, 'X post booking code could not be resolved');
+      await ctx.reply(
+        `I extracted <pre>${escapeCode(code)}</pre>, but could not load it from SportyBet. The code is still copyable above.`,
+        { parse_mode: 'HTML' },
+      );
+    }
+  });
   bot.on('photo', async (ctx) => {
     const userId = String(ctx.from.id);
     const state = await deps.conversations.get(String(ctx.from.id));
@@ -628,6 +660,40 @@ export function createBot(deps: BotDependencies): Telegraf | null {
     const userId = String(ctx.from.id);
     const state = await deps.conversations.get(userId);
     const text = ctx.message.text.slice(0, 2000).trim();
+    const xPostUrl = extractXPostUrl(text);
+    if (xPostUrl) {
+      await ctx.reply('🔗 Reading the public X post for booking codes…');
+      await ctx.sendChatAction('typing');
+      try {
+        const post = await xPostReader.read(xPostUrl);
+        if (!post.bookingCodes.length) {
+          await ctx.reply(
+            'I could not find a booking code in the public post text. If the code is inside an image, send the image or a screenshot here and I’ll read it.',
+          );
+          return;
+        }
+        const codeBlocks = post.bookingCodes
+          .map((code, index) => `${index + 1}. <pre>${escapeCode(code)}</pre>`)
+          .join('\n');
+        await ctx.reply(
+          `✅ Booking code${post.bookingCodes.length === 1 ? '' : 's'} found${post.authorName ? ` in ${escapeCode(post.authorName)}’s post` : ''}\n\n${codeBlocks}\nTap a code block to copy it, or analyze it below.`,
+          {
+            parse_mode: 'HTML',
+            ...Markup.inlineKeyboard(
+              post.bookingCodes.map((code) => [
+                Markup.button.callback(`🎟 Analyze ${code}`, `xcode:${code}`),
+              ]),
+            ),
+          },
+        );
+      } catch (error) {
+        deps.logger.info({ err: error, xPostUrl }, 'X post could not be read');
+        await ctx.reply(
+          'I could not read that post. It may be private, deleted, or restricted by X. Send a screenshot of the post and I’ll read the code from the image.',
+        );
+      }
+      return;
+    }
     const customCount = /^(?:[1-9]|[12]\d|30)$/.test(text) ? Number(text) : undefined;
     if (customCount && state.lastIntent?.action === 'discover') {
       const intent = { ...state.lastIntent, gameCount: customCount };
