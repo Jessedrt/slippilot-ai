@@ -134,13 +134,13 @@ export class SportyBetFixtureCatalog {
         }
       };
       visit(body);
-      if (total !== undefined && page * PAGE_SIZE >= total) return [...byId.values()];
       if (rawEvents.length === 0) {
         if (total !== undefined && (page - 1) * PAGE_SIZE < total) {
           throw new Error(`SportyBet fixture catalogue incomplete: page ${page} was empty before ${total} listed fixtures were retrieved.`);
         }
         return [...byId.values()];
       }
+      if (total !== undefined && page * PAGE_SIZE >= total) return [...byId.values()];
       if (total === undefined && rawEvents.length < PAGE_SIZE) return [...byId.values()];
     }
     throw new Error(`SportyBet fixture catalogue exceeds ${MAX_PAGES} pages; refusing to silently omit leagues.`);
