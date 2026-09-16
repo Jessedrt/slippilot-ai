@@ -33,6 +33,9 @@ interface BotDependencies {
   intents?: IntentParser;
 }
 
+const escapeCode = (code: string): string =>
+  code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
 const chooseCount = Markup.inlineKeyboard([
   [
     Markup.button.callback('2', 'count:2'),
@@ -428,10 +431,13 @@ export function createBot(deps: BotDependencies): Telegraf | null {
       }
       const code = await slipBuilder.createCode(preparation);
       await ctx.reply(
-        `✅ SportyBet booking code created\n\nCode:\n${code}\n\nSelections: ${preparation.selections.length}\nOdds at creation: ${preparation.currentOdds.toFixed(2)}\n\nNo wager was submitted.`,
-        Markup.inlineKeyboard([
-          [Markup.button.callback('Analyze Again', 'sportybet:analyze-again')],
-        ]),
+        `✅ SportyBet booking code created\n\nCode:\n<pre>${escapeCode(code)}</pre>\n\nSelections: ${preparation.selections.length}\nOdds at creation: ${preparation.currentOdds.toFixed(2)}\n\nNo wager was submitted.`,
+        {
+          parse_mode: 'HTML',
+          ...Markup.inlineKeyboard([
+            [Markup.button.callback('Analyze Again', 'sportybet:analyze-again')],
+          ]),
+        },
       );
     } catch (error) {
       deps.logger.warn({ err: error }, 'SportyBet code creation failed');
@@ -470,7 +476,8 @@ export function createBot(deps: BotDependencies): Telegraf | null {
       }
       const code = await slipBuilder.createCode(preparation);
       await ctx.reply(
-        `✅ Split ${String.fromCharCode(65 + index)} SportyBet code\n\n${code}\n\nOdds: ${preparation.currentOdds.toFixed(2)}\nNo wager was submitted.`,
+        `✅ Split ${String.fromCharCode(65 + index)} SportyBet code\n\n<pre>${escapeCode(code)}</pre>\n\nOdds: ${preparation.currentOdds.toFixed(2)}\nNo wager was submitted.`,
+        { parse_mode: 'HTML' },
       );
     } catch (error) {
       deps.logger.warn({ err: error, index }, 'Split booking code creation failed');
@@ -494,7 +501,8 @@ export function createBot(deps: BotDependencies): Telegraf | null {
       }
       const code = await deps.sportyBet.createBookingCode(preparation.selections);
       await ctx.reply(
-        `✅ Split ${String.fromCharCode(65 + index)} SportyBet code\n\n${code}\n\nOdds: ${preparation.currentOdds.toFixed(2)}\nNo wager was submitted.`,
+        `✅ Split ${String.fromCharCode(65 + index)} SportyBet code\n\n<pre>${escapeCode(code)}</pre>\n\nOdds: ${preparation.currentOdds.toFixed(2)}\nNo wager was submitted.`,
+        { parse_mode: 'HTML' },
       );
     } catch (error) {
       deps.logger.warn({ err: error, index }, 'Confirmed split booking code creation failed');
@@ -520,7 +528,8 @@ export function createBot(deps: BotDependencies): Telegraf | null {
       }
       const code = await deps.sportyBet.createBookingCode(preparation.selections);
       await ctx.reply(
-        `✅ SportyBet booking code created\n\nCode:\n${code}\n\nSelections: ${preparation.selections.length}\nOdds at creation: ${preparation.currentOdds.toFixed(2)}\n\nNo wager was submitted.`,
+        `✅ SportyBet booking code created\n\nCode:\n<pre>${escapeCode(code)}</pre>\n\nSelections: ${preparation.selections.length}\nOdds at creation: ${preparation.currentOdds.toFixed(2)}\n\nNo wager was submitted.`,
+        { parse_mode: 'HTML' },
       );
     } catch (error) {
       deps.logger.warn({ err: error }, 'SportyBet code creation after odds confirmation failed');
