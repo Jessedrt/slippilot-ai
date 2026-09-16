@@ -1,5 +1,5 @@
 import type { SportyBetProvider } from './contracts.js';
-import type { CandidateSelection, RiskLevel, SlipDraft, Sport } from '../types/domain.js';
+import type { CandidateSelection, NormalizedMarket, RiskLevel, SlipDraft, Sport } from '../types/domain.js';
 
 export interface LiveSlipSnapshot {
   slip: SlipDraft;
@@ -14,6 +14,8 @@ const riskLevel = (odds: number): RiskLevel => {
   return 'higher';
 };
 
+// Kept for backwards compatibility with callers that explicitly request overs.
+// General basketball slip building deliberately does NOT use this restrictive filter.
 export function isAllowedBasketballOverMarket(
   market: Pick<CandidateSelection, 'marketName' | 'selectionName'>,
 ): boolean {
@@ -23,10 +25,60 @@ export function isAllowedBasketballOverMarket(
   const fullTime = /^over\/under(?:\s*\(incl\. overtime\))?$/.test(name);
   const firstHalf = /^1st half\s*-\s*(?:total|over\/under)$/.test(name);
   const individual =
-    /^(?:home|away|competitor\s*[12])(?:\s+team)?\s+(?:o\/u|over\/under|total)(?:\s*\(incl\. overtime\))?$/.test(
-      name,
-    );
+    /^(?:home|away|competitor\s*[12])(?:\s+team)?\s+(?:o\/u|over\/under|total)(?:\s*\(incl\. overtime\))?$/.test(name);
   return fullTime || firstHalf || individual;
+}
+
+/** Group equivalent market names into genuinely different market families. */
+export function marketFamily(market: Pick<NormalizedMarket, 'marketName' | 'category'>): string {
+  const name = market.marketName.toLowerCase();
+  const category = market.category.toLowerCase();
+  if (/quarter|\bhalf\b|\bperiod\b/.test(name)) return 'period';
+  if (/team|competitor|home|away|individual/.test(name) && /total|over\/under|o\/u/.test(name))
+    return 'team-total';
+  if (/handicap|spread/.test(name)) return 'handicap';
+  if (/winner|moneyline|match result|1x2/.test(name)) return 'winner';
+  if (/over\/under|\btotal\b|o\/u/.test(name)) return 'game-total';
+  if (/both teams|btts/.test(name)) return 'btts';
+  if (/corner/.test(name)) return 'corners';
+  if (/card|booking/.test(name)) return 'cards';
+  return `other:${category || name}`;
+}
+
+function selectionDirection(market: Pick<NormalizedMarket, 'selectionName'>): string {
+  const label = market.selectionName.toLowerCase();
+  if (/^over\b/.test(label)) return 'over';
+  if (/^under\b/.test(label)) return 'under';
+  return label.replace(/\d+(?:\.\d+)?/g, '#').trim();
+}
+
+/** Prefer prices near the target without mechanically repeating the same selection for every game. */
+export function chooseVariedMarket(
+  markets: NormalizedMarket[],
+  targetPerLeg: number,
+  usedFamilies: ReadonlyMap<string, number>,
+  usedDirections: ReadonlyMap<string, number>,
+): NormalizedMarket | null {
+  const eligible = markets.filter(
+    (market) =>
+      market.status === 'active' &&
+      Number.isFinite(market.odds) &&
+      market.odds > 1.01 &&
+      market.odds <= 1000,
+  );
+  if (!eligible.length) return null;
+  const scored = eligible.map((market) => {
+    const family = marketFamily(market);
+    const direction = selectionDirection(market);
+    const priceDifference = Math.abs(Math.log(market.odds / targetPerLeg));
+    // Variety is a tie-breaker, not a reason to take wildly different or unavailable odds.
+    const familyPenalty = Math.min(0.6, (usedFamilies.get(family) ?? 0) * 0.27);
+    const directionPenalty = Math.min(0.24, (usedDirections.get(direction) ?? 0) * 0.08);
+    const exoticPenalty = family.startsWith('other:') ? 0.3 : 0;
+    return { market, score: priceDifference + familyPenalty + directionPenalty + exoticPenalty };
+  });
+  scored.sort((left, right) => left.score - right.score || left.market.providerMarketId.localeCompare(right.market.providerMarketId));
+  return scored[0]?.market ?? null;
 }
 
 export async function buildLiveSlipSnapshot(
@@ -46,67 +98,65 @@ export async function buildLiveSlipSnapshot(
       day: '2-digit',
     }).format(date);
   const today = lagosDay(now);
+  const seenEventIds = new Set<string>();
   const events = (await provider.listEvents(sport))
-    .filter(
-      (event) =>
-        event.status === 'scheduled' &&
-        event.startsAt.getTime() > now.getTime() &&
-        (!todayOnly || lagosDay(event.startsAt) === today),
-    )
-    .slice(0, Math.min(30, count * 3));
+    .filter((event) => {
+      if (event.status !== 'scheduled' || event.startsAt.getTime() <= now.getTime()) return false;
+      if (todayOnly && lagosDay(event.startsAt) !== today) return false;
+      if (seenEventIds.has(event.providerEventId)) return false;
+      seenEventIds.add(event.providerEventId);
+      return true;
+    })
+    .slice(0, Math.min(90, count * 3));
   const availableLegs = Math.max(1, Math.min(count, events.length));
   const desiredPerLeg = Math.max(1.05, Math.pow(targetOdds ?? 3, 1 / availableLegs));
-
   const candidates: CandidateSelection[] = [];
+  const usedFamilies = new Map<string, number>();
+  const usedDirections = new Map<string, number>();
+
   for (let offset = 0; offset < events.length && candidates.length < count;) {
     const batch = events.slice(offset, offset + Math.min(4, count - candidates.length));
     offset += batch.length;
-    const results = await Promise.allSettled(
-      batch.map(async (event): Promise<CandidateSelection | null> => {
-        const markets = (await provider.getMarkets(event.providerEventId)).filter(
-          (market) =>
-            market.status === 'active' &&
-            market.odds > 1.01 &&
-            market.sport === sport &&
-            (sport !== 'basketball' || isAllowedBasketballOverMarket(market)),
-        );
-        const market = markets.sort(
-          (left, right) =>
-            Math.abs(Math.log(left.odds) - Math.log(desiredPerLeg)) -
-            Math.abs(Math.log(right.odds) - Math.log(desiredPerLeg)),
-        )[0];
-        if (!market) return null;
-        const impliedProbability = rounded(Math.min(95, 100 / market.odds));
-        return {
-          ...market,
-          fixture: {
-            id: event.providerEventId,
-            providerId: event.providerEventId,
-            sport,
-            league: 'SportyBet',
-            homeTeam: event.homeTeam,
-            awayTeam: event.awayTeam,
-            startsAt: event.startsAt,
-            status: event.status,
-          },
-          modelProbability: impliedProbability,
-          confidenceScore: impliedProbability,
-          dataQuality: 'medium',
-          riskLevel: riskLevel(market.odds),
-          reasoning: [
-            'Live SportyBet market snapshot.',
-            'Chosen as the active price closest to the requested combined-odds profile.',
-          ],
-        };
-      }),
-    );
-    for (const result of results) {
-      if (result.status === 'fulfilled' && result.value) candidates.push(result.value);
+    // Fetch in parallel, but choose sequentially so each subsequent fixture sees the previous
+    // family's usage. The former parallel selection picked the same basketball over every time.
+    const results = await Promise.allSettled(batch.map((event) => provider.getMarkets(event.providerEventId)));
+    for (const [index, result] of results.entries()) {
+      if (result.status !== 'fulfilled') continue;
+      const event = batch[index];
+      if (!event) continue;
+      const markets = result.value.filter((market) => market.sport === sport);
+      const market = chooseVariedMarket(markets, desiredPerLeg, usedFamilies, usedDirections);
+      if (!market) continue;
+      const family = marketFamily(market);
+      const direction = selectionDirection(market);
+      usedFamilies.set(family, (usedFamilies.get(family) ?? 0) + 1);
+      usedDirections.set(direction, (usedDirections.get(direction) ?? 0) + 1);
+      const impliedProbability = rounded(Math.min(95, 100 / market.odds));
+      candidates.push({
+        ...market,
+        fixture: {
+          id: event.providerEventId,
+          providerId: event.providerEventId,
+          sport,
+          league: 'SportyBet',
+          homeTeam: event.homeTeam,
+          awayTeam: event.awayTeam,
+          startsAt: event.startsAt,
+          status: event.status,
+        },
+        modelProbability: impliedProbability,
+        confidenceScore: impliedProbability,
+        dataQuality: 'medium',
+        riskLevel: riskLevel(market.odds),
+        reasoning: [
+          'Live SportyBet market snapshot.',
+          'Chosen using target-price proximity and market-family diversity; not a prediction of a win.',
+        ],
+      });
+      if (candidates.length === count) break;
     }
   }
-  const selections = candidates
-    .filter((value): value is CandidateSelection => value !== null)
-    .slice(0, count);
+  const selections = candidates.slice(0, count);
   if (selections.length === 0) {
     throw new Error(
       todayOnly
