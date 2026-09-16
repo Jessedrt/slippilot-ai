@@ -6,17 +6,20 @@ import {
   type SportyBetProvider,
 } from './contracts.js';
 import { SportyBetClient, type SportyBetClientOptions } from './SportyBetClient.js';
+import { SportyBetFixtureCatalog } from './fixture-catalog.js';
 
 export class BrowserSportyBetProvider implements SportyBetProvider {
   readonly name = 'SportyBet' as const;
   readonly client: SportyBetClient;
+  private readonly catalog: SportyBetFixtureCatalog;
 
   constructor(options: SportyBetClientOptions = {}) {
     this.client = new SportyBetClient(options);
+    this.catalog = new SportyBetFixtureCatalog(options);
   }
 
   listEvents(sport: 'football' | 'basketball'): Promise<SportyBetEvent[]> {
-    return this.client.fetchFixtures(sport);
+    return this.catalog.listEvents(sport);
   }
 
   async findEvents(homeTeam: string, awayTeam: string): Promise<SportyBetEvent[]> {
@@ -24,8 +27,8 @@ export class BrowserSportyBetProvider implements SportyBetProvider {
     const targetHome = normalize(homeTeam);
     const targetAway = normalize(awayTeam);
     const [football, basketball] = await Promise.all([
-      this.client.fetchFixtures('football'),
-      this.client.fetchFixtures('basketball'),
+      this.listEvents('football'),
+      this.listEvents('basketball'),
     ]);
     return [...football, ...basketball].filter(
       (event) =>
@@ -55,9 +58,7 @@ export class BrowserSportyBetProvider implements SportyBetProvider {
   }
 }
 
-/**
- * Safe default adapter used while the verified browser-facing provider is disabled.
- */
+/** Safe default adapter used while the verified browser-facing provider is disabled. */
 export class UnsupportedSportyBetProvider implements SportyBetProvider {
   readonly name = 'SportyBet' as const;
   listEvents(): Promise<SportyBetEvent[]> {
@@ -90,10 +91,7 @@ export class UnsupportedSportyBetProvider implements SportyBetProvider {
   }
   createBookingCode(): Promise<string> {
     return Promise.reject(
-      new SportyBetCapabilityError(
-        'create-code',
-        'SportyBet booking-code creation is not available through a verified interface.',
-      ),
+      new SportyBetCapabilityError('create-code', 'SportyBet booking-code creation is not available through a verified interface.'),
     );
   }
   health(): Promise<{ ok: boolean; detail: string }> {
