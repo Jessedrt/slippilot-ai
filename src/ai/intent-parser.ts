@@ -36,9 +36,14 @@ export function deterministicParse(input: string): ParsedIntent {
     /between\s+(\w+(?:\.\d+)?)\s+and\s+(\w+(?:\.\d+)?)(?:\s+(?:games?|matches?))?/i.exec(text);
   const minimumGameCount = range?.[1] ? numberValue(range[1]) : undefined;
   const maximumGameCount = range?.[2] ? numberValue(range[2]) : undefined;
+  // The Telegram Custom button used to accept bare numbers only up to 30.
+  // Treat any positive safe integer as a game-count request instead.
+  const plainCount = /^[1-9]\d*$/.test(text) && Number.isSafeInteger(Number(text))
+    ? Number(text)
+    : undefined;
   const gameCount = range
     ? undefined
-    : matchNumber(
+    : plainCount ?? matchNumber(
         text,
         /(?:give me|find|want|build|with)?\s*(\d+|one|two|three|four|five|six|seven|eight|nine|ten|fifteen)\s+(?:football\s+|basketball\s+)?(?:games?|matches?|selections?|picks?)/i,
       );
@@ -73,7 +78,8 @@ export function deterministicParse(input: string): ParsedIntent {
     : undefined;
 
   let action: ParsedIntent['action'] = 'unknown';
-  if (/show (?:the )?sources|sources checked|citations?/.test(lower)) action = 'show_sources';
+  if (plainCount !== undefined) action = 'discover';
+  else if (/show (?:the )?sources|sources checked|citations?/.test(lower)) action = 'show_sources';
   else if (
     /team news|injur|suspension|expected lineup|research this|refresh news|player availability|why did you choose/.test(
       lower,
