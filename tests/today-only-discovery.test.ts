@@ -34,7 +34,7 @@ function makeProvider(todayCount: number, tomorrowCount: number): SportyBetProvi
     resolveBookingCode: () => Promise.resolve([]),
     createBookingCode: () => Promise.resolve('TEST123'),
     health: () => Promise.resolve({ ok: true, detail: 'test' }),
-  } as SportyBetProvider;
+  };
 }
 
 afterEach(() => vi.useRealTimers());
