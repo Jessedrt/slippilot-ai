@@ -103,6 +103,8 @@ export async function buildLiveSlipSnapshot(
   targetOdds?: number,
   _todayOnly = true,
 ): Promise<LiveSlipSnapshot> {
+  // Preserve the legacy call signature; all discovery is deliberately restricted to today.
+  void _todayOnly;
   if (!Number.isSafeInteger(gameCount) || gameCount < 1) {
     throw new Error('The number of games must be a positive whole number.');
   }
