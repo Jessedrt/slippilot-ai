@@ -15,9 +15,11 @@
   </head>
   <body>
     <div class="app-shell">
-      <header class="topbar">
-        <a class="logo" href="./" aria-label="SlipPilot home"><span>SP</span><b>SLIPPILOT</b></a>
-        <div class="live-pill"><i></i> LIVE MARKETS</div>
+      <header class="topbar glass">
+        <a class="logo" href="./" aria-label="SlipPilot home"
+          ><span>SP</span><b>SLIPPILOT <em>2.0</em></b></a
+        >
+        <div class="live-pill"><i></i> READY</div>
       </header>
 
       <main>
@@ -55,14 +57,14 @@
             </fieldset>
             <div class="form-row">
               <label class="field"
-                ><span>Target odds <small>optional</small></span
+                ><span>Target odds <small>no maximum</small></span
                 ><input
                   id="target-odds"
                   type="number"
                   min="1.01"
-                  max="500"
                   step="0.1"
-                  placeholder="e.g. 10"
+                  inputmode="decimal"
+                  placeholder="e.g. 150"
               /></label>
               <label class="field"
                 ><span>Risk mode</span
@@ -176,3 +178,4 @@
     <script type="module" src="./app.js"></script>
   </body>
 </html>
+

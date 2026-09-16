@@ -1,6 +1,6 @@
 {
   "name": "slippilot-ai",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "SlipPilot AI - intelligent Telegram assistant for sports analysis and supported SportyBet slip workflows.",
   "private": true,
   "type": "module",
@@ -50,3 +50,4 @@
     "vitest": "^5.0.0"
   }
 }
+

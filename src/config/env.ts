@@ -30,6 +30,15 @@ export const envSchema = z
     SPORTS_API_KEY: z.preprocess(blankToUndefined, z.string().optional()),
     YOU_API_ENABLED: z.stringbool().default(false),
     YDC_API_KEY: z.preprocess(blankToUndefined, z.string().min(8).optional()),
+    YDC_API_KEY_2: z.preprocess(blankToUndefined, z.string().min(8).optional()),
+    YDC_API_KEY_3: z.preprocess(blankToUndefined, z.string().min(8).optional()),
+    YDC_API_KEY_4: z.preprocess(blankToUndefined, z.string().min(8).optional()),
+    YDC_API_KEY_5: z.preprocess(blankToUndefined, z.string().min(8).optional()),
+    YDC_API_KEY_6: z.preprocess(blankToUndefined, z.string().min(8).optional()),
+    YDC_API_KEY_7: z.preprocess(blankToUndefined, z.string().min(8).optional()),
+    YDC_API_KEY_8: z.preprocess(blankToUndefined, z.string().min(8).optional()),
+    YDC_API_KEY_9: z.preprocess(blankToUndefined, z.string().min(8).optional()),
+    YDC_API_KEY_10: z.preprocess(blankToUndefined, z.string().min(8).optional()),
     YOU_SEARCH_ENABLED: z.stringbool().default(true),
     YOU_RESEARCH_ENABLED: z.stringbool().default(true),
     YOU_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(15_000),
@@ -52,7 +61,19 @@ export const envSchema = z
     ADMIN_SECRET: z.preprocess(blankToUndefined, z.string().min(16).optional()),
   })
   .superRefine((config, context) => {
-    if (config.YOU_API_ENABLED && !config.YDC_API_KEY) {
+    const hasYouApiKey = [
+      config.YDC_API_KEY,
+      config.YDC_API_KEY_2,
+      config.YDC_API_KEY_3,
+      config.YDC_API_KEY_4,
+      config.YDC_API_KEY_5,
+      config.YDC_API_KEY_6,
+      config.YDC_API_KEY_7,
+      config.YDC_API_KEY_8,
+      config.YDC_API_KEY_9,
+      config.YDC_API_KEY_10,
+    ].some(Boolean);
+    if (config.YOU_API_ENABLED && !hasYouApiKey) {
       context.addIssue({
         code: 'custom',
         path: ['YDC_API_KEY'],
@@ -102,3 +123,4 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   }
   return parsed.data;
 }
+

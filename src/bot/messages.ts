@@ -1,13 +1,14 @@
-export const START_MESSAGE = `⚡ Welcome to SlipPilot AI
+export const START_MESSAGE = `⚡ SlipPilot 2.0
 
-Your fast match-analysis and slip-building assistant.
+Build in the Mini App or chat naturally here. Every slip is checked by AI before a booking code is offered.
 
-Pick an option below or simply tell me what you want. Every booking slip is checked by AI first. Predictions are estimates—not guarantees.`;
+Predictions are estimates—not guarantees.`;
 
 export const HELP_MESSAGE = `🧭 SlipPilot AI Help
 
 Talk naturally or use commands:
 /menu — open the dashboard
+/app — open the SlipPilot Mini App
 /today — today's fixtures
 /football — football analysis
 /basketball — basketball analysis
@@ -35,3 +36,4 @@ export const EXAMPLES_MESSAGE = `✨ Try saying:
 • Generate the code
 
 You can also paste typed picks, a public X/Twitter post link, or upload a clear betting-slip screenshot.`;
+

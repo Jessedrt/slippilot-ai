@@ -19,11 +19,24 @@ export function createApplication() {
   const config = loadConfig();
   const logger = createLogger(config);
   const cache = new RedisCache(config.REDIS_URL);
+  const youApiKeys = [
+    config.YDC_API_KEY,
+    config.YDC_API_KEY_2,
+    config.YDC_API_KEY_3,
+    config.YDC_API_KEY_4,
+    config.YDC_API_KEY_5,
+    config.YDC_API_KEY_6,
+    config.YDC_API_KEY_7,
+    config.YDC_API_KEY_8,
+    config.YDC_API_KEY_9,
+    config.YDC_API_KEY_10,
+  ].filter((key): key is string => Boolean(key));
   const webResearch =
-    config.YOU_API_ENABLED && config.YDC_API_KEY
+    config.YOU_API_ENABLED && youApiKeys[0]
       ? new YouProvider(
           new YouClient({
-            apiKey: config.YDC_API_KEY,
+            apiKey: youApiKeys[0],
+            apiKeys: youApiKeys.slice(1),
             timeoutMs: config.YOU_TIMEOUT_MS,
             maxResults: config.YOU_MAX_RESULTS,
             cacheTtlMs: config.YOU_CACHE_TTL_MS,
@@ -115,3 +128,4 @@ export function createApplication() {
 
   return { appPromise, bot, cache, config, database, logger, webhookRegistrationPromise };
 }
+

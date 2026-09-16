@@ -19,7 +19,7 @@ export interface MiniAppDependencies {
 const buildSchema = z.object({
   sport: z.enum(['football', 'basketball']),
   gameCount: z.number().int().min(1).max(15),
-  targetOdds: z.number().min(1.01).max(500).optional(),
+  targetOdds: z.number().finite().min(1.01).optional(),
   riskMode: z.enum(['conservative', 'balanced', 'aggressive']).default('balanced'),
 });
 
@@ -200,3 +200,4 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
     return deps.screenshotAnalyzer.analyze(bytes, input.mimeType);
   });
 }
+

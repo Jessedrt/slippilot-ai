@@ -2,6 +2,7 @@ import { Markup } from 'telegraf';
 
 export const BOT_COMMANDS = [
   { command: 'menu', description: 'Open the SlipPilot dashboard' },
+  { command: 'app', description: 'Open the SlipPilot Mini App' },
   { command: 'today', description: 'Build a slip from today’s games' },
   { command: 'football', description: 'Find football selections' },
   { command: 'basketball', description: 'Find basketball selections' },
@@ -37,3 +38,4 @@ export const riskMenu = () =>
     [Markup.button.callback('🔥 Aggressive', 'risk:aggressive')],
     [Markup.button.callback('‹ Back to Menu', 'home:menu')],
   ]);
+

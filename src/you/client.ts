@@ -14,6 +14,7 @@ import {
 
 export interface YouClientOptions {
   apiKey: string;
+  apiKeys?: string[];
   timeoutMs?: number;
   maxResults?: number;
   cacheTtlMs?: number;
@@ -24,7 +25,10 @@ export interface YouClientOptions {
 }
 
 export class YouApiError extends Error {
-  constructor(message: string, public readonly status?: number) {
+  constructor(
+    message: string,
+    public readonly status?: number,
+  ) {
     super(message);
     this.name = 'YouApiError';
   }
@@ -36,6 +40,8 @@ export class YouClient {
   private readonly cacheTtlMs: number;
   private readonly fetchImpl: typeof fetch;
   private readonly sleep: (milliseconds: number) => Promise<void>;
+  private readonly apiKeys: string[];
+  private keyIndex = 0;
   private active = 0;
   private lastStartedAt = 0;
   private readonly waiters: Array<() => void> = [];
@@ -46,50 +52,88 @@ export class YouClient {
     this.cacheTtlMs = options.cacheTtlMs ?? 300_000;
     this.fetchImpl = options.fetch ?? globalThis.fetch;
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+    this.apiKeys = [...new Set([options.apiKey, ...(options.apiKeys ?? [])].filter(Boolean))];
   }
 
   search(query: string): Promise<YouSearchResponse> {
-    return this.cached('search', { query, count: this.maxResults, freshness: 'week', safesearch: 'moderate' },
-      (value) => youSearchResponseSchema.parse(value), 'https://ydc-index.io/v1/search');
+    return this.cached(
+      'search',
+      { query, count: this.maxResults, freshness: 'week', safesearch: 'moderate' },
+      (value) => youSearchResponseSchema.parse(value),
+      'https://ydc-index.io/v1/search',
+    );
   }
 
   answer(query: string): Promise<YouAnswerResponse> {
-    return this.cached('answer', { query, freshness: 'week', safesearch: 'moderate' },
-      (value) => youAnswerResponseSchema.parse(value), 'https://api.you.com/v1/answer');
+    return this.cached(
+      'answer',
+      { query, freshness: 'week', safesearch: 'moderate' },
+      (value) => youAnswerResponseSchema.parse(value),
+      'https://api.you.com/v1/answer',
+    );
   }
 
   research(query: string): Promise<YouResearchResponse> {
-    return this.cached('research', { input: query, research_effort: 'lite' },
-      (value) => youResearchResponseSchema.parse(value), 'https://api.you.com/v1/research');
+    return this.cached(
+      'research',
+      { input: query, research_effort: 'lite' },
+      (value) => youResearchResponseSchema.parse(value),
+      'https://api.you.com/v1/research',
+    );
   }
 
   getContents(urls: string[]): Promise<YouContent[]> {
-    if (urls.length === 0 || urls.length > 10) throw new Error('You.com Contents requires 1–10 URLs.');
+    if (urls.length === 0 || urls.length > 10)
+      throw new Error('You.com Contents requires 1–10 URLs.');
     urls.forEach((url) => new URL(url));
-    return this.cached('contents', { urls, formats: ['markdown', 'metadata'], crawl_timeout: Math.min(60, Math.max(1, Math.ceil(this.timeoutMs / 1000))) },
-      (value) => youContentsResponseSchema.parse(value), 'https://ydc-index.io/v1/contents');
+    return this.cached(
+      'contents',
+      {
+        urls,
+        formats: ['markdown', 'metadata'],
+        crawl_timeout: Math.min(60, Math.max(1, Math.ceil(this.timeoutMs / 1000))),
+      },
+      (value) => youContentsResponseSchema.parse(value),
+      'https://ydc-index.io/v1/contents',
+    );
   }
 
-  private async cached<T>(operation: string, body: unknown, parse: (value: unknown) => T, url: string): Promise<T> {
+  private async cached<T>(
+    operation: string,
+    body: unknown,
+    parse: (value: unknown) => T,
+    url: string,
+  ): Promise<T> {
     const cacheKey = `slippilot:you:${operation}:${createHash('sha256').update(JSON.stringify(body)).digest('hex')}`;
     try {
       const hit = await this.options.cache?.get<T>(cacheKey);
       if (hit) return hit;
     } catch (error) {
-      this.options.logger?.warn({ err: error, operation }, 'SlipPilot AI You.com cache read failed');
+      this.options.logger?.warn(
+        { err: error, operation },
+        'SlipPilot AI You.com cache read failed',
+      );
     }
     const result = parse(await this.request(url, body));
     try {
-      await this.options.cache?.set(cacheKey, result, Math.max(1, Math.ceil(this.cacheTtlMs / 1000)));
+      await this.options.cache?.set(
+        cacheKey,
+        result,
+        Math.max(1, Math.ceil(this.cacheTtlMs / 1000)),
+      );
     } catch (error) {
-      this.options.logger?.warn({ err: error, operation }, 'SlipPilot AI You.com cache write failed');
+      this.options.logger?.warn(
+        { err: error, operation },
+        'SlipPilot AI You.com cache write failed',
+      );
     }
     return result;
   }
 
   private async request(url: string, body: unknown): Promise<unknown> {
     let lastError: unknown;
-    for (let attempt = 0; attempt < 3; attempt += 1) {
+    const maxAttempts = Math.max(3, this.apiKeys.length);
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       try {
         return await this.runLimited(async () => {
           const controller = new AbortController();
@@ -98,7 +142,11 @@ export class YouClient {
             this.options.logger?.debug({ provider: 'You.com', url, attempt }, 'You.com request');
             const response = await this.fetchImpl(url, {
               method: 'POST',
-              headers: { 'X-API-Key': this.options.apiKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+              headers: {
+                'X-API-Key': this.apiKeys[this.keyIndex]!,
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+              },
               body: JSON.stringify(body),
               signal: controller.signal,
             });
@@ -107,7 +155,7 @@ export class YouClient {
               Object.assign(error, { retryAfter: response.headers.get('retry-after') });
               throw error;
             }
-            return await response.json() as unknown;
+            return (await response.json()) as unknown;
           } finally {
             clearTimeout(timeout);
           }
@@ -115,12 +163,22 @@ export class YouClient {
       } catch (error) {
         lastError = error;
         const status = error instanceof YouApiError ? error.status : undefined;
-        const retryable = status === 429 || (status !== undefined && status >= 500) || (error instanceof Error && error.name === 'AbortError');
-        if (!retryable || attempt === 2) throw error;
-        const retryAfter = error instanceof YouApiError
-          ? Number((error as YouApiError & { retryAfter?: string }).retryAfter)
-          : 0;
-        await this.sleep(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 250 * 2 ** attempt);
+        const canRotate =
+          this.apiKeys.length > 1 && (status === 401 || status === 403 || status === 429);
+        const transient =
+          status === 429 ||
+          (status !== undefined && status >= 500) ||
+          (error instanceof Error && error.name === 'AbortError');
+        const exhausted = attempt === maxAttempts - 1 || (!canRotate && attempt === 2);
+        if ((!transient && !canRotate) || exhausted) throw error;
+        if (canRotate) this.keyIndex = (this.keyIndex + 1) % this.apiKeys.length;
+        const retryAfter =
+          error instanceof YouApiError
+            ? Number((error as YouApiError & { retryAfter?: string }).retryAfter)
+            : 0;
+        await this.sleep(
+          Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 250 * 2 ** attempt,
+        );
       }
     }
     throw lastError;
@@ -140,3 +198,4 @@ export class YouClient {
     }
   }
 }
+

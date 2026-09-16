@@ -8,21 +8,21 @@ export const landingPage = `<!doctype html>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preload" as="image" href="/assets/slippilot-stadium.png">
   <link rel="stylesheet" href="/styles.css">
-  <title>SlipPilot AI — Analyze smarter. Build with confidence.</title>
+  <title>SlipPilot 2.0 — Analyze smarter. Build with confidence.</title>
 </head>
 <body>
   <header class="nav-shell">
     <nav class="nav" aria-label="Main navigation">
       <a class="brand" href="#top" aria-label="SlipPilot AI home">
         <span class="brand-mark" aria-hidden="true">SP</span>
-        <span>SLIPPILOT <b>AI</b></span>
+        <span>SLIPPILOT <b>2.0</b></span>
       </a>
       <div class="nav-links">
         <a href="#features">Features</a>
         <a href="#how">How it works</a>
         <a href="#plans">Plans</a>
       </div>
-      <a class="button button-small" href="https://t.me/slippilotbot" target="_blank" rel="noreferrer">Open Telegram <span>↗</span></a>
+      <a class="button button-small" href="https://t.me/slippilotbot" target="_blank" rel="noreferrer">Open Mini App <span>↗</span></a>
     </nav>
   </header>
 
@@ -31,11 +31,11 @@ export const landingPage = `<!doctype html>
       <div class="hero-glow"></div>
       <div class="wrap hero-grid">
         <div class="hero-copy">
-          <div class="eyebrow"><span></span> Football + Basketball intelligence</div>
+          <div class="eyebrow"><span></span> SlipPilot 2.0 · Football + Basketball</div>
           <h1>Turn match ideas into <em>smarter slips.</em></h1>
-          <p>Analyze live markets, read betting screenshots, edit weak selections and prepare supported SportyBet booking codes—all through a conversation.</p>
+          <p>Build in the Telegram Mini App or chat naturally with the bot. Analyze live markets, read screenshots and X posts, refine weak picks and prepare supported SportyBet codes.</p>
           <div class="hero-actions">
-            <a class="button button-primary" href="https://t.me/slippilotbot?start=website" target="_blank" rel="noreferrer">Launch SlipPilot <span>↗</span></a>
+            <a class="button button-primary" href="https://t.me/slippilotbot?start=website" target="_blank" rel="noreferrer">Launch Mini App <span>↗</span></a>
             <a class="text-link" href="#how">See how it works <span>↓</span></a>
           </div>
           <div class="trust-row">
@@ -137,7 +137,7 @@ export const landingPage = `<!doctype html>
     <section class="cta"><div class="wrap"><div><span class="kicker">READY WHEN YOU ARE</span><h2>Build your next slip<br><em>with more clarity.</em></h2></div><a class="button button-primary button-large" href="https://t.me/slippilotbot?start=website-cta" target="_blank" rel="noreferrer">Open @slippilotbot <span>↗</span></a></div></section>
   </main>
 
-  <footer><div class="wrap footer-grid"><a class="brand" href="#top"><span class="brand-mark">SP</span><span>SLIPPILOT <b>AI</b></span></a><p>AI-assisted sports analysis. Use responsibly. 18+ only.</p><div><a href="#features">Features</a><a href="#how">How it works</a><a href="https://t.me/slippilotbot" target="_blank" rel="noreferrer">Telegram</a></div><small>© 2026 SlipPilot AI</small></div></footer>
+  <footer><div class="wrap footer-grid"><a class="brand" href="#top"><span class="brand-mark">SP</span><span>SLIPPILOT <b>2.0</b></span></a><p>AI-assisted sports analysis. Use responsibly. 18+ only.</p><div><a href="#features">Features</a><a href="#how">How it works</a><a href="https://t.me/slippilotbot" target="_blank" rel="noreferrer">Telegram</a></div><small>© 2026 SlipPilot AI</small></div></footer>
 </body>
 </html>`;
 
@@ -146,5 +146,17 @@ export const landingStyles = `
 @media(max-width:900px){.nav-links{display:none}.hero{min-height:auto}.hero-grid{grid-template-columns:1fr;padding:150px 0 100px}.hero-copy{max-width:640px}.product-stage{height:560px}.proof-grid{grid-template-columns:repeat(3,1fr)}.proof-grid p{display:none}.feature-grid{grid-template-columns:1fr 1fr}.feature-wide{grid-column:span 2}.steps{grid-template-columns:1fr 1fr}.modes-grid,.faq-grid{grid-template-columns:1fr;gap:45px}.footer-grid{grid-template-columns:1fr 1fr}.footer-grid p{display:none}}
 @media(max-width:620px){:root{--wrap:min(100% - 28px,1180px)}.nav{height:68px}.button-small{font-size:0;width:44px;height:40px;padding:0}.button-small span{font-size:1rem}.hero-grid{padding-top:120px;gap:10px}.hero-copy>p{font-size:1rem}.hero-actions{align-items:stretch;flex-direction:column;gap:17px}.hero-actions .text-link{text-align:center}.trust-row{gap:10px 18px}.product-stage{height:530px;transform:scale(.9);margin:0 -20px}.phone{width:345px}.confidence-card{right:0}.section{padding:78px 0}.proof-grid{grid-template-columns:1fr 1fr}.proof-grid div:nth-child(3){display:none}.section-heading{display:block}.feature-grid,.plan-grid{grid-template-columns:1fr}.feature-wide{grid-column:auto}.feature{min-height:285px}.mini-chart{display:none}.steps{grid-template-columns:1fr}.steps article{min-height:auto;display:grid;grid-template-columns:50px 1fr;padding:27px 10px}.steps article>span{margin:0}.modes-grid{gap:35px}.mode-list article{grid-template-columns:30px 1fr}.mode-list article>b{display:none}.mode-list .active{transform:none}.plan-grid article{padding:30px 25px}.cta .wrap{display:block}.cta .button{margin-top:30px;width:100%}.footer-grid{grid-template-columns:1fr}.footer-grid>div{flex-wrap:wrap}h1{font-size:clamp(3.2rem,17vw,5rem)}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.button{transition:none}}
+
+/* SlipPilot 2.0 liquid-glass finish */
+body{background:radial-gradient(circle at 12% 8%,rgba(67,211,153,.13),transparent 34rem),radial-gradient(circle at 88% 28%,rgba(199,255,69,.09),transparent 32rem),var(--bg)}
+.nav-shell{position:fixed;top:14px;left:50%;right:auto;width:min(1180px,calc(100% - 28px));transform:translateX(-50%);border:1px solid rgba(255,255,255,.15);border-radius:22px;background:rgba(8,20,17,.62);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 18px 60px rgba(0,0,0,.24);backdrop-filter:blur(24px) saturate(145%);-webkit-backdrop-filter:blur(24px) saturate(145%)}
+.nav{width:100%;height:64px;padding:0 18px}.brand-mark{border:0;border-radius:10px;background:linear-gradient(145deg,#dfff89,var(--lime));color:#07100f;transform:none;box-shadow:0 8px 25px rgba(199,255,69,.18)}
+.button,.phone,.slip-card,.confidence-card,.feature,.mode-list article,.plan-grid article{border-radius:18px}.button-primary{background:linear-gradient(145deg,#e1ff91,#bdf537)}
+.phone,.confidence-card,.feature,.plan-grid article{background:linear-gradient(145deg,rgba(255,255,255,.08),rgba(255,255,255,.025));border-color:rgba(255,255,255,.15);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 28px 70px rgba(0,0,0,.25);backdrop-filter:blur(22px) saturate(140%);-webkit-backdrop-filter:blur(22px) saturate(140%)}
+.feature-grid{gap:14px;border:0}.feature{border:1px solid rgba(255,255,255,.13)}.how,.plans{background:rgba(8,20,17,.66);backdrop-filter:blur(12px)}
+.mode-list article{margin:8px 0;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.025)}.mode-list .active{background:linear-gradient(145deg,#dcff84,var(--lime))}
+.plan-grid{gap:22px}.cta{margin:0 16px 16px;border:1px solid rgba(255,255,255,.15);border-radius:28px;background:linear-gradient(120deg,rgba(34,67,55,.82),rgba(12,29,24,.84));backdrop-filter:blur(22px)}
+@media(max-width:620px){.nav-shell{top:8px}.nav{height:58px}.hero-grid{padding-top:110px}.feature-grid{gap:10px}.cta{margin:0 8px 8px;border-radius:22px}}
+@media(prefers-reduced-transparency:reduce){.nav-shell,.phone,.confidence-card,.feature,.plan-grid article{background:#0d1c18;backdrop-filter:none;-webkit-backdrop-filter:none}}
 `;
 

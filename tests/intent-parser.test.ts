@@ -35,6 +35,13 @@ describe('intent parsing', () => {
     });
   });
 
+  it('does not impose an artificial maximum on target odds', () => {
+    expect(deterministicParse('Give me 10 football games around 1000000 odds')).toMatchObject({
+      gameCount: 10,
+      targetOdds: 1_000_000,
+    });
+  });
+
   it('parses modification and split instructions', () => {
     expect(deterministicParse('Remove the weakest two')).toMatchObject({
       action: 'modify_slip',
@@ -73,3 +80,4 @@ describe('intent parsing', () => {
     });
   });
 });
+

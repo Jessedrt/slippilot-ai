@@ -18,7 +18,7 @@ export const intentSchema = z.object({
   gameCount: z.number().int().min(1).max(30).optional(),
   minimumGameCount: z.number().int().min(1).max(30).optional(),
   maximumGameCount: z.number().int().min(1).max(30).optional(),
-  targetOdds: z.number().min(1.01).max(10000).optional(),
+  targetOdds: z.number().finite().min(1.01).optional(),
   minimumOdds: z.number().min(1.01).optional(),
   maximumOdds: z.number().min(1.01).optional(),
   minimumConfidence: z.number().min(0).max(100).optional(),
@@ -49,3 +49,4 @@ export type ParsedIntent = z.infer<typeof intentSchema>;
 export interface StructuredIntentProvider {
   parse(text: string): Promise<unknown>;
 }
+

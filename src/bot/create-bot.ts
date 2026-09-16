@@ -117,9 +117,8 @@ async function sendLiveSlip(
   reply: (message: string, extra?: ReturnType<typeof Markup.inlineKeyboard>) => Promise<unknown>,
 ): Promise<void> {
   try {
-    await reply('🔎 Loading current fixtures and markets…');
+    await reply('⚡ Building and AI-checking your slip…');
     const snapshot = await buildLiveSlipSnapshot(deps.sportyBet, sport, gameCount, targetOdds);
-    await reply('🧠 Markets loaded. AI is reviewing the selections now…');
     const analysis = await deps.slipAnalyzer.analyze(snapshot.slip.selections);
     const analyzedSelections = snapshot.slip.selections.map((selection, index) => {
       const result = analysis.selections.find((item) => item.index === index + 1);
@@ -212,6 +211,19 @@ export function createBot(deps: BotDependencies): Telegraf | null {
   });
   bot.help((ctx) => ctx.reply(HELP_MESSAGE, homeMenu()));
   bot.command('menu', (ctx) => ctx.reply('⚡ What would you like to do?', homeMenu()));
+  bot.command('app', (ctx) =>
+    ctx.reply(
+      'Open SlipPilot 2.0 to build, edit, analyze, and prepare codes in one place.',
+      Markup.inlineKeyboard([
+        [
+          Markup.button.webApp(
+            '⚡ Open SlipPilot Mini App',
+            'https://slippilot-ai.vercel.app/app/',
+          ),
+        ],
+      ]),
+    ),
+  );
   bot.command('clear', async (ctx) => {
     await deps.conversations.clear(String(ctx.from.id));
     await ctx.reply('🧹 SlipPilot AI context cleared.');
@@ -896,3 +908,4 @@ export function createBot(deps: BotDependencies): Telegraf | null {
   bot.catch((error) => deps.logger.error({ err: error }, 'SlipPilot AI Telegram handler failed'));
   return bot;
 }
+

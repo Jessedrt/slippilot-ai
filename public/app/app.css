@@ -548,3 +548,186 @@ legend,
     transition: none;
   }
 }
+
+/* SlipPilot 2.0 — restrained liquid-glass layer */
+:root {
+  --glass: rgba(18, 36, 31, 0.58);
+  --glass-strong: rgba(18, 37, 32, 0.82);
+  --glass-line: rgba(255, 255, 255, 0.16);
+  --glow: rgba(200, 255, 69, 0.2);
+}
+body {
+  background:
+    radial-gradient(circle at 16% 8%, rgba(81, 221, 164, 0.15), transparent 32rem),
+    radial-gradient(circle at 92% 32%, rgba(199, 255, 69, 0.11), transparent 28rem), #050c0b;
+}
+.app-shell {
+  position: relative;
+  isolation: isolate;
+  background: transparent;
+}
+.app-shell::before,
+.app-shell::after {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  filter: blur(70px);
+  pointer-events: none;
+}
+.app-shell::before {
+  top: 12%;
+  left: max(calc(50% - 420px), -130px);
+  background: rgba(50, 196, 145, 0.16);
+}
+.app-shell::after {
+  right: max(calc(50% - 430px), -130px);
+  bottom: 14%;
+  background: rgba(200, 255, 69, 0.12);
+}
+.glass,
+.builder-card,
+.tool-card,
+.result-panel,
+.loading-card,
+.slip-summary,
+.empty-state {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.025));
+  border: 1px solid var(--glass-line);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 24px 60px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(24px) saturate(145%);
+  -webkit-backdrop-filter: blur(24px) saturate(145%);
+}
+.topbar {
+  top: 10px;
+  width: calc(100% - 20px);
+  margin: 0 10px;
+  padding: 0 18px;
+  height: 58px;
+  border-radius: 20px;
+}
+.logo span {
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #ddff86, var(--lime));
+  color: #08100e;
+  box-shadow: 0 6px 24px var(--glow);
+  transform: none;
+}
+.logo em {
+  margin-left: 5px;
+  color: var(--lime);
+  font-size: 0.58rem;
+  font-style: normal;
+  letter-spacing: 0.06em;
+}
+.live-pill.offline {
+  color: #ffaaa4;
+}
+.live-pill.offline i {
+  background: #ff786f;
+  box-shadow: 0 0 10px rgba(255, 120, 111, 0.7);
+}
+.hero-copy {
+  padding-top: 32px;
+}
+.builder-card,
+.tool-card,
+.result-panel,
+.loading-card,
+.slip-summary,
+.empty-state {
+  border-radius: 26px;
+}
+.builder-card {
+  padding: 22px;
+}
+.segmented,
+.field input,
+.field select,
+.tool-card input,
+.upload,
+.code-block {
+  border-color: rgba(255, 255, 255, 0.13);
+  border-radius: 15px;
+  background: rgba(4, 12, 10, 0.52);
+}
+.segmented {
+  gap: 4px;
+}
+.segmented span,
+.chips button,
+.tool-card button,
+.empty-state button,
+.primary {
+  border-radius: 14px;
+}
+.segmented input:checked + span {
+  background: linear-gradient(145deg, #dcff82, var(--lime));
+  box-shadow: 0 8px 24px rgba(200, 255, 69, 0.14);
+}
+.chips button {
+  background: rgba(5, 15, 12, 0.42);
+}
+.chips button.selected {
+  background: rgba(200, 255, 69, 0.13);
+  box-shadow: inset 0 0 20px rgba(200, 255, 69, 0.05);
+}
+.primary {
+  background: linear-gradient(145deg, #e2ff94, #bdf535);
+  box-shadow: 0 14px 36px rgba(177, 232, 48, 0.18);
+}
+.primary:active {
+  transform: scale(0.985);
+}
+.pick-list {
+  border-top: 0;
+  display: grid;
+  gap: 9px;
+}
+.pick-row {
+  padding: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.035);
+}
+.bottom-nav {
+  bottom: calc(10px + var(--safe));
+  width: min(730px, calc(100% - 20px));
+  height: 66px;
+  padding: 7px 10px;
+  border: 1px solid var(--glass-line);
+  border-radius: 22px;
+  background: rgba(14, 29, 25, 0.78);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(26px) saturate(150%);
+  -webkit-backdrop-filter: blur(26px) saturate(150%);
+}
+.bottom-nav button {
+  border-radius: 15px;
+}
+.bottom-nav button.active {
+  background: rgba(200, 255, 69, 0.1);
+}
+.toast {
+  border-radius: 14px;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .builder-card,
+  .tool-card,
+  .result-panel,
+  .loading-card,
+  .slip-summary,
+  .empty-state,
+  .bottom-nav {
+    background: var(--glass-strong);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+

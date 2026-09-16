@@ -7,7 +7,25 @@ tg?.setBackgroundColor?.('#07110f');
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 let gameCount = 5;
-let slip = JSON.parse(localStorage.getItem('slippilot-active-slip') || 'null');
+let slip = loadStoredSlip();
+
+function loadStoredSlip() {
+  try {
+    const value = JSON.parse(localStorage.getItem('slippilot-active-slip') || 'null');
+    return value && Array.isArray(value.selections) ? value : null;
+  } catch {
+    localStorage.removeItem('slippilot-active-slip');
+    return null;
+  }
+}
+
+function updateConnectionState() {
+  const label = $('.live-pill');
+  label.innerHTML = navigator.onLine ? '<i></i> READY' : '<i></i> OFFLINE';
+  label.classList.toggle('offline', !navigator.onLine);
+}
+window.addEventListener('online', updateConnectionState);
+window.addEventListener('offline', updateConnectionState);
 
 function toast(message) {
   const node = $('#toast');
@@ -26,11 +44,20 @@ function switchView(name) {
 }
 
 async function api(path, body) {
-  const response = await fetch(path, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-telegram-init-data': tg?.initData || '' },
-    body: JSON.stringify(body),
-  });
+  let response;
+  try {
+    response = await fetch(path, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-telegram-init-data': tg?.initData || '' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(55_000),
+    });
+  } catch (error) {
+    if (error?.name === 'TimeoutError' || error?.name === 'AbortError') {
+      throw new Error('This is taking too long. Nothing was booked—please try again.');
+    }
+    throw new Error('Connection lost. Check your internet and try again.');
+  }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const error = new Error(
@@ -112,7 +139,7 @@ $('#build-form').addEventListener('submit', async (event) => {
       sport: new FormData(event.currentTarget).get('sport'),
       gameCount,
       riskMode: $('#risk-mode').value,
-      ...(targetValue > 1 ? { targetOdds: targetValue } : {}),
+      ...(Number.isFinite(targetValue) && targetValue > 1 ? { targetOdds: targetValue } : {}),
     });
     saveSlip(result);
     tg?.HapticFeedback?.notificationOccurred('success');
@@ -213,6 +240,13 @@ $('#shot-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const file = $('#shot-file').files[0];
   if (!file) return;
+  if (file.size > 6_000_000) {
+    showResult(
+      $('#analysis-result'),
+      '<h3>Image is too large</h3><p>Choose a screenshot smaller than 6 MB.</p>',
+    );
+    return;
+  }
   try {
     const data = await new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -255,3 +289,5 @@ document.addEventListener('click', async (event) => {
 });
 
 renderSlip();
+updateConnectionState();
+
