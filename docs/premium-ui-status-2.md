@@ -1,1 +1,0 @@
-Premium Mini App includes Build, Analyze and My Slip screens with an enhanced booking confirmation.
