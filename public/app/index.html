@@ -4,24 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#07110f" />
-    <meta
-      name="description"
-      content="Build, analyze and prepare supported sports slips in AUREX."
-    />
+    <meta name="description" content="Build, analyze and prepare supported sports slips in AUREX." />
     <link rel="icon" href="/favicon.svg" />
-    <link rel="stylesheet" href="/app/app.css?v=3.0.1" />
+    <link rel="stylesheet" href="/app/app.css?v=3.0.2" />
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <title>AUREX Mini App</title>
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar glass">
-        <a class="logo" href="./" aria-label="AUREX home"
-          ><span><img src="/assets/aurex-mark-neon.png" alt="" /></span><b>AUREX <em>V3</em></b></a
-        >
+        <a class="logo" href="./" aria-label="AUREX home"><span><img src="/assets/aurex-mark-neon.png" alt="" /></span><b>AUREX <em>V3</em></b></a>
         <div class="live-pill"><i></i> READY</div>
       </header>
-
       <main>
         <section class="view active" id="build-view" aria-labelledby="build-tab">
           <div class="hero-copy">
@@ -29,161 +23,59 @@
             <h1>Build with conviction.</h1>
             <p>AUREX reviews every market before a supported code can be prepared.</p>
           </div>
-
           <div class="quick-presets" aria-label="Quick daily builds">
-            <button type="button" data-preset-odds="5" data-preset-games="5">
-              <span>🎯 Daily 5 Odds</span><small>Today’s AI-reviewed target</small>
-            </button>
-            <button type="button" data-preset-odds="2" data-preset-games="3">
-              <span>🔁 2 Odds Rollover</span><small>Lower-variance daily target</small>
-            </button>
+            <button type="button" data-preset-odds="5" data-preset-games="5"><span>🎯 Daily 5 Odds</span><small>Today’s AI-reviewed target</small></button>
+            <button type="button" data-preset-odds="2" data-preset-games="3"><span>🔁 2 Odds Rollover</span><small>Lower-variance daily target</small></button>
           </div>
-
           <form id="build-form" class="builder-card">
             <fieldset>
               <legend>Sport</legend>
               <div class="segmented">
-                <label
-                  ><input type="radio" name="sport" value="football" checked /><span
-                    >⚽ Football</span
-                  ></label
-                >
-                <label
-                  ><input type="radio" name="sport" value="basketball" /><span
-                    >🏀 Basketball</span
-                  ></label
-                >
+                <label><input type="radio" name="sport" value="football" checked /><span>⚽ Football</span></label>
+                <label><input type="radio" name="sport" value="basketball" /><span>🏀 Basketball</span></label>
               </div>
             </fieldset>
             <fieldset>
               <legend>Games</legend>
               <div class="chips" id="count-chips">
-                <button type="button" data-count="3">3</button
-                ><button type="button" class="selected" data-count="5">5</button
-                ><button type="button" data-count="7">7</button
-                ><button type="button" data-count="10">10</button>
+                <button type="button" data-count="3">3</button>
+                <button type="button" class="selected" data-count="5">5</button>
+                <button type="button" data-count="7">7</button>
+                <button type="button" data-count="10">10</button>
+                <button type="button" id="custom-count-button" data-count="5" aria-controls="custom-count">Custom</button>
               </div>
+              <label class="custom-count-field" for="custom-count"><span>Custom number of games (1–15)</span><input id="custom-count" name="customCount" type="number" min="1" max="15" step="1" inputmode="numeric" autocomplete="off" placeholder="e.g. 8" /></label>
+              <p class="field-help" id="game-count-help">Choose a preset or enter your own game count. The app can include fewer matches if markets are unavailable.</p>
             </fieldset>
             <div class="form-row">
-              <label class="field"
-                ><span>Target odds <small>no maximum</small></span
-                ><input
-                  id="target-odds"
-                  type="number"
-                  min="1.01"
-                  step="0.1"
-                  inputmode="decimal"
-                  placeholder="e.g. 150"
-              /></label>
-              <label class="field"
-                ><span>Risk mode</span
-                ><select id="risk-mode">
-                  <option value="conservative">Conservative</option>
-                  <option selected value="balanced">Balanced</option>
-                  <option value="aggressive">Aggressive</option>
-                </select></label
-              >
+              <label class="field"><span>Target odds <small>no maximum</small></span><input id="target-odds" name="targetOdds" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 20 or 150" aria-describedby="target-odds-help" /><small class="field-help" id="target-odds-help">Optional. Enter decimal odds, e.g. 2, 20 or 150.</small></label>
+              <label class="field"><span>Risk mode</span><select id="risk-mode"><option value="conservative">Conservative</option><option selected value="balanced">Balanced</option><option value="aggressive">Aggressive</option></select></label>
             </div>
             <button class="primary" type="submit"><span>Build &amp; analyze</span><b>→</b></button>
           </form>
-
-          <div class="loading-card hidden" id="loading">
-            <div class="pulse"></div>
-            <div>
-              <b>Reviewing live markets</b
-              ><span id="loading-label">Finding suitable fixtures…</span>
-            </div>
-          </div>
+          <div class="loading-card hidden" id="loading"><div class="pulse"></div><div><b>Reviewing live markets</b><span id="loading-label">Finding suitable fixtures…</span></div></div>
           <div class="notice hidden" id="build-error" role="alert"></div>
         </section>
-
         <section class="view" id="analyze-view" aria-labelledby="analyze-tab">
-          <div class="section-title">
-            <p class="eyebrow">AUREX INTELLIGENCE DESK</p>
-            <h2>Inspect every angle.</h2>
-            <p>Read a booking code, a public X post, or a clear slip screenshot.</p>
-          </div>
+          <div class="section-title"><p class="eyebrow">AUREX INTELLIGENCE DESK</p><h2>Inspect every angle.</h2><p>Read a booking code, a public X post, or a clear slip screenshot.</p></div>
           <div class="tool-grid">
-            <form class="tool-card" id="read-code-form">
-              <span class="tool-icon">#</span>
-              <div>
-                <h3>Booking code</h3>
-                <p>Check selections and current combined odds.</p>
-              </div>
-              <input id="read-code" maxlength="20" placeholder="Paste code" required /><button
-                type="submit"
-              >
-                Analyze code
-              </button>
-            </form>
-            <form class="tool-card" id="x-form">
-              <span class="tool-icon">𝕏</span>
-              <div>
-                <h3>X / Twitter post</h3>
-                <p>Extract public booking codes from post text.</p>
-              </div>
-              <input id="x-url" type="url" placeholder="https://x.com/…/status/…" required /><button
-                type="submit"
-              >
-                Read post
-              </button>
-            </form>
-            <form class="tool-card" id="shot-form">
-              <span class="tool-icon">▣</span>
-              <div>
-                <h3>Slip screenshot</h3>
-                <p>Extract teams, markets, odds and visible codes.</p>
-              </div>
-              <label class="upload"
-                ><input
-                  id="shot-file"
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  required
-                /><span>Choose screenshot</span></label
-              ><button type="submit">Analyze image</button>
-            </form>
+            <form class="tool-card" id="read-code-form"><span class="tool-icon">#</span><div><h3>Booking code</h3><p>Check selections and current combined odds.</p></div><input id="read-code" maxlength="20" placeholder="Paste code" required /><button type="submit">Analyze code</button></form>
+            <form class="tool-card" id="x-form"><span class="tool-icon">𝕏</span><div><h3>X / Twitter post</h3><p>Extract public booking codes from post text.</p></div><input id="x-url" type="url" placeholder="https://x.com/…/status/…" required /><button type="submit">Read post</button></form>
+            <form class="tool-card" id="shot-form"><span class="tool-icon">▣</span><div><h3>Slip screenshot</h3><p>Extract teams, markets, odds and visible codes.</p></div><label class="upload"><input id="shot-file" type="file" accept="image/png,image/jpeg,image/webp" required /><span>Choose screenshot</span></label><button type="submit">Analyze image</button></form>
           </div>
           <div class="result-panel hidden" id="analysis-result"></div>
         </section>
-
         <section class="view" id="slip-view" aria-labelledby="slip-tab">
-          <div class="section-title">
-            <p class="eyebrow">ACTIVE SLIP</p>
-            <h2>Your picks.</h2>
-          </div>
-          <div id="empty-slip" class="empty-state">
-            <span>◎</span>
-            <h3>No active slip</h3>
-            <p>Build a new analyzed slip to see it here.</p>
-            <button data-go="build">Build a slip</button>
-          </div>
-          <div id="slip-content" class="hidden">
-            <div class="slip-summary">
-              <div><span>COMBINED ODDS</span><strong id="combined-odds">—</strong></div>
-              <div><span>AVG. AI SCORE</span><strong id="average-confidence">—</strong></div>
-            </div>
-            <div class="pick-list" id="pick-list"></div>
-            <div class="sticky-action">
-              <p>Live markets are refreshed before creating a code.</p>
-              <button class="primary" id="generate-code">
-                <span>Generate SportyBet code</span><b>→</b>
-              </button>
-            </div>
-          </div>
+          <div class="section-title"><p class="eyebrow">ACTIVE SLIP</p><h2>Your picks.</h2></div>
+          <div id="empty-slip" class="empty-state"><span>◎</span><h3>No active slip</h3><p>Build a new analyzed slip to see it here.</p><button data-go="build">Build a slip</button></div>
+          <div id="slip-content" class="hidden"><div class="slip-summary"><div><span>COMBINED ODDS</span><strong id="combined-odds">—</strong></div><div><span>AVG. AI SCORE</span><strong id="average-confidence">—</strong></div></div><div class="pick-list" id="pick-list"></div><div class="sticky-action"><p>Live markets are refreshed before creating a code.</p><button class="primary" id="generate-code"><span>Generate SportyBet code</span><b>→</b></button></div></div>
           <div class="result-panel hidden" id="code-result"></div>
         </section>
       </main>
-
-      <nav class="bottom-nav" aria-label="Mini app navigation">
-        <button class="active" id="build-tab" data-view="build"><span>＋</span>Build</button>
-        <button id="analyze-tab" data-view="analyze"><span>⌕</span>Analyze</button>
-        <button id="slip-tab" data-view="slip">
-          <span>▤</span>My slip <i id="slip-count">0</i>
-        </button>
-      </nav>
+      <nav class="bottom-nav" aria-label="Mini app navigation"><button class="active" id="build-tab" data-view="build"><span>＋</span>Build</button><button id="analyze-tab" data-view="analyze"><span>⌕</span>Analyze</button><button id="slip-tab" data-view="slip"><span>▤</span>My slip <i id="slip-count">0</i></button></nav>
     </div>
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="/app/app.js?v=3.0.1"></script>
+    <script type="module" src="/app/app.js?v=3.0.2"></script>
+    <script type="module" src="/app/miniapp-controls.js?v=3.0.2"></script>
   </body>
 </html>
