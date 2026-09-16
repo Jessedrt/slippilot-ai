@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#07110f" />
     <meta name="description" content="Build, analyze and prepare supported sports slips in AUREX." />
     <link rel="icon" href="/favicon.svg" />
-    <link rel="stylesheet" href="/app/app.css?v=3.0.2" />
+    <link rel="stylesheet" href="/app/app.css?v=3.0.3" />
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <title>AUREX Mini App</title>
   </head>
@@ -44,8 +44,8 @@
                 <button type="button" data-count="10">10</button>
                 <button type="button" id="custom-count-button" data-count="5" aria-controls="custom-count">Custom</button>
               </div>
-              <label class="custom-count-field" for="custom-count"><span>Custom number of games (1–15)</span><input id="custom-count" name="customCount" type="number" min="1" max="15" step="1" inputmode="numeric" autocomplete="off" placeholder="e.g. 8" /></label>
-              <p class="field-help" id="game-count-help">Choose a preset or enter your own game count. The app can include fewer matches if markets are unavailable.</p>
+              <label class="custom-count-field" for="custom-count"><span>Custom number of games</span><input id="custom-count" name="customCount" type="number" min="1" step="1" inputmode="numeric" autocomplete="off" placeholder="e.g. 20" /></label>
+              <p class="field-help" id="game-count-help">Today only (Lagos time). If fewer eligible games exist, AUREX will return only those available.</p>
             </fieldset>
             <div class="form-row">
               <label class="field"><span>Target odds <small>no maximum</small></span><input id="target-odds" name="targetOdds" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 20 or 150" aria-describedby="target-odds-help" /><small class="field-help" id="target-odds-help">Optional. Enter decimal odds, e.g. 2, 20 or 150.</small></label>
@@ -75,7 +75,7 @@
       <nav class="bottom-nav" aria-label="Mini app navigation"><button class="active" id="build-tab" data-view="build"><span>＋</span>Build</button><button id="analyze-tab" data-view="analyze"><span>⌕</span>Analyze</button><button id="slip-tab" data-view="slip"><span>▤</span>My slip <i id="slip-count">0</i></button></nav>
     </div>
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="/app/app.js?v=3.0.2"></script>
-    <script type="module" src="/app/miniapp-controls.js?v=3.0.2"></script>
+    <script type="module" src="/app/app.js?v=3.0.3"></script>
+    <script type="module" src="/app/miniapp-controls.js?v=3.0.3"></script>
   </body>
 </html>

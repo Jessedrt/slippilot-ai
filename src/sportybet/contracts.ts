@@ -3,6 +3,7 @@ import type { NormalizedMarket, Sport } from '../types/domain.js';
 export interface SportyBetEvent {
   providerEventId: string;
   displayEventId?: string;
+  league?: string;
   homeTeam: string;
   awayTeam: string;
   startsAt: Date;
