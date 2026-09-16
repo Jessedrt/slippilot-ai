@@ -1,6 +1,6 @@
 import { Telegraf } from 'telegraf';
 import { createBot as createLegacyBot } from './create-bot-legacy.js';
-import { automaticLegCount, oddsDiscoveryText } from '../slips/odds-target.js';
+import { oddsDiscoveryText } from '../slips/odds-target.js';
 import type { Sport } from '../types/domain.js';
 
 export { automaticLegCount as automaticGameCount } from '../slips/odds-target.js';
@@ -11,7 +11,7 @@ const BARE_ODDS = /^\s*(\d+(?:[.,]\d+)?)\s*(?:odds?)?\s*$/i;
 const DISCOVERY = /^(?:give me|find|build|i want|football|basketball|games?|matches?|picks?|today|\d+(?:[.,]\d+)?\s*odds\b)/i;
 const EDIT = /\b(?:change|replace|remove|split|reduce|increase|edit|analy[sz]e|booking code|read code)\b/i;
 
-/** Odds-first front door; existing slip analysis, booking, research and edits remain in the legacy handlers. */
+/** Odds-first entry point; existing slip analysis, booking, research and editing handlers are retained. */
 export function createBot(...args: Parameters<typeof createLegacyBot>): ReturnType<typeof createLegacyBot> {
   const [deps] = args;
   const legacy = createLegacyBot(deps);
@@ -29,7 +29,6 @@ export function createBot(...args: Parameters<typeof createLegacyBot>): ReturnTy
     const menuSport = /^home:(football|basketball)$/.exec(data ?? '')?.[1];
     const oldCountButton = /^count:(?:\d+|custom)$/.test(data ?? '');
 
-    // Telegram commands, home-menu sport buttons and old count buttons now ask for ODDS.
     if (command || menuSport || oldCountButton) {
       if (data) await ctx.answerCbQuery();
       const sport: Sport = command === 'basketball' || menuSport === 'basketball'
@@ -39,9 +38,10 @@ export function createBot(...args: Parameters<typeof createLegacyBot>): ReturnTy
       const supplied = TARGET_ODDS.exec(text)?.[1];
       const targetOdds = supplied ? Number(supplied.replace(',', '.')) : undefined;
       if (targetOdds !== undefined && Number.isFinite(targetOdds) && targetOdds >= 1.01 && message) {
+        const riskMode = state.preferences.riskMode;
         const preferences = { ...state.preferences, oddsPrompt: undefined, oddsPromptAt: undefined };
         await deps.conversations.set(userId, { ...state, lastSport: sport, preferences });
-        message.text = oddsDiscoveryText(sport, targetOdds, preferences.riskMode);
+        message.text = oddsDiscoveryText(sport, targetOdds, riskMode);
         return next();
       }
       await deps.conversations.set(userId, {
@@ -79,10 +79,11 @@ export function createBot(...args: Parameters<typeof createLegacyBot>): ReturnTy
       }
       const sport: Sport = /basketball|nba|wnba|euroleague/i.test(text) ? 'basketball'
         : /football|soccer/i.test(text) ? 'football' : waiting ? pending : state.lastSport ?? 'football';
+      const riskMode = state.preferences.riskMode;
       const preferences = { ...state.preferences, oddsPrompt: undefined, oddsPromptAt: undefined };
       await deps.conversations.set(userId, { ...state, lastSport: sport, preferences });
-      // Supply the calculated leg count explicitly: the older parser's implicit default had a 12-leg cap.
-      message.text = oddsDiscoveryText(sport, targetOdds, preferences.riskMode);
+      // The older parser's automatic default was capped at twelve; supply the derived count explicitly.
+      message.text = oddsDiscoveryText(sport, targetOdds, riskMode);
       return next();
     }
     if (waiting) {
@@ -107,6 +108,3 @@ export function createBot(...args: Parameters<typeof createLegacyBot>): ReturnTy
   bot.catch((error) => deps.logger.error({ err: error }, 'AUREX Telegram handler failed'));
   return bot;
 }
-
-// Keep the module's public planning API available for existing consumers.
-void automaticLegCount;
