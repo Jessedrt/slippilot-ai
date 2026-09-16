@@ -15,9 +15,9 @@ export const intentSchema = z.object({
     'unknown',
   ]),
   sport: z.enum(['football', 'basketball']).optional(),
-  gameCount: z.number().int().min(1).max(30).optional(),
-  minimumGameCount: z.number().int().min(1).max(30).optional(),
-  maximumGameCount: z.number().int().min(1).max(30).optional(),
+  gameCount: z.number().int().positive().safe().optional(),
+  minimumGameCount: z.number().int().positive().safe().optional(),
+  maximumGameCount: z.number().int().positive().safe().optional(),
   targetOdds: z.number().finite().min(1.01).optional(),
   minimumOdds: z.number().min(1.01).optional(),
   maximumOdds: z.number().min(1.01).optional(),
@@ -49,4 +49,3 @@ export type ParsedIntent = z.infer<typeof intentSchema>;
 export interface StructuredIntentProvider {
   parse(text: string): Promise<unknown>;
 }
-
