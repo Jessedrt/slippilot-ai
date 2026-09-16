@@ -41,8 +41,8 @@ afterEach(() => vi.useRealTimers());
 
 describe('Lagos today-only selection policy', () => {
   it('uses the Lagos calendar day rather than a rolling 24-hour window', () => {
-    expect(lagosCalendarDay(new Date('2026-09-16T22:30:00Z'))).not.toBe(
-      lagosCalendarDay(new Date('2026-09-17T00:30:00Z')),
+    expect(lagosCalendarDay(new Date('2026-09-16T21:30:00Z'))).not.toBe(
+      lagosCalendarDay(new Date('2026-09-16T23:30:00Z')),
     );
   });
 
