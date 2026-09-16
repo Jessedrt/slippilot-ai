@@ -1,0 +1,1 @@
+Today-only requests must use Africa/Lagos calendar dates and never silently include future days. Allow as many distinct eligible games as the live provider returns, subject to actual provider limits and service safety; clearly report shortages rather than filling with tomorrow's matches.
