@@ -74,7 +74,9 @@ describe('You.com primary slip analysis', () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe('https://api.you.com/v1/research');
     const init = fetchMock.mock.calls[0]?.[1];
     expect(init?.headers).toMatchObject({ 'X-API-Key': 'test-key-do-not-log' });
-    const payload = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    const body = init?.body;
+    if (typeof body !== 'string') throw new Error('Expected JSON request body');
+    const payload = JSON.parse(body) as Record<string, unknown>;
     expect(payload.research_effort).toBe('standard');
     expect(payload.output_schema).toMatchObject({
       type: 'object',
