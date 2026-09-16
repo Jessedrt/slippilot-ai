@@ -46,8 +46,8 @@ export async function createServer(
       dependencies.sportyBet.health(),
     ]);
     return {
-      service: 'SlipPilot AI',
-      version: '2.0.0',
+      service: 'AUREX',
+      version: '3.0.0',
       status: 'ok',
       dependencies: { database, redis, sportsProvider, sportyBetProvider },
     };

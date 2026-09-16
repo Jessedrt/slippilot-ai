@@ -69,4 +69,4 @@ normal tests and CI.
 The interface was reachable from this development machine using the public browser request context.
 Vercel reachability has **not** been tested because no Vercel deployment is configured. Operators
 must run the smoke test from their actual deployment environment before enabling the provider.
-SportyBet may rate-limit or block data-center traffic; SlipPilot AI does not bypass those controls.
+SportyBet may rate-limit or block data-center traffic; AUREX does not bypass those controls.

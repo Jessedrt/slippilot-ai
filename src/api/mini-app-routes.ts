@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import type { SlipAnalyzer } from '../ai/slip-analyzer.js';
 import type { ScreenshotAnalyzer } from '../ai/screenshot-analyzer.js';
@@ -41,10 +41,71 @@ const selectionSchema = z.object({
 
 const codeSchema = z.object({
   selections: z.array(selectionSchema).min(1).max(15),
+  analysisToken: z.string().min(20).max(4096),
   acceptOddsChange: z.boolean().optional(),
 });
 
 type MiniSelection = z.infer<typeof selectionSchema>;
+
+const ANALYSIS_TOKEN_TTL_MS = 30 * 60 * 1000;
+
+interface AnalysisTokenPayload {
+  expiresAt: number;
+  session: string;
+  selections: string[];
+}
+
+function selectionKey(selection: MiniSelection): string {
+  return `${selection.eventId}\u0000${selection.marketId}\u0000${selection.selectionId}`;
+}
+
+function sessionKey(initData: string): string {
+  return createHash('sha256').update(initData).digest('base64url');
+}
+
+function signAnalysisToken(
+  selections: MiniSelection[],
+  initData: string,
+  botToken: string,
+): string {
+  const payload = Buffer.from(
+    JSON.stringify({
+      expiresAt: Date.now() + ANALYSIS_TOKEN_TTL_MS,
+      session: sessionKey(initData),
+      selections: selections.map(selectionKey),
+    } satisfies AnalysisTokenPayload),
+  ).toString('base64url');
+  const signature = createHmac('sha256', botToken)
+    .update(`aurex-miniapp-analysis-v1.${payload}`)
+    .digest('base64url');
+  return `${payload}.${signature}`;
+}
+
+function verifyAnalysisToken(
+  token: string,
+  selections: MiniSelection[],
+  initData: string,
+  botToken: string,
+): boolean {
+  const [payload, suppliedSignature, extra] = token.split('.');
+  if (!payload || !suppliedSignature || extra) return false;
+  const expectedSignature = createHmac('sha256', botToken)
+    .update(`aurex-miniapp-analysis-v1.${payload}`)
+    .digest('base64url');
+  const supplied = Buffer.from(suppliedSignature);
+  const expected = Buffer.from(expectedSignature);
+  if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return false;
+  try {
+    const claim = JSON.parse(
+      Buffer.from(payload, 'base64url').toString('utf8'),
+    ) as AnalysisTokenPayload;
+    if (claim.expiresAt < Date.now() || claim.session !== sessionKey(initData)) return false;
+    const approved = new Set(claim.selections);
+    return selections.every((selection) => approved.has(selectionKey(selection)));
+  } catch {
+    return false;
+  }
+}
 
 function toCandidate(selection: MiniSelection): CandidateSelection {
   return {
@@ -72,7 +133,7 @@ function toCandidate(selection: MiniSelection): CandidateSelection {
     confidenceScore: selection.confidence,
     dataQuality: 'medium',
     riskLevel: selection.risk,
-    reasoning: ['AI-reviewed in the SlipPilot Mini App.'],
+    reasoning: ['AI-reviewed in the AUREX Mini App.'],
   };
 }
 
@@ -135,6 +196,7 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
       ];
     });
     if (!selections.length) return reply.conflict('AI rejected every available selection.');
+    const initData = request.headers['x-telegram-init-data'] as string;
     return {
       slipId: snapshot.slip.id,
       sport: input.sport,
@@ -146,16 +208,21 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
         selections.length,
       summary: analysis.summary,
       rejected: snapshot.slip.selections.length - selections.length,
+      analysisToken: signAnalysisToken(selections, initData, deps.telegramBotToken!),
     };
   });
 
   app.post('/api/miniapp/code', async (request, reply) => {
     const input = codeSchema.parse(request.body);
-    const candidates = input.selections.map(toCandidate);
-    const analysis = await deps.slipAnalyzer.analyze(candidates);
-    if (analysis.selections.some((selection) => selection.verdict === 'reject')) {
-      return reply.conflict('AI rejected one or more selections. Rebuild the slip before booking.');
+    const initData = request.headers['x-telegram-init-data'] as string;
+    if (
+      !verifyAnalysisToken(input.analysisToken, input.selections, initData, deps.telegramBotToken!)
+    ) {
+      return reply.unauthorized(
+        'Your AI analysis expired. Rebuild the slip before creating a code.',
+      );
     }
+    const candidates = input.selections.map(toCandidate);
     const preparation = await new SportyBetSlipBuilder(deps.sportyBet).prepare(candidates);
     if (preparation.status === 'unavailable') {
       return reply.conflict(`Market unavailable: ${preparation.reason}`);

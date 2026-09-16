@@ -119,7 +119,7 @@ export type AppConfig = z.infer<typeof envSchema>;
 export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = envSchema.safeParse(source);
   if (!parsed.success) {
-    throw new Error(`Invalid SlipPilot AI configuration: ${z.prettifyError(parsed.error)}`);
+    throw new Error(`Invalid AUREX configuration: ${z.prettifyError(parsed.error)}`);
   }
   return parsed.data;
 }

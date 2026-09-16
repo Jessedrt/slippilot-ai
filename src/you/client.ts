@@ -111,7 +111,7 @@ export class YouClient {
     } catch (error) {
       this.options.logger?.warn(
         { err: error, operation },
-        'SlipPilot AI You.com cache read failed',
+        'AUREX You.com cache read failed',
       );
     }
     const result = parse(await this.request(url, body));
@@ -124,7 +124,7 @@ export class YouClient {
     } catch (error) {
       this.options.logger?.warn(
         { err: error, operation },
-        'SlipPilot AI You.com cache write failed',
+        'AUREX You.com cache write failed',
       );
     }
     return result;

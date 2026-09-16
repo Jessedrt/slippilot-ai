@@ -3,7 +3,7 @@ import type { AppConfig } from '../config/env.js';
 
 export function createLogger(config: Pick<AppConfig, 'LOG_LEVEL' | 'NODE_ENV'>) {
   return pino({
-    name: 'SlipPilot AI',
+    name: 'AUREX',
     level: config.LOG_LEVEL,
     base: { service: 'slippilot-ai', environment: config.NODE_ENV },
     redact: {

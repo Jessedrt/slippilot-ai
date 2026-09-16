@@ -8,7 +8,7 @@ Verified against the official You.com documentation on 15 September 2026:
 - Research: `POST https://api.you.com/v1/research`
 - Authentication: `X-API-Key`
 
-All four operations are non-mutating, idempotent research requests. SlipPilot AI validates their
+All four operations are non-mutating, idempotent research requests. AUREX validates their
 current documented response shapes with Zod, applies a timeout and conservative concurrency limit,
 honors `Retry-After`, and retries only timeouts, HTTP 429, and HTTP 5xx responses. The API key is never
 placed in URLs, cache keys, response objects, or log metadata.

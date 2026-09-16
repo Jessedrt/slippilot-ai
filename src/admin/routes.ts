@@ -30,7 +30,7 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminDependencie
       deps.sportyBet.health(),
     ]);
     return {
-      service: 'SlipPilot AI',
+      service: 'AUREX',
       metrics: deps.metrics.snapshot(),
       health: { database, redis, sportsProvider: sports, sportyBetProvider: sportyBet },
       subscriptions: { free: 0, pro: 0 },

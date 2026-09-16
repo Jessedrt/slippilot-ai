@@ -1,14 +1,16 @@
-export const START_MESSAGE = `⚡ SlipPilot 2.0
+export const START_MESSAGE = `AUREX V3 · PRIVATE SPORTS INTELLIGENCE
 
-Build in the Mini App or chat naturally here. Every slip is checked by AI before a booking code is offered.
+Live markets. AI-reviewed selections. Precision slip editing.
+
+Open the private desk below or tell me exactly what you want.
 
 Predictions are estimates—not guarantees.`;
 
-export const HELP_MESSAGE = `🧭 SlipPilot AI Help
+export const HELP_MESSAGE = `AUREX · CONCIERGE
 
 Talk naturally or use commands:
 /menu — open the dashboard
-/app — open the SlipPilot Mini App
+/app — open the AUREX Mini App
 /today — today's fixtures
 /football — football analysis
 /basketball — basketball analysis
@@ -24,7 +26,7 @@ Talk naturally or use commands:
 /pricing — Free and Pro plans
 /clear — clear conversation context
 
-Predictions are estimates, never guarantees. SlipPilot AI never places wagers.`;
+Predictions are estimates, never guarantees. AUREX never places wagers.`;
 
 export const EXAMPLES_MESSAGE = `✨ Try saying:
 

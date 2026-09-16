@@ -549,7 +549,7 @@ legend,
   }
 }
 
-/* SlipPilot 2.0 — restrained liquid-glass layer */
+/* AUREX V3 — restrained liquid-glass layer */
 :root {
   --glass: rgba(18, 36, 31, 0.58);
   --glass-strong: rgba(18, 37, 32, 0.82);
@@ -730,4 +730,101 @@ body {
     -webkit-backdrop-filter: none;
   }
 }
-
+/* AUREX motion polish — lively without changing the neon-green visual system */
+.logo span {
+  overflow: hidden;
+  border: 1px solid rgba(200, 255, 69, 0.34);
+  background: #07110f;
+  box-shadow:
+    0 0 0 1px rgba(200, 255, 69, 0.08),
+    0 8px 26px rgba(171, 245, 42, 0.2);
+  animation: logo-breathe 3.2s ease-in-out infinite;
+}
+.logo span img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.live-pill i {
+  animation: live-pulse 1.8s ease-out infinite;
+}
+.builder-card,
+.tool-card,
+.pick-row,
+.slip-summary {
+  transition:
+    transform 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease;
+}
+.builder-card:hover,
+.tool-card:hover,
+.pick-row:hover,
+.slip-summary:hover {
+  transform: translateY(-2px);
+  border-color: rgba(200, 255, 69, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 22px 55px rgba(0, 0, 0, 0.24);
+}
+.primary {
+  position: relative;
+  overflow: hidden;
+}
+.primary::after {
+  content: '';
+  position: absolute;
+  inset: -100% auto -100% -35%;
+  width: 24%;
+  background: rgba(255, 255, 255, 0.35);
+  transform: rotate(18deg);
+  animation: button-sheen 4.6s ease-in-out infinite;
+}
+.bottom-nav button.active {
+  box-shadow: inset 0 0 24px rgba(200, 255, 69, 0.08);
+}
+@keyframes logo-breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(200, 255, 69, 0.08),
+      0 8px 26px rgba(171, 245, 42, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(200, 255, 69, 0.2),
+      0 8px 34px rgba(171, 245, 42, 0.3);
+  }
+}
+@keyframes live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(200, 255, 69, 0.5);
+  }
+  75%,
+  100% {
+    box-shadow: 0 0 0 8px rgba(200, 255, 69, 0);
+  }
+}
+@keyframes button-sheen {
+  0%,
+  68% {
+    left: -35%;
+  }
+  86%,
+  100% {
+    left: 125%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo span,
+  .live-pill i,
+  .primary::after {
+    animation: none;
+  }
+  .builder-card,
+  .tool-card,
+  .pick-row,
+  .slip-summary {
+    transition: none;
+  }
+}

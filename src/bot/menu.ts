@@ -1,8 +1,8 @@
 import { Markup } from 'telegraf';
 
 export const BOT_COMMANDS = [
-  { command: 'menu', description: 'Open the SlipPilot dashboard' },
-  { command: 'app', description: 'Open the SlipPilot Mini App' },
+  { command: 'menu', description: 'Open the AUREX private desk' },
+  { command: 'app', description: 'Open the AUREX intelligence app' },
   { command: 'today', description: 'Build a slip from today’s games' },
   { command: 'football', description: 'Find football selections' },
   { command: 'basketball', description: 'Find basketball selections' },
@@ -18,14 +18,14 @@ export const BOT_COMMANDS = [
 
 export const homeMenu = () =>
   Markup.inlineKeyboard([
-    [Markup.button.webApp('⚡ Open SlipPilot Mini App', 'https://slippilot-ai.vercel.app/app/')],
+    [Markup.button.webApp('◆ Open AUREX Intelligence Desk', 'https://slippilot-ai.vercel.app/app/')],
     [
       Markup.button.callback('⚽ Football', 'home:football'),
       Markup.button.callback('🏀 Basketball', 'home:basketball'),
     ],
     [
-      Markup.button.callback('🎟 My Slip', 'home:slip'),
-      Markup.button.callback('🛡 Risk', 'home:risk'),
+      Markup.button.callback('◈ My Portfolio', 'home:slip'),
+      Markup.button.callback('◇ Risk Profile', 'home:risk'),
     ],
   ]);
 

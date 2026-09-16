@@ -251,14 +251,14 @@ async function importBookingCode(
 
 export function createBot(deps: BotDependencies): Telegraf | null {
   if (!deps.config.TELEGRAM_BOT_TOKEN) {
-    deps.logger.warn('SlipPilot AI Telegram bot disabled: TELEGRAM_BOT_TOKEN is missing');
+    deps.logger.warn('AUREX Telegram bot disabled: TELEGRAM_BOT_TOKEN is missing');
     return null;
   }
   const bot = new Telegraf(deps.config.TELEGRAM_BOT_TOKEN);
   const parser = deps.intents ?? new IntentParser();
   const slipBuilder = new SportyBetSlipBuilder(deps.sportyBet);
   const xPostReader = new XPostReader();
-  let welcomePhoto = 'https://slippilot-ai.vercel.app/assets/welcome-banner.png';
+  let welcomePhoto = 'https://slippilot-ai.vercel.app/assets/aurex-welcome-neon.png';
   bot.start(async (ctx) => {
     try {
       const message = await ctx.replyWithPhoto(welcomePhoto, {
@@ -274,11 +274,11 @@ export function createBot(deps: BotDependencies): Telegraf | null {
   bot.command('menu', (ctx) => ctx.reply('⚡ What would you like to do?', homeMenu()));
   bot.command('app', (ctx) =>
     ctx.reply(
-      'Open SlipPilot 2.0 to build, edit, analyze, and prepare codes in one place.',
+      'Enter the AUREX intelligence desk to build, inspect, refine and prepare codes.',
       Markup.inlineKeyboard([
         [
           Markup.button.webApp(
-            '⚡ Open SlipPilot Mini App',
+            '◆ Open AUREX Intelligence Desk',
             'https://slippilot-ai.vercel.app/app/',
           ),
         ],
@@ -287,11 +287,11 @@ export function createBot(deps: BotDependencies): Telegraf | null {
   );
   bot.command('clear', async (ctx) => {
     await deps.conversations.clear(String(ctx.from.id));
-    await ctx.reply('🧹 SlipPilot AI context cleared.');
+    await ctx.reply('🧹 AUREX context cleared.');
   });
   bot.command('pricing', (ctx) =>
     ctx.reply(
-      `💎 SlipPilot AI Plans\n\nFree: ${plans.free.dailyAnalyses} analyses/day, slips up to ${plans.free.maximumSlipSize}.\n\nPro: higher limits, advanced statistics, screenshots, history and optimization.`,
+      `💎 AUREX Plans\n\nFree: ${plans.free.dailyAnalyses} analyses/day, slips up to ${plans.free.maximumSlipSize}.\n\nPro: higher limits, advanced statistics, screenshots, history and optimization.`,
     ),
   );
   bot.command('subscription', (ctx) =>
@@ -367,7 +367,7 @@ export function createBot(deps: BotDependencies): Telegraf | null {
   bot.command('history', (ctx) => ctx.reply('🕘 No saved history is available in this session.'));
   bot.action('home:menu', async (ctx) => {
     await ctx.answerCbQuery();
-    await ctx.reply('⚡ SlipPilot dashboard', homeMenu());
+    await ctx.reply('AUREX · PRIVATE INTELLIGENCE DESK', homeMenu());
   });
   for (const sport of ['football', 'basketball'] as const) {
     bot.action(`home:${sport}`, async (ctx) => {
@@ -1018,10 +1018,10 @@ export function createBot(deps: BotDependencies): Telegraf | null {
       .filter(Boolean)
       .join('\n');
     await ctx.reply(
-      `🧠 SlipPilot AI understood\n\n${summary || `Intent: ${intent.action}`}\n\nLive recommendations require configured sports and market providers. Predictions are never guaranteed.`,
+      `🧠 AUREX understood\n\n${summary || `Intent: ${intent.action}`}\n\nLive recommendations require configured sports and market providers. Predictions are never guaranteed.`,
     );
   });
-  bot.catch((error) => deps.logger.error({ err: error }, 'SlipPilot AI Telegram handler failed'));
+  bot.catch((error) => deps.logger.error({ err: error }, 'AUREX Telegram handler failed'));
   return bot;
 }
 

@@ -3,19 +3,19 @@ export const landingPage = `<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#07100f">
-  <meta name="description" content="SlipPilot AI helps you analyze football and basketball markets, edit slips, read screenshots and prepare supported SportyBet booking codes.">
+  <meta name="theme-color" content="#07110f">
+  <meta name="description" content="AUREX is premium AI sports intelligence for live market analysis, precision slip editing and supported SportyBet booking codes.">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preload" as="image" href="/assets/slippilot-stadium.png">
   <link rel="stylesheet" href="/styles.css">
-  <title>SlipPilot 2.0 — Analyze smarter. Build with confidence.</title>
+  <title>AUREX V3 — Sports intelligence, refined.</title>
 </head>
 <body>
   <header class="nav-shell">
     <nav class="nav" aria-label="Main navigation">
-      <a class="brand" href="#top" aria-label="SlipPilot AI home">
-        <span class="brand-mark" aria-hidden="true">SP</span>
-        <span>SLIPPILOT <b>2.0</b></span>
+      <a class="brand" href="#top" aria-label="AUREX home">
+        <span class="brand-mark" aria-hidden="true"><img src="/assets/aurex-mark-neon.png" alt=""></span>
+        <span>AUREX <b>V3</b></span>
       </a>
       <div class="nav-links">
         <a href="#features">Features</a>
@@ -31,9 +31,9 @@ export const landingPage = `<!doctype html>
       <div class="hero-glow"></div>
       <div class="wrap hero-grid">
         <div class="hero-copy">
-          <div class="eyebrow"><span></span> SlipPilot 2.0 · Football + Basketball</div>
-          <h1>Turn match ideas into <em>smarter slips.</em></h1>
-          <p>Build in the Telegram Mini App or chat naturally with the bot. Analyze live markets, read screenshots and X posts, refine weak picks and prepare supported SportyBet codes.</p>
+          <div class="eyebrow"><span></span> AUREX V3 · PRIVATE SPORTS INTELLIGENCE</div>
+          <h1>Precision behind <em>every selection.</em></h1>
+          <p>A refined intelligence desk for live markets, screenshots, public X posts and active slips—inside Telegram.</p>
           <div class="hero-actions">
             <a class="button button-primary" href="https://t.me/slippilotbot?start=website" target="_blank" rel="noreferrer">Launch Mini App <span>↗</span></a>
             <a class="text-link" href="#how">See how it works <span>↓</span></a>
@@ -45,10 +45,10 @@ export const landingPage = `<!doctype html>
           </div>
         </div>
 
-        <div class="product-stage" aria-label="Preview of a SlipPilot analysis">
+        <div class="product-stage" aria-label="Preview of an AUREX analysis">
           <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
           <div class="phone">
-            <div class="phone-top"><span>SlipPilot AI</span><span class="online">EXAMPLE PREVIEW</span></div>
+            <div class="phone-top"><span>AUREX</span><span class="online">EXAMPLE PREVIEW</span></div>
             <div class="chat">
               <div class="bubble user">Give me 4 football picks around 3 odds</div>
               <div class="thinking"><span></span><span></span><span></span> Analyzing live markets</div>
@@ -65,7 +65,7 @@ export const landingPage = `<!doctype html>
           <div class="confidence-card"><span>AI CONFIDENCE</span><strong>78%</strong><div><i></i></div><small>Balanced risk profile</small></div>
         </div>
       </div>
-      <div class="ticker" aria-label="SlipPilot capabilities">
+      <div class="ticker" aria-label="AUREX capabilities">
         <div><span>LIVE MARKET ANALYSIS</span><i>◆</i><span>SCREENSHOT READING</span><i>◆</i><span>TICKET EDITING</span><i>◆</i><span>SMART SPLITTING</span><i>◆</i><span>BOOKING CODES</span><i>◆</i><span>LIVE MARKET ANALYSIS</span></div>
       </div>
     </section>
@@ -84,7 +84,7 @@ export const landingPage = `<!doctype html>
         <div class="section-heading"><div><span class="kicker">01 / CAPABILITIES</span><h2>One assistant.<br><em>Your whole slip workflow.</em></h2></div><p>Go from an idea or screenshot to a structured, AI-reviewed slip without jumping between tools.</p></div>
         <div class="feature-grid">
           <article class="feature feature-wide"><span class="feature-number">01</span><div class="feature-icon">⌁</div><h3>Live market analysis</h3><p>Explore current football and basketball fixtures, compare markets and build toward your preferred game count or odds range.</p><div class="mini-chart"><i style="height:34%"></i><i style="height:55%"></i><i style="height:42%"></i><i style="height:80%"></i><i style="height:68%"></i><i style="height:94%"></i></div></article>
-          <article class="feature"><span class="feature-number">02</span><div class="feature-icon">▣</div><h3>Screenshot to slip</h3><p>Upload a slip, fixture list or prediction image. SlipPilot extracts the visible details and flags uncertainty.</p></article>
+          <article class="feature"><span class="feature-number">02</span><div class="feature-icon">▣</div><h3>Screenshot to slip</h3><p>Upload a slip, fixture list or prediction image. AUREX extracts the visible details and flags uncertainty.</p></article>
           <article class="feature"><span class="feature-number">03</span><div class="feature-icon">✦</div><h3>AI review before booking</h3><p>Selections are analyzed before a booking code is offered. Weak or unresolved picks are never silently invented.</p></article>
           <article class="feature"><span class="feature-number">04</span><div class="feature-icon">⇄</div><h3>Edit by conversation</h3><p>Say “remove the weakest two,” “make this safer,” or “keep only basketball.” Your active slip stays in context.</p></article>
           <article class="feature feature-accent"><span class="feature-number">05</span><div class="feature-icon">↗</div><h3>Smart split + codes</h3><p>Split large tickets by odds, confidence, risk, league and timing—then prepare a separate supported SportyBet code for each.</p><a href="https://t.me/slippilotbot" target="_blank" rel="noreferrer">Try it in Telegram →</a></article>
@@ -97,7 +97,7 @@ export const landingPage = `<!doctype html>
         <div class="section-heading"><div><span class="kicker">02 / HOW IT WORKS</span><h2>From message to<br><em>analyzed slip.</em></h2></div></div>
         <div class="steps">
           <article><span>1</span><div><b>TELL</b><h3>Describe what you want</h3><p>Ask for games, paste typed picks or upload a clear screenshot.</p></div></article>
-          <article><span>2</span><div><b>ANALYZE</b><h3>AI reviews every pick</h3><p>SlipPilot checks live market matches, confidence and risk before booking.</p></div></article>
+          <article><span>2</span><div><b>ANALYZE</b><h3>AI reviews every pick</h3><p>AUREX checks live market matches, confidence and risk before booking.</p></div></article>
           <article><span>3</span><div><b>REFINE</b><h3>Edit in plain language</h3><p>Remove, replace, optimize or split while the active slip stays remembered.</p></div></article>
           <article><span>4</span><div><b>PREPARE</b><h3>Create a supported code</h3><p>Refresh current odds and prepare your SportyBet code. No wager is submitted.</p></div></article>
         </div>
@@ -119,7 +119,7 @@ export const landingPage = `<!doctype html>
       <div class="wrap">
         <div class="section-heading"><div><span class="kicker">04 / ACCESS</span><h2>Start analyzing<br><em>inside Telegram.</em></h2></div><p>No new app to learn. Open the bot, choose a sport and start a conversation.</p></div>
         <div class="plan-grid">
-          <article><span>FREE</span><h3>Explore SlipPilot</h3><p>Core analysis and slip-building tools with sensible usage limits.</p><ul><li>Football + basketball</li><li>AI-reviewed selections</li><li>Slip editing and splitting</li><li>Supported booking codes</li></ul><a class="button button-outline" href="https://t.me/slippilotbot?start=free" target="_blank" rel="noreferrer">Start free <span>↗</span></a></article>
+          <article><span>MEMBER ACCESS</span><h3>Enter AUREX</h3><p>Core intelligence and slip-building tools with responsible usage controls.</p><ul><li>Football + basketball</li><li>AI-reviewed selections</li><li>Slip editing and splitting</li><li>Supported booking codes</li></ul><a class="button button-outline" href="https://t.me/slippilotbot?start=free" target="_blank" rel="noreferrer">Open AUREX <span>↗</span></a></article>
           <article class="pro"><div class="coming">COMING NEXT</div><span>PRO</span><h3>For regular analysis</h3><p>Higher limits, deeper research and advanced history features.</p><ul><li>Everything in Free</li><li>Higher analysis limits</li><li>Advanced statistics</li><li>Extended slip history</li></ul><span class="button button-muted">Join through Telegram soon</span></article>
         </div>
       </div>
@@ -127,8 +127,8 @@ export const landingPage = `<!doctype html>
 
     <section class="section faq">
       <div class="wrap faq-grid"><div><span class="kicker">05 / FAQ</span><h2>Know before<br><em>you build.</em></h2></div><div class="faq-list">
-        <details open><summary>Does SlipPilot guarantee winning selections?<span>+</span></summary><p>No. Predictions and confidence scores are estimates. Sports outcomes remain uncertain.</p></details>
-        <details><summary>Does SlipPilot place bets for me?<span>+</span></summary><p>No. It can prepare supported booking codes, but it never stakes money or submits a wager.</p></details>
+        <details open><summary>Does AUREX guarantee winning selections?<span>+</span></summary><p>No. Predictions and confidence scores are estimates. Sports outcomes remain uncertain.</p></details>
+        <details><summary>Does AUREX place bets for me?<span>+</span></summary><p>No. It can prepare supported booking codes, but it never stakes money or submits a wager.</p></details>
         <details><summary>Can it read my screenshots?<span>+</span></summary><p>Yes. Send a clear full-resolution screenshot. Uncertain details are marked instead of guessed.</p></details>
         <details><summary>Which bookmaker is currently supported?<span>+</span></summary><p>Live booking-code workflows currently support SportyBet. Additional providers will only be announced after they are verified.</p></details>
       </div></div>
@@ -137,7 +137,7 @@ export const landingPage = `<!doctype html>
     <section class="cta"><div class="wrap"><div><span class="kicker">READY WHEN YOU ARE</span><h2>Build your next slip<br><em>with more clarity.</em></h2></div><a class="button button-primary button-large" href="https://t.me/slippilotbot?start=website-cta" target="_blank" rel="noreferrer">Open @slippilotbot <span>↗</span></a></div></section>
   </main>
 
-  <footer><div class="wrap footer-grid"><a class="brand" href="#top"><span class="brand-mark">SP</span><span>SLIPPILOT <b>2.0</b></span></a><p>AI-assisted sports analysis. Use responsibly. 18+ only.</p><div><a href="#features">Features</a><a href="#how">How it works</a><a href="https://t.me/slippilotbot" target="_blank" rel="noreferrer">Telegram</a></div><small>© 2026 SlipPilot AI</small></div></footer>
+  <footer><div class="wrap footer-grid"><a class="brand" href="#top"><span class="brand-mark"><img src="/assets/aurex-mark-neon.png" alt=""></span><span>AUREX <b>V3</b></span></a><p>Sports intelligence, refined. Use responsibly. 18+ only.</p><div><a href="#features">Intelligence</a><a href="#how">Method</a><a href="https://t.me/slippilotbot" target="_blank" rel="noreferrer">Telegram</a></div><small>© 2026 AUREX</small></div></footer>
 </body>
 </html>`;
 
@@ -147,7 +147,7 @@ export const landingStyles = `
 @media(max-width:620px){:root{--wrap:min(100% - 28px,1180px)}.nav{height:68px}.button-small{font-size:0;width:44px;height:40px;padding:0}.button-small span{font-size:1rem}.hero-grid{padding-top:120px;gap:10px}.hero-copy>p{font-size:1rem}.hero-actions{align-items:stretch;flex-direction:column;gap:17px}.hero-actions .text-link{text-align:center}.trust-row{gap:10px 18px}.product-stage{height:530px;transform:scale(.9);margin:0 -20px}.phone{width:345px}.confidence-card{right:0}.section{padding:78px 0}.proof-grid{grid-template-columns:1fr 1fr}.proof-grid div:nth-child(3){display:none}.section-heading{display:block}.feature-grid,.plan-grid{grid-template-columns:1fr}.feature-wide{grid-column:auto}.feature{min-height:285px}.mini-chart{display:none}.steps{grid-template-columns:1fr}.steps article{min-height:auto;display:grid;grid-template-columns:50px 1fr;padding:27px 10px}.steps article>span{margin:0}.modes-grid{gap:35px}.mode-list article{grid-template-columns:30px 1fr}.mode-list article>b{display:none}.mode-list .active{transform:none}.plan-grid article{padding:30px 25px}.cta .wrap{display:block}.cta .button{margin-top:30px;width:100%}.footer-grid{grid-template-columns:1fr}.footer-grid>div{flex-wrap:wrap}h1{font-size:clamp(3.2rem,17vw,5rem)}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.button{transition:none}}
 
-/* SlipPilot 2.0 liquid-glass finish */
+/* AUREX V3 liquid-glass finish */
 body{background:radial-gradient(circle at 12% 8%,rgba(67,211,153,.13),transparent 34rem),radial-gradient(circle at 88% 28%,rgba(199,255,69,.09),transparent 32rem),var(--bg)}
 .nav-shell{position:fixed;top:14px;left:50%;right:auto;width:min(1180px,calc(100% - 28px));transform:translateX(-50%);border:1px solid rgba(255,255,255,.15);border-radius:22px;background:rgba(8,20,17,.62);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 18px 60px rgba(0,0,0,.24);backdrop-filter:blur(24px) saturate(145%);-webkit-backdrop-filter:blur(24px) saturate(145%)}
 .nav{width:100%;height:64px;padding:0 18px}.brand-mark{border:0;border-radius:10px;background:linear-gradient(145deg,#dfff89,var(--lime));color:#07100f;transform:none;box-shadow:0 8px 25px rgba(199,255,69,.18)}
@@ -158,5 +158,22 @@ body{background:radial-gradient(circle at 12% 8%,rgba(67,211,153,.13),transparen
 .plan-grid{gap:22px}.cta{margin:0 16px 16px;border:1px solid rgba(255,255,255,.15);border-radius:28px;background:linear-gradient(120deg,rgba(34,67,55,.82),rgba(12,29,24,.84));backdrop-filter:blur(22px)}
 @media(max-width:620px){.nav-shell{top:8px}.nav{height:58px}.hero-grid{padding-top:110px}.feature-grid{gap:10px}.cta{margin:0 8px 8px;border-radius:22px}}
 @media(prefers-reduced-transparency:reduce){.nav-shell,.phone,.confidence-card,.feature,.plan-grid article{background:#0d1c18;backdrop-filter:none;-webkit-backdrop-filter:none}}
+
+/* AUREX neon motion polish */
+.brand-mark{width:38px;height:38px;overflow:hidden;border:1px solid rgba(199,255,69,.28);background:#07100f;box-shadow:0 8px 28px rgba(166,240,45,.18);animation:brand-pulse 3.2s ease-in-out infinite}
+.brand-mark img{width:100%;height:100%;object-fit:cover}
+.hero-glow{animation:glow-drift 7s ease-in-out infinite alternate}
+.orbit{animation:orbit-spin 24s linear infinite}.orbit-two{animation-direction:reverse;animation-duration:32s}
+.thinking span{animation:typing-dot 1.2s ease-in-out infinite}.thinking span:nth-child(2){animation-delay:.16s}.thinking span:nth-child(3){animation-delay:.32s}
+.feature,.phone,.confidence-card{transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease}.feature:hover,.confidence-card:hover{transform:translateY(-4px);border-color:rgba(199,255,69,.28);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 30px 75px rgba(0,0,0,.3)}
+.button-primary{position:relative;overflow:hidden}.button-primary:after{content:"";position:absolute;inset:-100% auto -100% -30%;width:22%;background:rgba(255,255,255,.36);transform:rotate(18deg);animation:cta-sheen 4.8s ease-in-out infinite}
+.ticker div{animation:ticker-flow 26s linear infinite}
+@keyframes brand-pulse{0%,100%{box-shadow:0 8px 25px rgba(199,255,69,.13)}50%{box-shadow:0 8px 34px rgba(199,255,69,.3)}}
+@keyframes glow-drift{from{transform:translate3d(-18px,-8px,0) scale(.96)}to{transform:translate3d(28px,18px,0) scale(1.06)}}
+@keyframes orbit-spin{to{transform:rotate(360deg)}}
+@keyframes typing-dot{0%,100%{transform:translateY(0);opacity:.3}50%{transform:translateY(-4px);opacity:1}}
+@keyframes cta-sheen{0%,70%{left:-30%}88%,100%{left:125%}}
+@keyframes ticker-flow{to{transform:translateX(-25%)}}
+@media(prefers-reduced-motion:reduce){.brand-mark,.hero-glow,.orbit,.thinking span,.button-primary:after,.ticker div{animation:none}.feature,.phone,.confidence-card{transition:none}}
 `;
 

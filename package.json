@@ -1,7 +1,7 @@
 {
-  "name": "slippilot-ai",
-  "version": "2.0.0",
-  "description": "SlipPilot AI - intelligent Telegram assistant for sports analysis and supported SportyBet slip workflows.",
+  "name": "aurex-ai",
+  "version": "3.0.0",
+  "description": "AUREX — premium sports intelligence for Telegram and supported SportyBet slip workflows.",
   "private": true,
   "type": "module",
   "main": "dist/index.js",

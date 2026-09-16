@@ -1,15 +1,15 @@
-# SlipPilot AI
+# AUREX
 
 AI-powered Telegram assistant for football and basketball analysis, SportyBet market exploration,
 slip management, optimization, and supported booking-code preparation.
 
-> SlipPilot AI provides statistical decision support, not guaranteed predictions. It never places a
+> AUREX provides statistical decision support, not guaranteed predictions. It never places a
 > wager, moves bookmaker funds, or stores bookmaker passwords. Users remain responsible for every
 > bookmaker action. 18+ only; gamble responsibly.
 
 ## Overview
 
-SlipPilot AI is a modular Node.js service combining a conversational Telegram interface, REST health
+AUREX is a modular Node.js service combining a conversational Telegram interface, REST health
 and admin APIs, provider-neutral sports data, normalized betting markets, confidence scoring, slip
 optimization, screenshot extraction contracts, and a guarded SportyBet integration boundary.
 
@@ -134,13 +134,13 @@ Never commit `.env` or production credentials.
 ## Telegram setup with BotFather
 
 1. Open Telegram and message `@BotFather`.
-2. Run `/newbot`, choose **SlipPilot AI**, and request an available username such as
-   `@SlipPilotAI_bot` or `@SlipPilotBot`.
+2. Run `/newbot`, choose **AUREX**, and request an available username such as
+   `@AUREXAI_bot` or `@AUREXBot`.
 3. Put the returned token in `TELEGRAM_BOT_TOKEN` locally—never in source control.
 4. Configure these commands with `/setcommands`:
 
 ```text
-start - Start SlipPilot AI
+start - Start AUREX
 help - Show help
 today - Explore today's games
 football - Football analysis
@@ -182,7 +182,7 @@ handles common instructions when AI is unavailable. Vision providers should retu
 
 ## You.com sports research
 
-You.com is a separate freshness and citations layer, not SlipPilot AI's primary LLM or structured
+You.com is a separate freshness and citations layer, not AUREX's primary LLM or structured
 sports provider. It enriches injury, lineup, suspension, coaching, congestion, travel, availability,
 postponement, and major-news uncertainty. Results are source-ranked, deduplicated, conflict-aware,
 cached in Redis, and persisted as citation metadata without unnecessary page content. Failures do not
@@ -247,7 +247,7 @@ Copy `.env.example` to `.env`, set required secrets, then:
 docker compose up --build
 ```
 
-This starts **SlipPilot AI**, PostgreSQL, and Redis with persistent local volumes. For production, use
+This starts **AUREX**, PostgreSQL, and Redis with persistent local volumes. For production, use
 secret injection rather than an image-baked `.env`, managed databases, TLS, backups, and platform health
 checks.
 
@@ -272,7 +272,7 @@ typecheck, lint, tests, and production build. Every step fails the job on error.
 - Fastify limits request bodies, request duration, and request rate.
 - Provider implementations must add strict timeouts, response-size limits, retries with jitter, and
   circuit breakers appropriate to the provider.
-- SlipPilot AI stores no bookmaker password and cannot deposit, withdraw, or auto-submit wagers.
+- AUREX stores no bookmaker password and cannot deposit, withdraw, or auto-submit wagers.
 - Protect `/admin/metrics` with a strong secret and network-level access control.
 
 ## Troubleshooting
@@ -280,7 +280,7 @@ typecheck, lint, tests, and production build. Every step fails the job on error.
 - **Bot disabled:** set `TELEGRAM_BOT_TOKEN` and restart.
 - **PostgreSQL unavailable:** verify `DATABASE_URL`, network access, migrations, and TLS requirements.
 - **Redis unavailable:** verify `REDIS_URL`; live odds must never fall back to stale cache values.
-- **No fixtures:** configure a `SportsProvider`; SlipPilot AI intentionally does not invent matches.
+- **No fixtures:** configure a `SportsProvider`; AUREX intentionally does not invent matches.
 - **SportyBet unavailable:** the analyzed slip remains independent; add only a verified provider adapter.
 - **Prisma engine download blocked:** allow access to Prisma's official binary host during install/build.
 
@@ -288,7 +288,7 @@ typecheck, lint, tests, and production build. Every step fails the job on error.
 
 ### `GET /`
 
-Returns SlipPilot AI name, version, and service status.
+Returns AUREX name, version, and service status.
 
 ### `GET /health`
 

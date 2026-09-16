@@ -11,10 +11,17 @@ let slip = loadStoredSlip();
 
 function loadStoredSlip() {
   try {
-    const value = JSON.parse(localStorage.getItem('slippilot-active-slip') || 'null');
-    return value && Array.isArray(value.selections) ? value : null;
+    const value = JSON.parse(
+      localStorage.getItem('aurex-active-slip') ||
+        localStorage.getItem('slippilot-active-slip') ||
+        'null',
+    );
+    if (value && Array.isArray(value.selections) && value.analysisToken) return value;
+    localStorage.removeItem('slippilot-active-slip');
+    return null;
   } catch {
     localStorage.removeItem('slippilot-active-slip');
+    localStorage.removeItem('aurex-active-slip');
     return null;
   }
 }
@@ -72,7 +79,9 @@ async function api(path, body) {
 
 function saveSlip(nextSlip) {
   slip = nextSlip;
-  localStorage.setItem('slippilot-active-slip', JSON.stringify(slip));
+  if (slip) localStorage.setItem('aurex-active-slip', JSON.stringify(slip));
+  else localStorage.removeItem('aurex-active-slip');
+  localStorage.removeItem('slippilot-active-slip');
   $('#slip-count').textContent = slip?.selections?.length || 0;
 }
 
@@ -170,7 +179,10 @@ $('#generate-code').addEventListener('click', async () => {
   try {
     let result;
     try {
-      result = await api('/api/miniapp/code', { selections: slip.selections });
+      result = await api('/api/miniapp/code', {
+        selections: slip.selections,
+        analysisToken: slip.analysisToken,
+      });
     } catch (error) {
       if (error.status !== 409 || error.data?.status !== 'odds_changed') throw error;
       const accepted = window.confirm(
@@ -179,6 +191,7 @@ $('#generate-code').addEventListener('click', async () => {
       if (!accepted) return;
       result = await api('/api/miniapp/code', {
         selections: slip.selections,
+        analysisToken: slip.analysisToken,
         acceptOddsChange: true,
       });
     }

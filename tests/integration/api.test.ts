@@ -41,14 +41,14 @@ describe('API failure handling', () => {
     const response = await app.inject({ method: 'GET', url: '/health' });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
-      service: 'SlipPilot AI',
+      service: 'AUREX',
       status: 'ok',
       dependencies: { redis: { ok: false }, sportyBetProvider: { ok: false } },
     });
     const landing = await app.inject({ method: 'GET', url: '/' });
     expect(landing.statusCode).toBe(200);
     expect(landing.headers['content-type']).toContain('text/html');
-    expect(landing.body).toContain('Turn match ideas into');
+    expect(landing.body).toContain('Precision behind');
   });
 
   it('authenticates and processes Telegram webhook updates', async () => {

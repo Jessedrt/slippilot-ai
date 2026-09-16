@@ -116,10 +116,17 @@ export function createApplication() {
             { secret_token: config.TELEGRAM_WEBHOOK_SECRET },
           ),
           bot.telegram.setMyCommands([...BOT_COMMANDS]),
+          bot.telegram.setMyName('AUREX'),
+          bot.telegram.setMyDescription(
+            'Premium AI sports intelligence. Analyze live markets, refine slips and prepare supported booking codes.',
+          ),
+          bot.telegram.setMyShortDescription(
+            'Premium sports intelligence for smarter, AI-reviewed slips.',
+          ),
           bot.telegram.setChatMenuButton({
             menuButton: {
               type: 'web_app',
-              text: 'Open SlipPilot',
+              text: 'Open AUREX',
               web_app: { url: 'https://slippilot-ai.vercel.app/app/' },
             },
           }),
