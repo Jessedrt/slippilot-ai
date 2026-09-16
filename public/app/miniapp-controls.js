@@ -22,15 +22,22 @@ if (form && chips && customButton && customInput && oddsInput && buildError) {
   `;
   document.head.append(styles);
 
+  // The number of bookable games is determined by eligible SportyBet fixtures, not a UI cap.
+  customInput.removeAttribute('max');
+  customInput.placeholder = 'Number of games';
+  const countCaption = document.querySelector('.custom-count-field span');
+  if (countCaption) countCaption.textContent = 'Custom number of games';
+  const gameHelp = document.querySelector('#game-count-help');
+  if (gameHelp) gameHelp.textContent = 'Today only (Lagos time). If fewer eligible games exist, AUREX will return only those available.';
+
   const reportError = (message, input) => {
     buildError.textContent = message;
     buildError.classList.remove('hidden');
     input?.focus();
   };
-  const validCount = (value) => /^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 15;
+  const validCount = (value) => /^\d+$/.test(value) && Number.isSafeInteger(Number(value)) && Number(value) >= 1;
 
   customButton.addEventListener('click', () => {
-    // A custom chip starts at 5, then its data-count is updated from the numeric field.
     if (!customInput.value) customInput.value = customButton.dataset.count || '5';
     customInput.focus();
   });
@@ -51,7 +58,6 @@ if (form && chips && customButton && customInput && oddsInput && buildError) {
   });
 
   // iOS Safari's type=number with min=1.01 and step=.1 rejects integer odds such as 20.
-  // A decimal keyboard + explicit validation accepts integer and decimal targets alike.
   oddsInput.type = 'text';
   oddsInput.inputMode = 'decimal';
   oddsInput.removeAttribute('step');
@@ -69,7 +75,7 @@ if (form && chips && customButton && customInput && oddsInput && buildError) {
     if (chips.querySelector('#custom-count-button.selected') && !validCount(customInput.value.trim())) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      reportError('Enter a whole number of games from 1 to 15.', customInput);
+      reportError('Enter a positive whole number of games.', customInput);
     }
   }, true);
 }
