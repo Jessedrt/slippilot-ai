@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildLiveSlipSnapshot } from '../src/sportybet/discovery.js';
+import {
+  buildLiveSlipSnapshot,
+  isAllowedBasketballOverMarket,
+} from '../src/sportybet/discovery.js';
 import type { SportyBetProvider } from '../src/sportybet/contracts.js';
 
 const event = (id: string, hoursFromNow = 2) => ({
@@ -22,9 +25,9 @@ const provider: SportyBetProvider = {
         providerSelectionId: `pick-${eventId}`,
         eventId,
         sport: 'basketball',
-        category: 'Winner',
-        marketName: 'Winner (incl. overtime)',
-        selectionName: 'Home',
+        category: 'Total',
+        marketName: 'Over/Under (incl. overtime)',
+        selectionName: 'Over 165.5',
         odds: 1.5,
         status: 'active',
         lastUpdated: new Date(),
@@ -36,6 +39,18 @@ const provider: SportyBetProvider = {
 };
 
 describe('SportyBet live discovery', () => {
+  it('only allows requested basketball over-market families', () => {
+    const allowed = (marketName: string, selectionName = 'Over 84.5') =>
+      isAllowedBasketballOverMarket({ marketName, selectionName });
+    expect(allowed('1st half - total')).toBe(true);
+    expect(allowed('Over/Under (incl. overtime)', 'Over 169.5')).toBe(true);
+    expect(allowed('Home O/U (incl. overtime)', 'Over 85.5')).toBe(true);
+    expect(allowed('Away O/U (incl. overtime)', 'Over 83.5')).toBe(true);
+    expect(allowed('xth quarter - total')).toBe(false);
+    expect(allowed('2nd half - total')).toBe(false);
+    expect(allowed('Winner (incl. overtime)', 'Home')).toBe(false);
+    expect(allowed('Over/Under (incl. overtime)', 'Under 169.5')).toBe(false);
+  });
   it('stops fetching markets once the requested count is available', async () => {
     let calls = 0;
     await buildLiveSlipSnapshot(

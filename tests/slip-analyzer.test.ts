@@ -94,4 +94,49 @@ describe('GeminiSlipAnalyzer', () => {
       new GeminiSlipAnalyzer({ apiKey: 'secret', fetch: fetchMock }).analyze([selection]),
     ).rejects.toThrow('did not cover every selection');
   });
+
+  it('fails over to a secondary key when the primary key is rate limited', async () => {
+    const success = new Response(
+      JSON.stringify({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    summary: 'Reviewed.',
+                    selections: [
+                      {
+                        index: 1,
+                        confidence: 70,
+                        risk: 'lower',
+                        verdict: 'keep',
+                        reason: 'Supported over market.',
+                      },
+                    ],
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+      { status: 200 },
+    );
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response('', { status: 429 }))
+      .mockResolvedValueOnce(success);
+    await expect(
+      new GeminiSlipAnalyzer({
+        apiKey: 'primary',
+        apiKeys: ['secondary'],
+        fetch: fetchMock,
+      }).analyze([selection]),
+    ).resolves.toMatchObject({ summary: 'Reviewed.' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1]?.[1]?.headers).toMatchObject({
+      'x-goog-api-key': 'secondary',
+    });
+  });
 });

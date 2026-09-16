@@ -14,6 +14,21 @@ const riskLevel = (odds: number): RiskLevel => {
   return 'higher';
 };
 
+export function isAllowedBasketballOverMarket(
+  market: Pick<CandidateSelection, 'marketName' | 'selectionName'>,
+): boolean {
+  const name = market.marketName.trim().toLowerCase();
+  const selection = market.selectionName.trim().toLowerCase();
+  if (!/^over(?:\s|$)/.test(selection)) return false;
+  const fullTime = /^over\/under(?:\s*\(incl\. overtime\))?$/.test(name);
+  const firstHalf = /^1st half\s*-\s*(?:total|over\/under)$/.test(name);
+  const individual =
+    /^(?:home|away|competitor\s*[12])(?:\s+team)?\s+(?:o\/u|over\/under|total)(?:\s*\(incl\. overtime\))?$/.test(
+      name,
+    );
+  return fullTime || firstHalf || individual;
+}
+
 export async function buildLiveSlipSnapshot(
   provider: SportyBetProvider,
   sport: Sport,
@@ -22,7 +37,6 @@ export async function buildLiveSlipSnapshot(
   todayOnly = false,
 ): Promise<LiveSlipSnapshot> {
   const count = Math.max(1, Math.min(30, gameCount));
-  const desiredPerLeg = Math.max(1.05, Math.pow(targetOdds ?? 3, 1 / count));
   const now = new Date();
   const lagosDay = (date: Date) =>
     new Intl.DateTimeFormat('en-CA', {
@@ -40,6 +54,8 @@ export async function buildLiveSlipSnapshot(
         (!todayOnly || lagosDay(event.startsAt) === today),
     )
     .slice(0, Math.min(30, count * 3));
+  const availableLegs = Math.max(1, Math.min(count, events.length));
+  const desiredPerLeg = Math.max(1.05, Math.pow(targetOdds ?? 3, 1 / availableLegs));
 
   const candidates: CandidateSelection[] = [];
   for (let offset = 0; offset < events.length && candidates.length < count;) {
@@ -48,7 +64,11 @@ export async function buildLiveSlipSnapshot(
     const results = await Promise.allSettled(
       batch.map(async (event): Promise<CandidateSelection | null> => {
         const markets = (await provider.getMarkets(event.providerEventId)).filter(
-          (market) => market.status === 'active' && market.odds > 1.01 && market.sport === sport,
+          (market) =>
+            market.status === 'active' &&
+            market.odds > 1.01 &&
+            market.sport === sport &&
+            (sport !== 'basketball' || isAllowedBasketballOverMarket(market)),
         );
         const market = markets.sort(
           (left, right) =>
@@ -90,7 +110,7 @@ export async function buildLiveSlipSnapshot(
   if (selections.length === 0) {
     throw new Error(
       todayOnly
-        ? `No active scheduled ${sport} markets are available today.`
+        ? `No supported scheduled ${sport} markets are available today.`
         : `No active scheduled ${sport} markets are available.`,
     );
   }

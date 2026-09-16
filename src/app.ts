@@ -3,7 +3,6 @@ import { createServer } from './api/server.js';
 import { DisabledSlipAnalyzer, GeminiSlipAnalyzer } from './ai/slip-analyzer.js';
 import { DisabledScreenshotAnalyzer, GeminiScreenshotAnalyzer } from './ai/screenshot-analyzer.js';
 import { createBot } from './bot/create-bot.js';
-import { BOT_COMMANDS } from './bot/menu.js';
 import { loadConfig } from './config/env.js';
 import { PrismaConversationStore, PrismaDatabase } from './database/client.js';
 import { PrismaResearchSnapshotStore } from './research/store.js';
@@ -59,11 +58,15 @@ export function createApplication() {
         cacheTtlMs: config.SPORTYBET_CACHE_TTL_MS,
       })
     : new UnsupportedSportyBetProvider();
-  const aiKey = config.GEMINI_API_KEY ?? config.AI_API_KEY;
+  const aiKeys = [
+    ...new Set([config.GEMINI_API_KEY, config.AI_API_KEY].filter(Boolean)),
+  ] as string[];
+  const aiKey = aiKeys[0];
   const slipAnalyzer =
     config.AI_PROVIDER === 'gemini' && aiKey
       ? new GeminiSlipAnalyzer({
           apiKey: aiKey,
+          apiKeys: aiKeys.slice(1),
           ...(config.AI_MODEL ? { model: config.AI_MODEL } : {}),
         })
       : new DisabledSlipAnalyzer();
@@ -105,34 +108,8 @@ export function createApplication() {
       ...(config.TELEGRAM_BOT_TOKEN ? { telegramBotToken: config.TELEGRAM_BOT_TOKEN } : {}),
     },
   );
-  const webhookRegistrationPromise =
-    bot &&
-    config.TELEGRAM_WEBHOOK_SECRET &&
-    process.env.VERCEL_ENV === 'production' &&
-    process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? Promise.all([
-          bot.telegram.setWebhook(
-            `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}/api/telegram`,
-            { secret_token: config.TELEGRAM_WEBHOOK_SECRET },
-          ),
-          bot.telegram.setMyCommands([...BOT_COMMANDS]),
-          bot.telegram.setMyName('AUREX'),
-          bot.telegram.setMyDescription(
-            'Premium AI sports intelligence. Analyze live markets, refine slips and prepare supported booking codes.',
-          ),
-          bot.telegram.setMyShortDescription(
-            'Premium sports intelligence for smarter, AI-reviewed slips.',
-          ),
-          bot.telegram.setChatMenuButton({
-            menuButton: {
-              type: 'web_app',
-              text: 'Open AUREX',
-              web_app: { url: 'https://slippilot-ai.vercel.app/app/' },
-            },
-          }),
-        ]).then(([webhook]) => webhook)
-      : Promise.resolve(false);
+  // Telegram setup is persistent and must not run on every serverless cold start.
+  const webhookRegistrationPromise = Promise.resolve(false);
 
   return { appPromise, bot, cache, config, database, logger, webhookRegistrationPromise };
 }
-
