@@ -12,11 +12,15 @@ function event(id: number, sportId: string, league: string) {
   };
 }
 
+function requestUrl(input: RequestInfo | URL): URL {
+  return input instanceof URL ? input : new URL(typeof input === 'string' ? input : input.url);
+}
+
 describe('complete SportyBet fixture catalog', () => {
   it('paginates beyond 100 fixtures, retains real leagues, and deduplicates IDs', async () => {
     const requests: string[] = [];
     const request = vi.fn<typeof fetch>((input) => {
-      const url = new URL(String(input));
+      const url = requestUrl(input);
       requests.push(url.searchParams.get('pageNum') ?? '');
       const page = Number(url.searchParams.get('pageNum'));
       const events = page === 1
@@ -38,7 +42,7 @@ describe('complete SportyBet fixture catalog', () => {
   it("requests basketball's sport and market IDs independently", async () => {
     const urls: URL[] = [];
     const request = vi.fn<typeof fetch>((input) => {
-      const url = new URL(String(input));
+      const url = requestUrl(input);
       urls.push(url);
       return Promise.resolve(new Response(JSON.stringify({ bizCode: 10000, data: {
         totalNum: 1, tournaments: [{ events: [event(8, 'sr:sport:2', 'EuroLeague')] }],
@@ -53,7 +57,7 @@ describe('complete SportyBet fixture catalog', () => {
 
   it('fails closed if a later fixture page cannot be retrieved', async () => {
     const request = vi.fn<typeof fetch>((input) => {
-      const page = Number(new URL(String(input)).searchParams.get('pageNum'));
+      const page = Number(requestUrl(input).searchParams.get('pageNum'));
       return Promise.resolve(new Response(page === 1
         ? JSON.stringify({ bizCode: 10000, data: { totalNum: 150, tournaments: [{ events: [event(1, 'sr:sport:1', 'League A')] }] } })
         : JSON.stringify({ bizCode: 10000, data: { totalNum: 150, tournaments: [] } }),
