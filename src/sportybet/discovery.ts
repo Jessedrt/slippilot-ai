@@ -1,9 +1,18 @@
-import type { SportyBetProvider } from './contracts.js';
+import type { SportyBetProvider, SportyBetEvent } from './contracts.js';
 import type { CandidateSelection, NormalizedMarket, RiskLevel, SlipDraft, Sport } from '../types/domain.js';
 
 export interface LiveSlipSnapshot {
   slip: SlipDraft;
   combinedOdds: number;
+}
+
+/** A business-level absence, not an AI outage or unexpected server failure. */
+export class NoTodayMarketsError extends Error {
+  readonly statusCode = 404;
+  constructor(sport: Sport) {
+    super(`No supported ${sport} matches with active SportyBet markets remain today in Nigeria (WAT). No later-day games were included. Try another sport or check again tomorrow.`);
+    this.name = 'NoTodayMarketsError';
+  }
 }
 
 const rounded = (value: number, digits = 2) => Number(value.toFixed(digits));
@@ -14,8 +23,6 @@ const riskLevel = (odds: number): RiskLevel => {
   return 'higher';
 };
 
-// Kept for backwards compatibility with callers that explicitly request overs.
-// General basketball slip building deliberately does NOT use this restrictive filter.
 export function isAllowedBasketballOverMarket(
   market: Pick<CandidateSelection, 'marketName' | 'selectionName'>,
 ): boolean {
@@ -29,7 +36,6 @@ export function isAllowedBasketballOverMarket(
   return fullTime || firstHalf || individual;
 }
 
-/** Group equivalent market names into genuinely different market families. */
 export function marketFamily(market: Pick<NormalizedMarket, 'marketName' | 'category'>): string {
   const name = market.marketName.toLowerCase();
   const category = market.category.toLowerCase();
@@ -52,7 +58,6 @@ function selectionDirection(market: Pick<NormalizedMarket, 'selectionName'>): st
   return label.replace(/\d+(?:\.\d+)?/g, '#').trim();
 }
 
-/** Prefer prices near the target without mechanically repeating the same selection for every game. */
 export function chooseVariedMarket(
   markets: NormalizedMarket[],
   targetPerLeg: number,
@@ -71,7 +76,6 @@ export function chooseVariedMarket(
     const family = marketFamily(market);
     const direction = selectionDirection(market);
     const priceDifference = Math.abs(Math.log(market.odds / targetPerLeg));
-    // Variety is a tie-breaker, not a reason to take wildly different or unavailable odds.
     const familyPenalty = Math.min(0.6, (usedFamilies.get(family) ?? 0) * 0.27);
     const directionPenalty = Math.min(0.24, (usedDirections.get(direction) ?? 0) * 0.08);
     const exoticPenalty = family.startsWith('other:') ? 0.3 : 0;
@@ -81,7 +85,6 @@ export function chooseVariedMarket(
   return scored[0]?.market ?? null;
 }
 
-/** Africa/Lagos calendar day: do not interpret "today" as a rolling 24-hour window. */
 export function lagosCalendarDay(date: Date): string {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Africa/Lagos',
@@ -91,11 +94,33 @@ export function lagosCalendarDay(date: Date): string {
   }).format(date);
 }
 
-/**
- * Every general build is today-only until an explicit future-date feature exists.
- * The legacy todayOnly=false argument is retained for existing callers, but it must
- * not silently include tomorrow or later when the user simply asks for games.
- */
+/** Rotate real competitions so the first N fixtures do not all come from the supplier's first league. */
+export function interleaveLeagues(events: SportyBetEvent[]): SportyBetEvent[] {
+  const grouped = new Map<string, SportyBetEvent[]>();
+  for (const event of events) {
+    const league = event.league?.trim().toLowerCase() || 'unknown';
+    const group = grouped.get(league) ?? [];
+    group.push(event);
+    grouped.set(league, group);
+  }
+  const ordered = [...grouped.values()].sort((a, b) =>
+    (a[0]?.startsAt.getTime() ?? 0) - (b[0]?.startsAt.getTime() ?? 0),
+  );
+  const result: SportyBetEvent[] = [];
+  let remaining = events.length;
+  while (remaining > 0) {
+    for (const group of ordered) {
+      const next = group.shift();
+      if (next) {
+        result.push(next);
+        remaining -= 1;
+      }
+    }
+  }
+  return result;
+}
+
+/** All general discovery is restricted to today's Africa/Lagos calendar date. */
 export async function buildLiveSlipSnapshot(
   provider: SportyBetProvider,
   sport: Sport,
@@ -103,7 +128,6 @@ export async function buildLiveSlipSnapshot(
   targetOdds?: number,
   _todayOnly = true,
 ): Promise<LiveSlipSnapshot> {
-  // Preserve the legacy call signature; all discovery is deliberately restricted to today.
   void _todayOnly;
   if (!Number.isSafeInteger(gameCount) || gameCount < 1) {
     throw new Error('The number of games must be a positive whole number.');
@@ -121,16 +145,16 @@ export async function buildLiveSlipSnapshot(
       return true;
     })
     .sort((left, right) => left.startsAt.getTime() - right.startsAt.getTime());
+  const diverseEvents = interleaveLeagues(events);
   const availableLegs = Math.max(1, Math.min(count, events.length));
   const desiredPerLeg = Math.max(1.05, Math.pow(targetOdds ?? 3, 1 / availableLegs));
   const candidates: CandidateSelection[] = [];
   const usedFamilies = new Map<string, number>();
   const usedDirections = new Map<string, number>();
 
-  for (let offset = 0; offset < events.length && candidates.length < count;) {
-    const batch = events.slice(offset, offset + Math.min(4, count - candidates.length));
+  for (let offset = 0; offset < diverseEvents.length && candidates.length < count;) {
+    const batch = diverseEvents.slice(offset, offset + Math.min(4, count - candidates.length));
     offset += batch.length;
-    // Network requests are limited by the provider. Choose markets sequentially to retain diversity.
     const results = await Promise.allSettled(batch.map((event) => provider.getMarkets(event.providerEventId)));
     for (const [index, result] of results.entries()) {
       if (result.status !== 'fulfilled') continue;
@@ -150,7 +174,7 @@ export async function buildLiveSlipSnapshot(
           id: event.providerEventId,
           providerId: event.providerEventId,
           sport,
-          league: 'SportyBet',
+          league: event.league ?? 'Unknown competition',
           homeTeam: event.homeTeam,
           awayTeam: event.awayTeam,
           startsAt: event.startsAt,
@@ -169,9 +193,7 @@ export async function buildLiveSlipSnapshot(
     }
   }
   const selections = candidates.slice(0, count);
-  if (selections.length === 0) {
-    throw new Error(`No supported scheduled ${sport} markets remain for today in Lagos (WAT). Try fewer games or another sport; later dates were not included.`);
-  }
+  if (!selections.length) throw new NoTodayMarketsError(sport);
   const combinedOdds = rounded(selections.reduce((total, selection) => total * selection.odds, 1));
   return {
     combinedOdds,
