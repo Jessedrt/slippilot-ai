@@ -53,6 +53,14 @@ describe('intent parsing', () => {
     expect(automaticGameCount(25, 'balanced')).toBeGreaterThanOrEqual(2);
   });
 
+  it('recognizes a daily target-odds request', () => {
+    expect(deterministicParse('Daily 5 odds football')).toMatchObject({
+      action: 'discover',
+      sport: 'football',
+      targetOdds: 5,
+    });
+  });
+
   it('parses modification and split instructions', () => {
     expect(deterministicParse('Remove the weakest two')).toMatchObject({
       action: 'modify_slip',
@@ -91,4 +99,3 @@ describe('intent parsing', () => {
     });
   });
 });
-

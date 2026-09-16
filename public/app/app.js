@@ -7,6 +7,7 @@ tg?.setBackgroundColor?.('#07110f');
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 let gameCount = 5;
+let todayOnly = false;
 let slip = loadStoredSlip();
 
 function loadStoredSlip() {
@@ -133,12 +134,18 @@ $('#count-chips').addEventListener('click', (event) => {
   const button = event.target.closest('[data-count]');
   if (!button) return;
   gameCount = Number(button.dataset.count);
+  todayOnly = false;
   $$('#count-chips button').forEach((item) => item.classList.toggle('selected', item === button));
+});
+
+$('#target-odds').addEventListener('input', () => {
+  todayOnly = false;
 });
 
 $$('[data-preset-odds]').forEach((button) =>
   button.addEventListener('click', () => {
     gameCount = Number(button.dataset.presetGames);
+    todayOnly = true;
     $('#target-odds').value = button.dataset.presetOdds;
     $$('#count-chips button').forEach((item) =>
       item.classList.toggle('selected', Number(item.dataset.count) === gameCount),
@@ -162,6 +169,7 @@ $('#build-form').addEventListener('submit', async (event) => {
       sport: new FormData(event.currentTarget).get('sport'),
       gameCount,
       riskMode: $('#risk-mode').value,
+      todayOnly,
       ...(Number.isFinite(targetValue) && targetValue > 1 ? { targetOdds: targetValue } : {}),
     });
     saveSlip(result);

@@ -139,10 +139,17 @@ async function sendLiveSlip(
   gameCount: number,
   targetOdds: number | undefined,
   reply: (message: string, extra?: ReturnType<typeof Markup.inlineKeyboard>) => Promise<unknown>,
+  todayOnly = false,
 ): Promise<void> {
   try {
     await reply('⚡ Building and AI-checking your slip…');
-    const snapshot = await buildLiveSlipSnapshot(deps.sportyBet, sport, gameCount, targetOdds);
+    const snapshot = await buildLiveSlipSnapshot(
+      deps.sportyBet,
+      sport,
+      gameCount,
+      targetOdds,
+      todayOnly,
+    );
     const analysis = await deps.slipAnalyzer.analyze(snapshot.slip.selections);
     const analyzedSelections = snapshot.slip.selections.map((selection, index) => {
       const result = analysis.selections.find((item) => item.index === index + 1);
@@ -424,6 +431,7 @@ export function createBot(deps: BotDependencies): Telegraf | null {
       preset === 'daily5' ? 5 : 3,
       preset === 'daily5' ? 5 : 2,
       (message, extra) => ctx.reply(message, extra),
+      true,
     );
   });
   bot.action('home:slip', async (ctx) => {
@@ -919,6 +927,8 @@ export function createBot(deps: BotDependencies): Telegraf | null {
         intent.gameCount ??
         intent.minimumGameCount ??
         (intent.targetOdds ? automaticGameCount(intent.targetOdds, state.preferences.riskMode) : 3);
+      const todayOnly =
+        /\b(?:today|today's|daily)\b/i.test(text) || intent.date?.toLowerCase() === 'today';
       await sendLiveSlip(
         deps,
         userId,
@@ -927,6 +937,7 @@ export function createBot(deps: BotDependencies): Telegraf | null {
         gameCount,
         intent.targetOdds,
         (message, extra) => ctx.reply(message, extra),
+        todayOnly,
       );
       return;
     }

@@ -48,7 +48,7 @@ export function deterministicParse(input: string): ParsedIntent {
     text,
     /(?:around|about|near|close to|target|to)\s+(\d+(?:\.\d+)?)\s*(?:total\s+)?odds/i,
   );
-  const simpleOdds = matchNumber(text, /(?:give me|want)\s+(\d+(?:\.\d+)?)\s+odds/i);
+  const simpleOdds = matchNumber(text, /(?:give me|want|daily)\s+(\d+(?:\.\d+)?)\s+odds/i);
   const minimumConfidence = matchNumber(
     text,
     /(?:at least|above|minimum|min|below)\s+(\d+(?:\.\d+)?)\s*%?(?:\s+confidence)?/i,
@@ -93,7 +93,10 @@ export function deterministicParse(input: string): ParsedIntent {
     action = 'modify_slip';
   else if (/market|explore/.test(lower)) action = 'explore_markets';
   else if (/analy[sz]e/.test(lower)) action = 'analyze';
-  else if (/give me|find|build|games|matches|picks|selections/.test(lower)) action = 'discover';
+  else if (
+    /give me|find|build|games|matches|picks|selections|\bdaily\b|today'?s? odds/.test(lower)
+  )
+    action = 'discover';
 
   const operation = /replace/.test(lower)
     ? 'replace'

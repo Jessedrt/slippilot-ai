@@ -20,6 +20,7 @@ const buildSchema = z.object({
   sport: z.enum(['football', 'basketball']),
   gameCount: z.number().int().min(1).max(15),
   targetOdds: z.number().finite().min(1.01).optional(),
+  todayOnly: z.boolean().optional().default(false),
   riskMode: z.enum(['conservative', 'balanced', 'aggressive']).default('balanced'),
 });
 
@@ -171,6 +172,7 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
       input.sport,
       input.gameCount,
       input.targetOdds,
+      input.todayOnly,
     );
     const analysis = await deps.slipAnalyzer.analyze(snapshot.slip.selections);
     const selections = snapshot.slip.selections.flatMap((selection, index) => {
@@ -267,4 +269,3 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
     return deps.screenshotAnalyzer.analyze(bytes, input.mimeType);
   });
 }
-

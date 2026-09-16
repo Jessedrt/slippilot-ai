@@ -19,11 +19,26 @@ export async function buildLiveSlipSnapshot(
   sport: Sport,
   gameCount: number,
   targetOdds?: number,
+  todayOnly = false,
 ): Promise<LiveSlipSnapshot> {
   const count = Math.max(1, Math.min(30, gameCount));
   const desiredPerLeg = Math.max(1.05, Math.pow(targetOdds ?? 3, 1 / count));
+  const now = new Date();
+  const lagosDay = (date: Date) =>
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Africa/Lagos',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date);
+  const today = lagosDay(now);
   const events = (await provider.listEvents(sport))
-    .filter((event) => event.status === 'scheduled' && event.startsAt.getTime() > Date.now())
+    .filter(
+      (event) =>
+        event.status === 'scheduled' &&
+        event.startsAt.getTime() > now.getTime() &&
+        (!todayOnly || lagosDay(event.startsAt) === today),
+    )
     .slice(0, Math.min(30, count * 3));
 
   const candidates: CandidateSelection[] = [];
@@ -72,8 +87,13 @@ export async function buildLiveSlipSnapshot(
   const selections = candidates
     .filter((value): value is CandidateSelection => value !== null)
     .slice(0, count);
-  if (selections.length === 0)
-    throw new Error(`No active scheduled ${sport} markets are available.`);
+  if (selections.length === 0) {
+    throw new Error(
+      todayOnly
+        ? `No active scheduled ${sport} markets are available today.`
+        : `No active scheduled ${sport} markets are available.`,
+    );
+  }
   const combinedOdds = rounded(selections.reduce((total, selection) => total * selection.odds, 1));
   return {
     combinedOdds,
