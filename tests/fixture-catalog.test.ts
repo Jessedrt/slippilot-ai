@@ -35,7 +35,7 @@ describe('complete SportyBet fixture catalog', () => {
     expect(request).toHaveBeenCalledTimes(2);
   });
 
-  it('requests basketball's sport and market IDs independently', async () => {
+  it("requests basketball's sport and market IDs independently", async () => {
     const urls: URL[] = [];
     const request = vi.fn<typeof fetch>((input) => {
       const url = new URL(String(input));
@@ -51,7 +51,7 @@ describe('complete SportyBet fixture catalog', () => {
     expect(fixtures[0]?.league).toBe('EuroLeague');
   });
 
-  it('fails closed on an incomplete page rather than pretending no other leagues exist', async () => {
+  it('fails closed if a later fixture page cannot be retrieved', async () => {
     const request = vi.fn<typeof fetch>((input) => {
       const page = Number(new URL(String(input)).searchParams.get('pageNum'));
       return Promise.resolve(new Response(page === 1
@@ -60,7 +60,6 @@ describe('complete SportyBet fixture catalog', () => {
       { status: 200 }));
     });
     const catalog = new SportyBetFixtureCatalog({ fetch: request });
-    // A zero-event second page is the supplier's end-of-catalogue signal.
-    await expect(catalog.listEvents('football')).resolves.toHaveLength(1);
+    await expect(catalog.listEvents('football')).rejects.toThrow(/incomplete/i);
   });
 });
