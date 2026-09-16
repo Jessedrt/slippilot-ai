@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { SlipAnalyzer } from '../ai/slip-analyzer.js';
 import type { ScreenshotAnalyzer } from '../ai/screenshot-analyzer.js';
 import { SportyBetSlipBuilder } from '../booking/workflow.js';
+import { automaticLegCount } from '../slips/odds-target.js';
 import { buildLiveSlipSnapshot } from '../sportybet/discovery.js';
 import type { SportyBetProvider } from '../sportybet/contracts.js';
 import type { CandidateSelection } from '../types/domain.js';
@@ -18,10 +19,14 @@ export interface MiniAppDependencies {
 
 const buildSchema = z.object({
   sport: z.enum(['football', 'basketball']),
-  gameCount: z.number().int().positive().safe(),
+  // Legacy callers may send gameCount, but target odds always controls the count when supplied.
+  gameCount: z.number().int().positive().safe().optional(),
   targetOdds: z.number().finite().min(1.01).optional(),
   todayOnly: z.boolean().optional().default(true),
   riskMode: z.enum(['conservative', 'balanced', 'aggressive']).default('balanced'),
+}).refine((input) => input.targetOdds !== undefined || input.gameCount !== undefined, {
+  message: 'Enter target odds of at least 1.01.',
+  path: ['targetOdds'],
 });
 
 const selectionSchema = z.object({
@@ -168,12 +173,17 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
   });
   app.post('/api/miniapp/build', async (request, reply) => {
     const input = buildSchema.parse(request.body);
+    const plannedGames = input.targetOdds === undefined
+      ? input.gameCount!
+      : automaticLegCount(input.targetOdds, input.riskMode);
+    // Odds-first Mini App requests are exclusively for today's Lagos fixtures.
+    const todayOnly = input.targetOdds === undefined ? input.todayOnly : true;
     const snapshot = await buildLiveSlipSnapshot(
       deps.sportyBet,
       input.sport,
-      input.gameCount,
+      plannedGames,
       input.targetOdds,
-      input.todayOnly,
+      todayOnly,
     );
     const analysis = await deps.slipAnalyzer.analyze(snapshot.slip.selections);
     const selections = snapshot.slip.selections.flatMap((selection, index) => {
@@ -204,10 +214,11 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
       slipId: snapshot.slip.id,
       sport: input.sport,
       riskMode: input.riskMode,
-      requestedGames: input.gameCount,
+      targetOdds: input.targetOdds ?? null,
+      requestedGames: plannedGames,
       availableGames: selections.length,
-      shortfall: Math.max(0, input.gameCount - selections.length),
-      schedule: 'today (Africa/Lagos)',
+      shortfall: Math.max(0, plannedGames - selections.length),
+      schedule: todayOnly ? 'today (Africa/Lagos)' : 'upcoming',
       selections,
       combinedOdds: selections.reduce((total, selection) => total * selection.odds, 1),
       averageConfidence:
