@@ -45,6 +45,10 @@ describe('API failure handling', () => {
       status: 'ok',
       dependencies: { redis: { ok: false }, sportyBetProvider: { ok: false } },
     });
+    const landing = await app.inject({ method: 'GET', url: '/' });
+    expect(landing.statusCode).toBe(200);
+    expect(landing.headers['content-type']).toContain('text/html');
+    expect(landing.body).toContain('Turn match ideas into');
   });
 
   it('authenticates and processes Telegram webhook updates', async () => {
@@ -62,7 +66,12 @@ describe('API failure handling', () => {
       },
       {
         secret: 'test-webhook-secret',
-        bot: { handleUpdate: (update: unknown) => { updates.push(update); return Promise.resolve(); } },
+        bot: {
+          handleUpdate: (update: unknown) => {
+            updates.push(update);
+            return Promise.resolve();
+          },
+        },
       },
     );
     apps.push(app);
@@ -84,3 +93,4 @@ describe('API failure handling', () => {
     expect(updates).toEqual([{ update_id: 2 }]);
   });
 });
+

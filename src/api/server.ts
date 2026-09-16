@@ -6,6 +6,7 @@ import type { FastifyInstance } from 'fastify';
 import { registerAdminRoutes } from '../admin/routes.js';
 import type { AdminDependencies } from '../admin/routes.js';
 import type { Telegraf } from 'telegraf';
+import { landingPage, landingStyles } from '../web/landing-page.js';
 
 interface TelegramWebhook {
   bot: Pick<Telegraf, 'handleUpdate'>;
@@ -20,7 +21,13 @@ export async function createServer(
   const app = Fastify({ loggerInstance: logger, bodyLimit: 1_000_000, requestTimeout: 10_000 });
   await app.register(sensible);
   await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
-  app.get('/', () => ({ name: 'SlipPilot AI', status: 'ok', version: '1.0.0' }));
+  app.get('/', (_request, reply) => reply.type('text/html; charset=utf-8').send(landingPage));
+  app.get('/styles.css', (_request, reply) =>
+    reply
+      .header('cache-control', 'public, max-age=3600, stale-while-revalidate=86400')
+      .type('text/css; charset=utf-8')
+      .send(landingStyles),
+  );
   app.get('/health', async () => {
     const [database, redis, sportsProvider, sportyBetProvider] = await Promise.all([
       dependencies.database.health(),
@@ -45,3 +52,4 @@ export async function createServer(
   registerAdminRoutes(app as unknown as FastifyInstance, dependencies);
   return app;
 }
+

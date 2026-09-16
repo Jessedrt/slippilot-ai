@@ -3,8 +3,9 @@
   "framework": null,
   "installCommand": "npm ci --include=dev",
   "buildCommand": "npm run build",
-  "routes": [{ "src": "/.*", "dest": "/api" }],
+  "routes": [{ "handle": "filesystem" }, { "src": "/.*", "dest": "/api" }],
   "functions": {
     "api/index.ts": { "maxDuration": 30 }
   }
 }
+
