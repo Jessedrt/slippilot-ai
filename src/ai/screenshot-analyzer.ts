@@ -23,7 +23,7 @@ export class GeminiScreenshotAnalyzer implements ScreenshotAnalyzer {
   private readonly timeoutMs: number;
 
   constructor(private readonly options: GeminiScreenshotAnalyzerOptions) {
-    this.model = options.model ?? 'gemini-2.5-flash';
+    this.model = options.model ?? 'gemini-3.6-flash';
     this.fetch = options.fetch ?? globalThis.fetch;
     this.timeoutMs = options.timeoutMs ?? 30_000;
   }

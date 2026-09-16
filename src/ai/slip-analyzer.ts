@@ -6,7 +6,7 @@ const analysisSchema = z.object({
   selections: z.array(
     z.object({
       index: z.number().int().positive(),
-      confidence: z.number().min(1).max(99),
+      confidence: z.number().min(0).max(99),
       risk: z.enum(['lower', 'medium', 'higher']),
       verdict: z.enum(['keep', 'caution', 'reject']),
       reason: z.string().min(1).max(300),
@@ -36,7 +36,7 @@ export class GeminiSlipAnalyzer implements SlipAnalyzer {
   private readonly timeoutMs: number;
 
   constructor(private readonly options: GeminiSlipAnalyzerOptions) {
-    this.model = options.model ?? 'gemini-2.5-flash';
+    this.model = options.model ?? 'gemini-3.6-flash';
     this.fetch = options.fetch ?? globalThis.fetch;
     this.timeoutMs = options.timeoutMs ?? 25_000;
   }
@@ -89,7 +89,7 @@ export class GeminiSlipAnalyzer implements SlipAnalyzer {
                     type: 'OBJECT',
                     properties: {
                       index: { type: 'INTEGER' },
-                      confidence: { type: 'NUMBER' },
+                      confidence: { type: 'NUMBER', minimum: 0, maximum: 99 },
                       risk: { type: 'STRING', enum: ['lower', 'medium', 'higher'] },
                       verdict: { type: 'STRING', enum: ['keep', 'caution', 'reject'] },
                       reason: { type: 'STRING' },
