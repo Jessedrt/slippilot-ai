@@ -3,8 +3,7 @@ import type { CandidateSelection } from '../types/domain.js';
 import type { YouClient } from '../you/client.js';
 import type { SlipAnalysis, SlipAnalyzer } from './slip-analyzer.js';
 
-// You.com Research supports structured output with standard effort (not lite).
-// All properties must be required and objects must reject additional properties.
+// You.com Research structured output. Every property is required and unknown fields are rejected.
 const outputSchema = {
   type: 'object',
   additionalProperties: false,
@@ -34,13 +33,35 @@ const analysisSchema = z.object({
   selections: z.array(
     z.object({
       index: z.number().int().positive(),
-      confidence: z.number().min(0).max(99),
+      confidence: z.number().finite().min(0).max(100),
       risk: z.enum(['lower', 'medium', 'higher']),
       verdict: z.enum(['keep', 'caution', 'reject']),
       reason: z.string().min(1).max(300),
     }),
   ),
 });
+
+/**
+ * Research models sometimes return fractions (0.73) despite a 0–100 prompt.
+ * Never display 0.73 as 1/100. Detect a *consistent* fractional scale across
+ * the complete response; fail closed on mixed or indeterminate scales.
+ * Scores measure stated evidence quality, not outcome probability.
+ */
+export function normalizeResearchScores(values: number[]): number[] {
+  if (!values.length || values.some((value) => !Number.isFinite(value) || value < 0 || value > 100)) {
+    throw new Error('AI returned an invalid quality score. Rebuild the slip.');
+  }
+  const fractional = values.some((value) => value > 0 && value < 1);
+  const percentage = values.some((value) => value > 1);
+  if (fractional && percentage) {
+    throw new Error('AI returned mixed quality-score scales. Rebuild the slip.');
+  }
+  if (!fractional && !percentage && values.every((value) => value === 1)) {
+    throw new Error('AI returned an ambiguous quality-score scale. Rebuild the slip.');
+  }
+  const scale = fractional ? 100 : 1;
+  return values.map((value) => Math.min(75, Math.round(value * scale)));
+}
 
 export class YouSlipAnalyzer implements SlipAnalyzer {
   constructor(private readonly client: Pick<YouClient, 'structuredResearch'>) {}
@@ -63,7 +84,8 @@ export class YouSlipAnalyzer implements SlipAnalyzer {
         'Return EXACTLY one selection per input index, in the same order, using the required JSON schema.',
         'Only use the provided fixtures, kickoff times, markets, selections and odds, plus independently sourced and directly relevant recent facts if available.',
         'Do not invent injuries, lineups, results, probabilities, or certainty. If a claim cannot be verified, do not assert it.',
-        'The confidence field is an approximate evidence/market-quality indicator, NOT an estimated probability of winning; use conservative values when structured team statistics are missing.',
+        'IMPORTANT: confidence MUST be a number on a 0 to 100 scale, e.g. 65 (NOT 0.65), representing evidence/market quality, NOT the probability of winning. Do not use percentages in the number itself.',
+        'Use conservative evidence-quality scores when structured team statistics are missing. The score is not a betting prediction or a success rate.',
         'Mark ambiguous, inconsistent, inactive, unusual or high-odds selections caution or reject. Be explicit about missing evidence.',
         'Do not claim that any outcome is safe or guaranteed. Keep reasons concise and return only the structured schema.',
         JSON.stringify(input),
@@ -80,12 +102,13 @@ export class YouSlipAnalyzer implements SlipAnalyzer {
     ) {
       throw new Error('You.com analysis did not cover every selection exactly once.');
     }
+    const scores = normalizeResearchScores(parsed.selections.map((item) => item.confidence));
     return {
       ...parsed,
-      selections: parsed.selections.map((item) => ({
+      selections: parsed.selections.map((item, index) => ({
         ...item,
-        // Numbers are quality labels, not calibrated win probabilities.
-        confidence: Math.min(item.confidence, 75),
+        // These are bounded, normalized evidence-quality labels, not calibrated win probabilities.
+        confidence: scores[index]!,
       })),
       model: 'you-research-standard',
       analyzedAt: new Date().toISOString(),
