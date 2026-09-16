@@ -4,7 +4,8 @@ import { IntentParser } from '../ai/intent-parser.js';
 import type { AppConfig } from '../config/env.js';
 import type { ConversationState, ConversationStore } from '../services/conversation-store.js';
 import { plans } from '../subscriptions/plans.js';
-import { HELP_MESSAGE, START_MESSAGE } from './messages.js';
+import { EXAMPLES_MESSAGE, HELP_MESSAGE, START_MESSAGE } from './messages.js';
+import { homeMenu, riskMenu } from './menu.js';
 import type { SportyBetProvider } from '../sportybet/contracts.js';
 import { SportyBetSlipBuilder } from '../booking/workflow.js';
 import type { SportsResearchService } from '../research/sports-research.js';
@@ -72,7 +73,17 @@ async function analyzeEditedSlip(
     .filter((item) => item.verdict !== 'reject')
     .map((item) => item.selection);
   if (!selections.length) throw new Error('AI rejected every remaining selection.');
-  const analyzedSlip = { ...slip, selections };
+  const preferredMode = state.preferences.riskMode;
+  const analyzedSlip = {
+    ...slip,
+    selections,
+    riskMode:
+      preferredMode === 'conservative' ||
+      preferredMode === 'balanced' ||
+      preferredMode === 'aggressive'
+        ? preferredMode
+        : slip.riskMode,
+  };
   await deps.conversations.set(userId, {
     ...state,
     currentSlip: analyzedSlip,
@@ -121,7 +132,17 @@ async function sendLiveSlip(
     if (approvedSelections.length === 0) {
       throw new Error('AI rejected every candidate selection.');
     }
-    const analyzedSlip = { ...snapshot.slip, selections: approvedSelections };
+    const preferredMode = state.preferences.riskMode;
+    const analyzedSlip = {
+      ...snapshot.slip,
+      selections: approvedSelections,
+      riskMode:
+        preferredMode === 'conservative' ||
+        preferredMode === 'balanced' ||
+        preferredMode === 'aggressive'
+          ? preferredMode
+          : snapshot.slip.riskMode,
+    };
     const combinedOdds = approvedSelections.reduce((total, selection) => total * selection.odds, 1);
     await deps.conversations.set(userId, {
       ...state,
@@ -161,8 +182,9 @@ export function createBot(deps: BotDependencies): Telegraf | null {
   const bot = new Telegraf(deps.config.TELEGRAM_BOT_TOKEN);
   const parser = deps.intents ?? new IntentParser();
   const slipBuilder = new SportyBetSlipBuilder(deps.sportyBet);
-  bot.start((ctx) => ctx.reply(START_MESSAGE));
-  bot.help((ctx) => ctx.reply(HELP_MESSAGE));
+  bot.start((ctx) => ctx.reply(START_MESSAGE, homeMenu()));
+  bot.help((ctx) => ctx.reply(HELP_MESSAGE, homeMenu()));
+  bot.command('menu', (ctx) => ctx.reply('⚡ What would you like to do?', homeMenu()));
   bot.command('clear', async (ctx) => {
     await deps.conversations.clear(String(ctx.from.id));
     await ctx.reply('🧹 SlipPilot AI context cleared.');
@@ -175,6 +197,37 @@ export function createBot(deps: BotDependencies): Telegraf | null {
   bot.command('subscription', (ctx) =>
     ctx.reply('📋 Current plan: Free\n\nUse /pricing to compare plans.'),
   );
+  bot.command('risk', (ctx) =>
+    ctx.reply('🛡 Choose how adventurous your selections should be:', riskMenu()),
+  );
+  bot.command('split', (ctx) =>
+    ctx.reply(
+      '✂️ How many slips?',
+      Markup.inlineKeyboard([
+        [
+          Markup.button.callback('Split into 2', 'quick:split:2'),
+          Markup.button.callback('Split into 3', 'quick:split:3'),
+        ],
+        [Markup.button.callback('‹ Back to Menu', 'home:menu')],
+      ]),
+    ),
+  );
+  bot.command('code', async (ctx) => {
+    const state = await deps.conversations.get(String(ctx.from.id));
+    const ready = Boolean(
+      state.currentSlip && state.currentSlipAnalysis?.slipId === state.currentSlip.id,
+    );
+    await ctx.reply(
+      ready
+        ? '✅ Your slip passed AI analysis. Tap below to refresh the odds and create its code.'
+        : 'Build or import a slip first. I require AI analysis before creating a booking code.',
+      ready
+        ? Markup.inlineKeyboard([
+            [Markup.button.callback('🎟 Generate SportyBet Code', 'sportybet:generate')],
+          ])
+        : homeMenu(),
+    );
+  });
   for (const command of ['today', 'football', 'basketball'] as const) {
     bot.command(command, async (ctx) => {
       const state = await deps.conversations.get(String(ctx.from.id));
@@ -210,6 +263,99 @@ export function createBot(deps: BotDependencies): Telegraf | null {
     );
   });
   bot.command('history', (ctx) => ctx.reply('🕘 No saved history is available in this session.'));
+  bot.action('home:menu', async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.reply('⚡ SlipPilot dashboard', homeMenu());
+  });
+  for (const sport of ['football', 'basketball'] as const) {
+    bot.action(`home:${sport}`, async (ctx) => {
+      await ctx.answerCbQuery();
+      const state = await deps.conversations.get(String(ctx.from.id));
+      await deps.conversations.set(String(ctx.from.id), { ...state, lastSport: sport });
+      await ctx.reply(
+        `${sport === 'football' ? '⚽' : '🏀'} How many games do you want?`,
+        chooseCount,
+      );
+    });
+  }
+  bot.action('home:slip', async (ctx) => {
+    await ctx.answerCbQuery();
+    const state = await deps.conversations.get(String(ctx.from.id));
+    if (!state.currentSlip) {
+      await ctx.reply(
+        'No active slip yet. Choose football or basketball to build one.',
+        homeMenu(),
+      );
+      return;
+    }
+    await ctx.reply(
+      `🎟 Active slip\n\n${state.currentSlip.selections.length} selections · ${combinedOdds(state.currentSlip.selections).toFixed(2)} odds · ${state.currentSlip.riskMode} mode`,
+      Markup.inlineKeyboard([
+        [Markup.button.callback('🎟 Generate Code', 'sportybet:generate')],
+        [
+          Markup.button.callback('✂️ Split into 2', 'quick:split:2'),
+          Markup.button.callback('✂️ Split into 3', 'quick:split:3'),
+        ],
+        [Markup.button.callback('‹ Back to Menu', 'home:menu')],
+      ]),
+    );
+  });
+  bot.action('home:screenshot', async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.reply(
+      '📸 Send a clear, full screenshot now. I’ll read it, match live markets, run AI analysis, and prepare a bookable slip.',
+    );
+  });
+  bot.action('home:examples', async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.reply(EXAMPLES_MESSAGE, homeMenu());
+  });
+  bot.action('home:risk', async (ctx) => {
+    await ctx.answerCbQuery();
+    await ctx.reply('🛡 Choose your risk mode:', riskMenu());
+  });
+  bot.action(/^risk:(conservative|balanced|aggressive)$/, async (ctx) => {
+    const riskMode = ctx.match[1] as SlipDraft['riskMode'];
+    const userId = String(ctx.from.id);
+    const state = await deps.conversations.get(userId);
+    await deps.conversations.set(userId, {
+      ...state,
+      preferences: { ...state.preferences, riskMode },
+      ...(state.currentSlip ? { currentSlip: { ...state.currentSlip, riskMode } } : {}),
+    });
+    await ctx.answerCbQuery(`${riskMode} mode selected`);
+    const icon = riskMode === 'conservative' ? '🛡' : riskMode === 'aggressive' ? '🔥' : '⚖️';
+    await ctx.reply(
+      `${icon} ${riskMode[0]?.toUpperCase()}${riskMode.slice(1)} mode is active. Nothing is guaranteed.`,
+      homeMenu(),
+    );
+  });
+  bot.action(/^quick:split:(2|3)$/, async (ctx) => {
+    await ctx.answerCbQuery();
+    const state = await deps.conversations.get(String(ctx.from.id));
+    if (!state.currentSlip) {
+      await ctx.reply('You need an active slip first.', homeMenu());
+      return;
+    }
+    const count = Number(ctx.match[1]);
+    try {
+      const splits = new SlipSplitter().split(state.currentSlip.selections, count);
+      await deps.conversations.set(String(ctx.from.id), { ...state, splitSlips: splits });
+      await ctx.reply(
+        `✅ Split into ${count}. Each slip is balanced by odds, confidence, risk, league, and kickoff time.`,
+        Markup.inlineKeyboard(
+          splits.map((_, index) => [
+            Markup.button.callback(
+              `🎟 Code for Slip ${String.fromCharCode(65 + index)}`,
+              `sportybet:split:${index}`,
+            ),
+          ]),
+        ),
+      );
+    } catch (error) {
+      await ctx.reply(error instanceof Error ? error.message : 'I could not split that slip.');
+    }
+  });
   bot.action(/^count:(\d+)$/, async (ctx) => {
     const count = Number(ctx.match[1]);
     const userId = String(ctx.from.id);
@@ -228,6 +374,7 @@ export function createBot(deps: BotDependencies): Telegraf | null {
     };
     await deps.conversations.set(userId, nextState);
     await ctx.answerCbQuery('Loading live markets…');
+    await ctx.sendChatAction('typing');
     await sendLiveSlip(
       deps,
       userId,
@@ -244,6 +391,7 @@ export function createBot(deps: BotDependencies): Telegraf | null {
   });
   bot.action('sportybet:generate', async (ctx) => {
     await ctx.answerCbQuery('Refreshing SportyBet odds…');
+    await ctx.sendChatAction('typing');
     const state = await deps.conversations.get(String(ctx.from.id));
     if (!state.currentSlip) {
       await ctx.reply('I don’t have an active slip to book.');
@@ -394,6 +542,7 @@ export function createBot(deps: BotDependencies): Telegraf | null {
     const state = await deps.conversations.get(String(ctx.from.id));
     try {
       await ctx.reply('📸 Reading the screenshot and matching teams to live fixtures…');
+      await ctx.sendChatAction('upload_photo');
       const photo = ctx.message.photo.at(-1);
       if (!photo) throw new Error('Telegram supplied no image.');
       const fileUrl = await ctx.telegram.getFileLink(photo.file_id);
@@ -483,6 +632,7 @@ export function createBot(deps: BotDependencies): Telegraf | null {
         await ctx.reply(
           '📝 Matching your typed picks to live SportyBet markets, then running AI analysis…',
         );
+        await ctx.sendChatAction('typing');
         const imported = await buildImportedSlip(deps.sportyBet, typedPicks);
         await analyzeEditedSlip(
           deps,

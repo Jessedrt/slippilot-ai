@@ -1,41 +1,22 @@
-export const START_MESSAGE = `Welcome to SlipPilot AI 👋
+export const START_MESSAGE = `⚡ Welcome to SlipPilot AI
 
-Your AI assistant for football and basketball match analysis.
+Your fast match-analysis and slip-building assistant.
 
-I can help you:
-
-⚽ Analyze football matches
-🏀 Analyze basketball games
-📊 Compare markets
-🎯 Build selections around your requested game count
-📈 Work toward a target odds range
-🧠 Rank selections by model confidence
-✂️ Remove or replace weak selections
-🔀 Split large tickets
-📸 Analyze screenshots
-🎟️ Read supported booking codes
-🔎 Explore SportyBet markets
-🔗 Prepare supported SportyBet booking codes
-
-Try:
-
-“Give me 5 football games today”
-“Give me basketball selections around 6 odds”
-“Find 7 games with high confidence”
-“Analyze this ticket”
-“Remove the weakest two”
-“Split this ticket into 2”
-“Explore all markets for Arsenal vs Chelsea”`;
+Pick an option below or simply tell me what you want. Every booking slip is checked by AI first. Predictions are estimates—not guarantees.`;
 
 export const HELP_MESSAGE = `🧭 SlipPilot AI Help
 
 Talk naturally or use commands:
+/menu — open the dashboard
 /today — today's fixtures
 /football — football analysis
 /basketball — basketball analysis
 /analyze — analyze a match or active slip
 /markets — explore current markets
 /slip — show your active slip
+/split — intelligently split your active slip
+/code — generate a code after AI analysis
+/risk — choose your risk mode
 /readcode — analyze a supported code
 /history — recent work
 /subscription — plan and usage
@@ -43,3 +24,14 @@ Talk naturally or use commands:
 /clear — clear conversation context
 
 Predictions are estimates, never guarantees. SlipPilot AI never places wagers.`;
+
+export const EXAMPLES_MESSAGE = `✨ Try saying:
+
+• Give me 5 football games around 8 odds
+• Find 7 basketball picks with high confidence
+• Remove the weakest two
+• Change match winners to safer markets
+• Split this into 2 slips
+• Generate the code
+
+You can also paste typed picks on separate lines or upload a clear betting-slip screenshot.`;

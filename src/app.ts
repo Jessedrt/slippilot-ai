@@ -3,6 +3,7 @@ import { createServer } from './api/server.js';
 import { DisabledSlipAnalyzer, GeminiSlipAnalyzer } from './ai/slip-analyzer.js';
 import { DisabledScreenshotAnalyzer, GeminiScreenshotAnalyzer } from './ai/screenshot-analyzer.js';
 import { createBot } from './bot/create-bot.js';
+import { BOT_COMMANDS } from './bot/menu.js';
 import { loadConfig } from './config/env.js';
 import { PrismaConversationStore, PrismaDatabase } from './database/client.js';
 import { PrismaResearchSnapshotStore } from './research/store.js';
@@ -90,10 +91,14 @@ export function createApplication() {
     config.TELEGRAM_WEBHOOK_SECRET &&
     process.env.VERCEL_ENV === 'production' &&
     process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? bot.telegram.setWebhook(
-          `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}/api/telegram`,
-          { secret_token: config.TELEGRAM_WEBHOOK_SECRET },
-        )
+      ? Promise.all([
+          bot.telegram.setWebhook(
+            `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}/api/telegram`,
+            { secret_token: config.TELEGRAM_WEBHOOK_SECRET },
+          ),
+          bot.telegram.setMyCommands([...BOT_COMMANDS]),
+          bot.telegram.setChatMenuButton({ menuButton: { type: 'commands' } }),
+        ]).then(([webhook]) => webhook)
       : Promise.resolve(false);
 
   return { appPromise, bot, cache, config, database, logger, webhookRegistrationPromise };
