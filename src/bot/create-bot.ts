@@ -338,6 +338,26 @@ export function createBot(deps: BotDependencies): Telegraf | null {
       await ctx.reply('How many games do you want?', chooseCount);
     });
   }
+  const presetSportMenu = (preset: 'daily5' | 'rollover') =>
+    Markup.inlineKeyboard([
+      [
+        Markup.button.callback('⚽ Football', `preset:${preset}:football`),
+        Markup.button.callback('🏀 Basketball', `preset:${preset}:basketball`),
+      ],
+      [Markup.button.callback('‹ Back to Menu', 'home:menu')],
+    ]);
+  bot.command('daily5', (ctx) =>
+    ctx.reply(
+      '🎯 Build today’s AI-reviewed slip near 5 odds. Choose a sport:',
+      presetSportMenu('daily5'),
+    ),
+  );
+  bot.command('rollover', (ctx) =>
+    ctx.reply(
+      '🔁 Build today’s lower-variance slip near 2 odds. Choose a sport:',
+      presetSportMenu('rollover'),
+    ),
+  );
   bot.command('markets', (ctx) =>
     ctx.reply('🔎 Send a fixture, for example: “Explore Arsenal vs Chelsea”.'),
   );
@@ -380,6 +400,32 @@ export function createBot(deps: BotDependencies): Telegraf | null {
       );
     });
   }
+  bot.action(/^home:(daily5|rollover)$/, async (ctx) => {
+    const preset = ctx.match[1] as 'daily5' | 'rollover';
+    await ctx.answerCbQuery();
+    await ctx.reply(
+      preset === 'daily5'
+        ? '🎯 Choose a sport for today’s 5-odds build:'
+        : '🔁 Choose a sport for today’s 2-odds rollover build:',
+      presetSportMenu(preset),
+    );
+  });
+  bot.action(/^preset:(daily5|rollover):(football|basketball)$/, async (ctx) => {
+    const preset = ctx.match[1] as 'daily5' | 'rollover';
+    const sport = ctx.match[2] as 'football' | 'basketball';
+    await ctx.answerCbQuery('Building from today’s live markets…');
+    const userId = String(ctx.from.id);
+    const state = await deps.conversations.get(userId);
+    await sendLiveSlip(
+      deps,
+      userId,
+      { ...state, lastSport: sport },
+      sport,
+      preset === 'daily5' ? 5 : 3,
+      preset === 'daily5' ? 5 : 2,
+      (message, extra) => ctx.reply(message, extra),
+    );
+  });
   bot.action('home:slip', async (ctx) => {
     await ctx.answerCbQuery();
     const state = await deps.conversations.get(String(ctx.from.id));
@@ -1024,4 +1070,3 @@ export function createBot(deps: BotDependencies): Telegraf | null {
   bot.catch((error) => deps.logger.error({ err: error }, 'AUREX Telegram handler failed'));
   return bot;
 }
-

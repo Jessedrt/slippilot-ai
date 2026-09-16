@@ -6,6 +6,8 @@ export const BOT_COMMANDS = [
   { command: 'today', description: 'Build a slip from today’s games' },
   { command: 'football', description: 'Find football selections' },
   { command: 'basketball', description: 'Find basketball selections' },
+  { command: 'daily5', description: 'Build today’s slip near 5 odds' },
+  { command: 'rollover', description: 'Build today’s safer slip near 2 odds' },
   { command: 'slip', description: 'Show your active slip' },
   { command: 'split', description: 'Split your active slip intelligently' },
   { command: 'code', description: 'Generate a SportyBet booking code' },
@@ -18,10 +20,19 @@ export const BOT_COMMANDS = [
 
 export const homeMenu = () =>
   Markup.inlineKeyboard([
-    [Markup.button.webApp('◆ Open AUREX Intelligence Desk', 'https://slippilot-ai.vercel.app/app/')],
+    [
+      Markup.button.webApp(
+        '◆ Open AUREX Intelligence Desk',
+        'https://slippilot-ai.vercel.app/app/',
+      ),
+    ],
     [
       Markup.button.callback('⚽ Football', 'home:football'),
       Markup.button.callback('🏀 Basketball', 'home:basketball'),
+    ],
+    [
+      Markup.button.callback('🎯 Daily 5 Odds', 'home:daily5'),
+      Markup.button.callback('🔁 2 Odds Rollover', 'home:rollover'),
     ],
     [
       Markup.button.callback('◈ My Portfolio', 'home:slip'),
@@ -38,4 +49,3 @@ export const riskMenu = () =>
     [Markup.button.callback('🔥 Aggressive', 'risk:aggressive')],
     [Markup.button.callback('‹ Back to Menu', 'home:menu')],
   ]);
-

@@ -136,6 +136,20 @@ $('#count-chips').addEventListener('click', (event) => {
   $$('#count-chips button').forEach((item) => item.classList.toggle('selected', item === button));
 });
 
+$$('[data-preset-odds]').forEach((button) =>
+  button.addEventListener('click', () => {
+    gameCount = Number(button.dataset.presetGames);
+    $('#target-odds').value = button.dataset.presetOdds;
+    $$('#count-chips button').forEach((item) =>
+      item.classList.toggle('selected', Number(item.dataset.count) === gameCount),
+    );
+    if (button.dataset.presetOdds === '2') $('#risk-mode').value = 'conservative';
+    $('#build-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    toast(`${button.dataset.presetOdds} odds target ready`);
+    tg?.HapticFeedback?.impactOccurred('light');
+  }),
+);
+
 $('#build-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   $('#build-error').classList.add('hidden');
@@ -303,4 +317,3 @@ document.addEventListener('click', async (event) => {
 
 renderSlip();
 updateConnectionState();
-
