@@ -39,13 +39,13 @@ describe('mini app basketball variety', () => {
     }));
     const provider = {
       name: 'SportyBet',
-      listEvents: async () => fixtures,
-      getMarkets: async (id: string) => markets(id),
-      findEvents: async () => [],
-      getEvent: async () => null,
-      resolveBookingCode: async () => [],
-      createBookingCode: async () => 'TEST123',
-      health: async () => ({ ok: true, detail: 'test' }),
+      listEvents: () => Promise.resolve(fixtures),
+      getMarkets: (id: string) => Promise.resolve(markets(id)),
+      findEvents: () => Promise.resolve([]),
+      getEvent: () => Promise.resolve(null),
+      resolveBookingCode: () => Promise.resolve([]),
+      createBookingCode: () => Promise.resolve('TEST123'),
+      health: () => Promise.resolve({ ok: true, detail: 'test' }),
     } as SportyBetProvider;
     const slip = await buildLiveSlipSnapshot(provider, 'basketball', 5, 10);
     expect(slip.slip.selections).toHaveLength(5);
