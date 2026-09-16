@@ -36,6 +36,23 @@ const provider: SportyBetProvider = {
 };
 
 describe('SportyBet live discovery', () => {
+  it('stops fetching markets once the requested count is available', async () => {
+    let calls = 0;
+    await buildLiveSlipSnapshot({
+      ...provider,
+      listEvents: () => Promise.resolve(Array.from({ length: 30 }, (_, i) => event(String(i)))),
+      getMarkets: (id) => { calls++; return provider.getMarkets(id); },
+    }, 'basketball', 5);
+    expect(calls).toBe(5);
+  });
+  it('replaces failed fixture lookups with later fixtures', async () => {
+    const result = await buildLiveSlipSnapshot({
+      ...provider,
+      listEvents: () => Promise.resolve([event('bad'), event('good')]),
+      getMarkets: (id) => id === 'bad' ? Promise.reject(new Error('timeout')) : provider.getMarkets(id),
+    }, 'basketball', 1);
+    expect(result.slip.selections[0]?.fixture.id).toBe('good');
+  });
   it('builds a live slip without inventing fixtures or odds', async () => {
     const snapshot = await buildLiveSlipSnapshot(provider, 'basketball', 2, 2.25);
     expect(snapshot.combinedOdds).toBe(2.25);

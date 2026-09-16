@@ -26,41 +26,49 @@ export async function buildLiveSlipSnapshot(
     .filter((event) => event.status === 'scheduled' && event.startsAt.getTime() > Date.now())
     .slice(0, Math.min(30, count * 3));
 
-  const candidates = await Promise.all(
-    events.map(async (event): Promise<CandidateSelection | null> => {
-      const markets = (await provider.getMarkets(event.providerEventId)).filter(
-        (market) => market.status === 'active' && market.odds > 1.01 && market.sport === sport,
-      );
-      const market = markets.sort(
-        (left, right) =>
-          Math.abs(Math.log(left.odds) - Math.log(desiredPerLeg)) -
-          Math.abs(Math.log(right.odds) - Math.log(desiredPerLeg)),
-      )[0];
-      if (!market) return null;
-      const impliedProbability = rounded(Math.min(95, 100 / market.odds));
-      return {
-        ...market,
-        fixture: {
-          id: event.providerEventId,
-          providerId: event.providerEventId,
-          sport,
-          league: 'SportyBet',
-          homeTeam: event.homeTeam,
-          awayTeam: event.awayTeam,
-          startsAt: event.startsAt,
-          status: event.status,
-        },
-        modelProbability: impliedProbability,
-        confidenceScore: impliedProbability,
-        dataQuality: 'medium',
-        riskLevel: riskLevel(market.odds),
-        reasoning: [
-          'Live SportyBet market snapshot.',
-          'Chosen as the active price closest to the requested combined-odds profile.',
-        ],
-      };
-    }),
-  );
+  const candidates: CandidateSelection[] = [];
+  for (let offset = 0; offset < events.length && candidates.length < count;) {
+    const batch = events.slice(offset, offset + Math.min(4, count - candidates.length));
+    offset += batch.length;
+    const results = await Promise.allSettled(
+      batch.map(async (event): Promise<CandidateSelection | null> => {
+        const markets = (await provider.getMarkets(event.providerEventId)).filter(
+          (market) => market.status === 'active' && market.odds > 1.01 && market.sport === sport,
+        );
+        const market = markets.sort(
+          (left, right) =>
+            Math.abs(Math.log(left.odds) - Math.log(desiredPerLeg)) -
+            Math.abs(Math.log(right.odds) - Math.log(desiredPerLeg)),
+        )[0];
+        if (!market) return null;
+        const impliedProbability = rounded(Math.min(95, 100 / market.odds));
+        return {
+          ...market,
+          fixture: {
+            id: event.providerEventId,
+            providerId: event.providerEventId,
+            sport,
+            league: 'SportyBet',
+            homeTeam: event.homeTeam,
+            awayTeam: event.awayTeam,
+            startsAt: event.startsAt,
+            status: event.status,
+          },
+          modelProbability: impliedProbability,
+          confidenceScore: impliedProbability,
+          dataQuality: 'medium',
+          riskLevel: riskLevel(market.odds),
+          reasoning: [
+            'Live SportyBet market snapshot.',
+            'Chosen as the active price closest to the requested combined-odds profile.',
+          ],
+        };
+      }),
+    );
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value) candidates.push(result.value);
+    }
+  }
   const selections = candidates
     .filter((value): value is CandidateSelection => value !== null)
     .slice(0, count);

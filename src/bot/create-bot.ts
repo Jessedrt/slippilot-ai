@@ -116,7 +116,9 @@ async function sendLiveSlip(
   reply: (message: string, extra?: ReturnType<typeof Markup.inlineKeyboard>) => Promise<unknown>,
 ): Promise<void> {
   try {
+    await reply('🔎 Loading current fixtures and markets…');
     const snapshot = await buildLiveSlipSnapshot(deps.sportyBet, sport, gameCount, targetOdds);
+    await reply('🧠 Markets loaded. AI is reviewing the selections now…');
     const analysis = await deps.slipAnalyzer.analyze(snapshot.slip.selections);
     const analyzedSelections = snapshot.slip.selections.map((selection, index) => {
       const result = analysis.selections.find((item) => item.index === index + 1);
@@ -185,7 +187,18 @@ export function createBot(deps: BotDependencies): Telegraf | null {
   const bot = new Telegraf(deps.config.TELEGRAM_BOT_TOKEN);
   const parser = deps.intents ?? new IntentParser();
   const slipBuilder = new SportyBetSlipBuilder(deps.sportyBet);
-  bot.start((ctx) => ctx.reply(START_MESSAGE, homeMenu()));
+  let welcomePhoto = 'https://slippilot-ai.vercel.app/assets/welcome-banner.png';
+  bot.start(async (ctx) => {
+    try {
+      const message = await ctx.replyWithPhoto(welcomePhoto, {
+        caption: START_MESSAGE,
+        ...homeMenu(),
+      });
+      welcomePhoto = message.photo.at(-1)?.file_id ?? welcomePhoto;
+    } catch {
+      await ctx.reply(START_MESSAGE, homeMenu());
+    }
+  });
   bot.help((ctx) => ctx.reply(HELP_MESSAGE, homeMenu()));
   bot.command('menu', (ctx) => ctx.reply('⚡ What would you like to do?', homeMenu()));
   bot.command('clear', async (ctx) => {
@@ -360,6 +373,7 @@ export function createBot(deps: BotDependencies): Telegraf | null {
     }
   });
   bot.action(/^count:(\d+)$/, async (ctx) => {
+    await ctx.answerCbQuery('Loading live markets…');
     const count = Number(ctx.match[1]);
     const userId = String(ctx.from.id);
     const state = await deps.conversations.get(userId);
@@ -376,7 +390,6 @@ export function createBot(deps: BotDependencies): Telegraf | null {
       lastIntent: intent,
     };
     await deps.conversations.set(userId, nextState);
-    await ctx.answerCbQuery('Loading live markets…');
     await ctx.sendChatAction('typing');
     await sendLiveSlip(
       deps,
