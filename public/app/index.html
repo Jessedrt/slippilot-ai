@@ -3,110 +3,79 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#09120f" />
-    <meta name="description" content="AUREX: review live sports markets, analyze selections, and prepare a booking code." />
+    <meta name="theme-color" content="#07110f" />
+    <meta name="description" content="Build, analyze and prepare supported sports slips in AUREX." />
     <link rel="icon" href="/favicon.svg" />
-    <link rel="stylesheet" href="/app/app.css?v=4.0.0" />
-    <link rel="stylesheet" href="/app/premium.css?v=4.0.0" />
-    <link rel="stylesheet" href="/app/premium-interactions.css?v=4.0.1" />
+    <link rel="stylesheet" href="/app/app.css?v=3.0.2" />
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <title>AUREX · Sports intelligence</title>
+    <title>AUREX Mini App</title>
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar glass">
-        <a class="logo" href="./" aria-label="AUREX home">
-          <span class="brand-mark"><img src="/assets/aurex-mark-neon.png" alt="" /></span>
-          <span class="brand-copy"><b>AUREX <em>V3</em></b><small>SPORTS INTELLIGENCE</small></span>
-        </a>
-        <div class="live-pill" aria-live="polite"><i></i> READY</div>
+        <a class="logo" href="./" aria-label="AUREX home"><span><img src="/assets/aurex-mark-neon.png" alt="" /></span><b>AUREX <em>V3</em></b></a>
+        <div class="live-pill"><i></i> READY</div>
       </header>
-      <main id="main-content">
+      <main>
         <section class="view active" id="build-view" aria-labelledby="build-tab">
           <div class="hero-copy">
-            <p class="eyebrow">THE BUILDER <span class="eyebrow-rule"></span> 01 / 03</p>
-            <h1>Create your <span>slip.</span></h1>
-            <p>Explore live markets. Review each selection before preparing your code.</p>
+            <p class="eyebrow">PRIVATE SPORTS INTELLIGENCE</p>
+            <h1>Build with conviction.</h1>
+            <p>AUREX reviews every market before a supported code can be prepared.</p>
           </div>
-          <div class="quick-presets" aria-label="Quick builds">
-            <button type="button" data-preset-odds="5" data-preset-games="5"><span class="preset-symbol">◎</span><span><b>Daily 5 odds</b><small>Five selections · today</small></span><span class="preset-arrow" aria-hidden="true">↗</span></button>
-            <button type="button" data-preset-odds="2" data-preset-games="3"><span class="preset-symbol">↻</span><span><b>2 odds rollover</b><small>Three selections · today</small></span><span class="preset-arrow" aria-hidden="true">↗</span></button>
+          <div class="quick-presets" aria-label="Quick daily builds">
+            <button type="button" data-preset-odds="5" data-preset-games="5"><span>🎯 Daily 5 Odds</span><small>Today’s AI-reviewed target</small></button>
+            <button type="button" data-preset-odds="2" data-preset-games="3"><span>🔁 2 Odds Rollover</span><small>Lower-variance daily target</small></button>
           </div>
-          <form id="build-form" class="builder-card" novalidate>
-            <div class="card-heading"><span class="step-indicator">01</span><div><h2>Configure your slip</h2><p>Set your preferences below.</p></div></div>
-            <fieldset class="field-section">
+          <form id="build-form" class="builder-card">
+            <fieldset>
               <legend>Sport</legend>
-              <div class="segmented" role="group" aria-label="Choose a sport">
-                <label><input type="radio" name="sport" value="football" checked /><span><span class="sport-emoji" aria-hidden="true">⚽</span> Football</span></label>
-                <label><input type="radio" name="sport" value="basketball" /><span><span class="sport-emoji" aria-hidden="true">🏀</span> Basketball</span></label>
+              <div class="segmented">
+                <label><input type="radio" name="sport" value="football" checked /><span>⚽ Football</span></label>
+                <label><input type="radio" name="sport" value="basketball" /><span>🏀 Basketball</span></label>
               </div>
             </fieldset>
-            <fieldset class="field-section">
-              <legend>Number of games</legend>
-              <div class="chips" id="count-chips" role="group" aria-label="Number of games">
-                <button type="button" data-count="3" aria-pressed="false">3</button>
-                <button type="button" class="selected" data-count="5" aria-pressed="true">5</button>
-                <button type="button" data-count="7" aria-pressed="false">7</button>
-                <button type="button" data-count="10" aria-pressed="false">10</button>
-                <button type="button" id="custom-count-button" data-count="5" aria-pressed="false" aria-controls="custom-count">Custom</button>
+            <fieldset>
+              <legend>Games</legend>
+              <div class="chips" id="count-chips">
+                <button type="button" data-count="3">3</button>
+                <button type="button" class="selected" data-count="5">5</button>
+                <button type="button" data-count="7">7</button>
+                <button type="button" data-count="10">10</button>
+                <button type="button" id="custom-count-button" data-count="5" aria-controls="custom-count">Custom</button>
               </div>
-              <label class="custom-count-field" for="custom-count"><span>Custom number (1–15)</span><input id="custom-count" name="customCount" type="number" min="1" max="15" step="1" inputmode="numeric" autocomplete="off" placeholder="Enter a number" /></label>
-              <p class="field-help" id="game-count-help">We may return fewer picks if eligible markets aren't available.</p>
+              <label class="custom-count-field" for="custom-count"><span>Custom number of games (1–15)</span><input id="custom-count" name="customCount" type="number" min="1" max="15" step="1" inputmode="numeric" autocomplete="off" placeholder="e.g. 8" /></label>
+              <p class="field-help" id="game-count-help">Choose a preset or enter your own game count. The app can include fewer matches if markets are unavailable.</p>
             </fieldset>
-            <div class="field-section odds-section">
-              <label class="field" for="target-odds"><span>Target odds <small>OPTIONAL</small></span><span class="input-wrap"><input id="target-odds" name="targetOdds" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 20.00" aria-describedby="target-odds-help" /><span class="input-suffix">DECIMAL</span></span></label>
-              <small class="field-help" id="target-odds-help">A target, not a guarantee. Leave blank for an open search.</small>
+            <div class="form-row">
+              <label class="field"><span>Target odds <small>no maximum</small></span><input id="target-odds" name="targetOdds" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 20 or 150" aria-describedby="target-odds-help" /><small class="field-help" id="target-odds-help">Optional. Enter decimal odds, e.g. 2, 20 or 150.</small></label>
+              <label class="field"><span>Risk mode</span><select id="risk-mode"><option value="conservative">Conservative</option><option selected value="balanced">Balanced</option><option value="aggressive">Aggressive</option></select></label>
             </div>
-            <div class="field-section risk-section">
-              <div class="field-label">Risk preference</div>
-              <label class="sr-only" for="risk-mode">Risk preference</label>
-              <select id="risk-mode" class="sr-only"><option value="conservative">Conservative</option><option selected value="balanced">Balanced</option><option value="aggressive">Aggressive</option></select>
-              <div class="risk-choices" role="group" aria-label="Risk preference">
-                <button type="button" data-risk="conservative" aria-pressed="false"><span class="risk-glyph" aria-hidden="true">◒</span><b>Conservative</b><small>Prefer less volatile markets</small></button>
-                <button type="button" class="selected" data-risk="balanced" aria-pressed="true"><span class="risk-glyph" aria-hidden="true">◈</span><b>Balanced</b><small>Mix of market profiles</small></button>
-                <button type="button" data-risk="aggressive" aria-pressed="false"><span class="risk-glyph" aria-hidden="true">↗</span><b>Aggressive</b><small>Accept more variation</small></button>
-              </div>
-            </div>
-            <button class="primary" type="submit"><span>Build &amp; analyze</span><b aria-hidden="true">→</b></button>
-            <p class="form-disclaimer">AUREX provides analysis, not guaranteed outcomes.</p>
+            <button class="primary" type="submit"><span>Build &amp; analyze</span><b>→</b></button>
           </form>
-          <div class="loading-card hidden" id="loading" role="status" aria-live="polite"><div class="pulse"></div><div><b>Reviewing live markets</b><span id="loading-label">Checking fixtures and available selections…</span></div></div>
+          <div class="loading-card hidden" id="loading"><div class="pulse"></div><div><b>Reviewing live markets</b><span id="loading-label">Finding suitable fixtures…</span></div></div>
           <div class="notice hidden" id="build-error" role="alert"></div>
         </section>
         <section class="view" id="analyze-view" aria-labelledby="analyze-tab">
-          <div class="section-title"><p class="eyebrow">THE INTELLIGENCE DESK <span class="eyebrow-rule"></span> 02 / 03</p><h2>See the <span>reasoning.</span></h2><p>Review the evidence behind your selections, or inspect an existing slip.</p></div>
-          <div id="slip-insights" class="insights-section" aria-live="polite"></div>
-          <div class="tools-heading"><h3>More ways to analyze</h3><p>Import a code, post, or screenshot.</p></div>
+          <div class="section-title"><p class="eyebrow">AUREX INTELLIGENCE DESK</p><h2>Inspect every angle.</h2><p>Read a booking code, a public X post, or a clear slip screenshot.</p></div>
           <div class="tool-grid">
-            <form class="tool-card" id="read-code-form"><span class="tool-icon" aria-hidden="true">#</span><div><h3>Booking code</h3><p>Check selections and current combined odds.</p></div><input id="read-code" maxlength="20" placeholder="Paste SportyBet code" aria-label="SportyBet booking code" required /><button type="submit">Analyze code <span aria-hidden="true">↗</span></button></form>
-            <form class="tool-card" id="x-form"><span class="tool-icon" aria-hidden="true">𝕏</span><div><h3>X / Twitter post</h3><p>Find public booking codes in post text.</p></div><input id="x-url" type="url" placeholder="https://x.com/…/status/…" aria-label="Public X post URL" required /><button type="submit">Read post <span aria-hidden="true">↗</span></button></form>
-            <form class="tool-card" id="shot-form"><span class="tool-icon" aria-hidden="true">▣</span><div><h3>Slip screenshot</h3><p>Extract visible teams, markets and odds.</p></div><label class="upload"><input id="shot-file" type="file" accept="image/png,image/jpeg,image/webp" required /><span>Choose screenshot</span></label><button type="submit">Analyze image <span aria-hidden="true">↗</span></button></form>
+            <form class="tool-card" id="read-code-form"><span class="tool-icon">#</span><div><h3>Booking code</h3><p>Check selections and current combined odds.</p></div><input id="read-code" maxlength="20" placeholder="Paste code" required /><button type="submit">Analyze code</button></form>
+            <form class="tool-card" id="x-form"><span class="tool-icon">𝕏</span><div><h3>X / Twitter post</h3><p>Extract public booking codes from post text.</p></div><input id="x-url" type="url" placeholder="https://x.com/…/status/…" required /><button type="submit">Read post</button></form>
+            <form class="tool-card" id="shot-form"><span class="tool-icon">▣</span><div><h3>Slip screenshot</h3><p>Extract teams, markets, odds and visible codes.</p></div><label class="upload"><input id="shot-file" type="file" accept="image/png,image/jpeg,image/webp" required /><span>Choose screenshot</span></label><button type="submit">Analyze image</button></form>
           </div>
-          <div class="result-panel hidden" id="analysis-result" aria-live="polite"></div>
+          <div class="result-panel hidden" id="analysis-result"></div>
         </section>
         <section class="view" id="slip-view" aria-labelledby="slip-tab">
-          <div class="section-title slip-title"><p class="eyebrow">YOUR WORKSPACE <span class="eyebrow-rule"></span> 03 / 03</p><h2>Your <span>picks.</span></h2><p>Review your slip and edit selections before preparing a code.</p></div>
-          <div id="empty-slip" class="empty-state"><span class="empty-icon" aria-hidden="true">◎</span><h3>Nothing on your slip yet</h3><p>Create a slip to see selections, current odds and analysis here.</p><button data-go="build">Create a slip <span aria-hidden="true">→</span></button></div>
-          <div id="slip-content" class="hidden">
-            <div class="slip-meta"><span><span id="slip-selection-count">0</span> SELECTIONS</span><span class="meta-separator">·</span><span id="slip-risk-label">BALANCED</span></div>
-            <div class="slip-summary"><div><span>COMBINED ODDS</span><strong id="combined-odds">—</strong><small>Current slip total</small></div><div><span>AI EVIDENCE SCORE</span><strong id="average-confidence">—</strong><small>Evidence quality, not win chance</small></div></div>
-            <div class="picks-heading"><h3>Selections</h3><button type="button" class="text-action" id="review-analysis">Review analysis <span aria-hidden="true">↗</span></button></div>
-            <div class="pick-list" id="pick-list"></div>
-            <div class="score-explainer"><span class="info-icon" aria-hidden="true">i</span><p><b>What does the AI score mean?</b> It reflects evidence and data quality. It is not a win probability or a guarantee.</p></div>
-            <div class="sticky-action"><p>Odds and availability are refreshed before a code is created.</p><button class="primary" id="generate-code"><span>Generate SportyBet code</span><b aria-hidden="true">→</b></button></div>
-          </div>
-          <div class="result-panel hidden" id="code-result" aria-live="polite"></div>
+          <div class="section-title"><p class="eyebrow">ACTIVE SLIP</p><h2>Your picks.</h2></div>
+          <div id="empty-slip" class="empty-state"><span>◎</span><h3>No active slip</h3><p>Build a new analyzed slip to see it here.</p><button data-go="build">Build a slip</button></div>
+          <div id="slip-content" class="hidden"><div class="slip-summary"><div><span>COMBINED ODDS</span><strong id="combined-odds">—</strong></div><div><span>AVG. AI SCORE</span><strong id="average-confidence">—</strong></div></div><div class="pick-list" id="pick-list"></div><div class="sticky-action"><p>Live markets are refreshed before creating a code.</p><button class="primary" id="generate-code"><span>Generate SportyBet code</span><b>→</b></button></div></div>
+          <div class="result-panel hidden" id="code-result"></div>
         </section>
       </main>
-      <nav class="bottom-nav" aria-label="Mini app navigation">
-        <button class="active" id="build-tab" data-view="build" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Build</span></button>
-        <button id="analyze-tab" data-view="analyze"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4M8.5 11h5"/></svg><span>Analyze</span></button>
-        <button id="slip-tab" data-view="slip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4h10M7 9h10M7 14h10M7 19h7"/></svg><span>My slip</span><i id="slip-count">0</i></button>
-      </nav>
+      <nav class="bottom-nav" aria-label="Mini app navigation"><button class="active" id="build-tab" data-view="build"><span>＋</span>Build</button><button id="analyze-tab" data-view="analyze"><span>⌕</span>Analyze</button><button id="slip-tab" data-view="slip"><span>▤</span>My slip <i id="slip-count">0</i></button></nav>
     </div>
-    <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="/app/app.js?v=4.0.0"></script>
-    <script type="module" src="/app/miniapp-controls.js?v=4.0.0"></script>
-    <script type="module" src="/app/premium.js?v=4.0.0"></script>
+    <div class="toast" id="toast" role="status"></div>
+    <script type="module" src="/app/app.js?v=3.0.2"></script>
+    <script type="module" src="/app/miniapp-controls.js?v=3.0.2"></script>
   </body>
 </html>
