@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import { buildLiveSlipSnapshot, chooseVariedMarket, marketFamily } from '../src/sportybet/discovery.js';
+import { buildLiveSlipSnapshot, chooseVariedMarket, isAllowedBasketballOverMarket, marketFamily } from '../src/sportybet/discovery.js';
 import type { NormalizedMarket } from '../src/types/domain.js';
 import type { SportyBetProvider } from '../src/sportybet/contracts.js';
 
@@ -19,17 +19,20 @@ const makeMarket = (eventId: string, name: string, pick: string, id: string): No
 
 const markets = (id: string): NormalizedMarket[] => [
   makeMarket(id, 'Over/Under (incl. overtime)', 'Over 165.5', '225'),
-  makeMarket(id, 'Winner (incl. overtime)', 'Home', '219'),
-  makeMarket(id, 'Handicap (incl. overtime)', 'Away +4.5', '223'),
-  makeMarket(id, 'Home team over/under (incl. overtime)', 'Under 80.5', '227'),
+  makeMarket(id, '1st Half - Over/Under', 'Over 85.5', '226'),
+  makeMarket(id, 'Home team over/under (incl. overtime)', 'Over 80.5', '227'),
+  makeMarket(id, '1st Half - Away Team Total', 'Over 39.5', '228'),
+  makeMarket(id, '1st Quarter - Over/Under', 'Over 40.5', '229'),
+  makeMarket(id, '1st Quarter - Home Team Total', 'Over 19.5', '230'),
 ];
 
-describe('mini app basketball variety', () => {
-  it('recognizes distinct winner, handicap, game and team total families', () => {
-    expect(new Set(markets('one').map(marketFamily)).size).toBe(4);
+describe('mini app basketball Over variety', () => {
+  it('recognizes the allowed game, team and period Over market families', () => {
+    expect(markets('one').every(isAllowedBasketballOverMarket)).toBe(true);
+    expect(new Set(markets('one').map(marketFamily)).size).toBe(3);
   });
 
-  it('selects multiple real market families rather than repeating Over on every event', async () => {
+  it('selects multiple allowed real Over market families rather than repeating one market', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-16T10:00:00Z'));
     try {
@@ -54,13 +57,13 @@ describe('mini app basketball variety', () => {
       expect(slip.slip.selections).toHaveLength(5);
       expect(new Set(slip.slip.selections.map((selection) => selection.eventId)).size).toBe(5);
       expect(new Set(slip.slip.selections.map(marketFamily)).size).toBeGreaterThanOrEqual(3);
-      expect(slip.slip.selections.every((selection) => selection.status === 'active')).toBe(true);
+      expect(slip.slip.selections.every((selection) => selection.status === 'active' && isAllowedBasketballOverMarket(selection))).toBe(true);
     } finally {
       vi.useRealTimers();
     }
   });
 
-  it('never invents alternative markets when only one active market exists', () => {
+  it('never invents alternative markets when only one allowed active Over market exists', () => {
     const only = [makeMarket('one', 'Over/Under (incl. overtime)', 'Over 165.5', '225')];
     expect(chooseVariedMarket(only, 1.6, new Map([['game-total', 4]]), new Map([['over', 4]])))
       .toBe(only[0]);

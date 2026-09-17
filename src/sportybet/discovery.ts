@@ -1,5 +1,7 @@
 import type { SportyBetProvider, SportyBetEvent } from './contracts.js';
 import type { CandidateSelection, NormalizedMarket, RiskLevel, SlipDraft, Sport } from '../types/domain.js';
+import { isAllowedBasketballOverMarket } from './basketball-over-markets.js';
+export { isAllowedBasketballOverMarket } from './basketball-over-markets.js';
 
 export interface LiveSlipSnapshot {
   slip: SlipDraft;
@@ -22,19 +24,6 @@ const riskLevel = (odds: number): RiskLevel => {
   if (odds <= 2.1) return 'medium';
   return 'higher';
 };
-
-export function isAllowedBasketballOverMarket(
-  market: Pick<CandidateSelection, 'marketName' | 'selectionName'>,
-): boolean {
-  const name = market.marketName.trim().toLowerCase();
-  const selection = market.selectionName.trim().toLowerCase();
-  if (!/^over(?:\s|$)/.test(selection)) return false;
-  const fullTime = /^over\/under(?:\s*\(incl\. overtime\))?$/.test(name);
-  const firstHalf = /^1st half\s*-\s*(?:total|over\/under)$/.test(name);
-  const individual =
-    /^(?:home|away|competitor\s*[12])(?:\s+team)?\s+(?:o\/u|over\/under|total)(?:\s*\(incl\. overtime\))?$/.test(name);
-  return fullTime || firstHalf || individual;
-}
 
 /** Exclude Under picks in generated basketball slips, without excluding Over/Under markets as a whole. */
 export function isBasketballUnderPick(
@@ -75,7 +64,7 @@ export function chooseVariedMarket(
 ): NormalizedMarket | null {
   const eligible = markets.filter(
     (market) =>
-      !isBasketballUnderPick(market) &&
+      (market.sport !== 'basketball' || isAllowedBasketballOverMarket(market)) &&
       market.status === 'active' &&
       Number.isFinite(market.odds) &&
       market.odds > 1.01 &&
