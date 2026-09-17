@@ -36,6 +36,15 @@ export function isAllowedBasketballOverMarket(
   return fullTime || firstHalf || individual;
 }
 
+/** Exclude Under picks in generated basketball slips, without excluding Over/Under markets as a whole. */
+export function isBasketballUnderPick(
+  market: Pick<NormalizedMarket, 'sport' | 'selectionName'>,
+): boolean {
+  if (market.sport !== 'basketball') return false;
+  const selection = market.selectionName.trim();
+  return /\bunder\b/i.test(selection) || /(?:^|[\s(:])u\s*\d+(?:\.\d+)?\b/i.test(selection);
+}
+
 export function marketFamily(market: Pick<NormalizedMarket, 'marketName' | 'category'>): string {
   const name = market.marketName.toLowerCase();
   const category = market.category.toLowerCase();
@@ -66,6 +75,7 @@ export function chooseVariedMarket(
 ): NormalizedMarket | null {
   const eligible = markets.filter(
     (market) =>
+      !isBasketballUnderPick(market) &&
       market.status === 'active' &&
       Number.isFinite(market.odds) &&
       market.odds > 1.01 &&
