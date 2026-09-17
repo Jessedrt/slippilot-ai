@@ -92,7 +92,7 @@ describe('six-category basketball Over allowlist', () => {
       expect(result.slip.selections).toHaveLength(1);
       expect(result.slip.selections[0]?.selectionName).toBe('Over 39.5');
       expect(result.slip.selections[0]?.marketName).toBe('1st Half - Home Team Total');
-      await expect(buildLiveSlipSnapshot({ ...provider, getMarkets: () => Promise.resolve(rejected.map(([name, selection]) => market(name, selection))) } as SportyBetProvider, 'basketball', 5, 10)).rejects.toBeInstanceOf(NoTodayMarketsError);
+      await expect(buildLiveSlipSnapshot({ ...provider, getMarkets: () => Promise.resolve(rejected.map(([name, selection]) => market(name, selection))) }, 'basketball', 5, 10)).rejects.toBeInstanceOf(NoTodayMarketsError);
     } finally {
       vi.useRealTimers();
     }
