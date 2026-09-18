@@ -1,0 +1,108 @@
+/* AUREX 5.2 — additions only. Preserve the 4-tab dock and existing compact layout. */
+.app-shell .intel-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0 8px;
+  padding: 12px;
+  border: 1px solid rgba(209, 228, 251, .17);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(184, 213, 245, .095), rgba(20, 29, 41, .68));
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+  backdrop-filter: blur(18px) saturate(130%);
+}
+.app-shell .intel-field { display: grid; min-width: 0; gap: 6px; }
+.app-shell .intel-field span { color: #b7c7d8; font-size: .68rem; font-weight: 740; }
+.app-shell .intel-field input,
+.app-shell .intel-field select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 9px 11px;
+  border: 1px solid rgba(208, 229, 246, .24);
+  border-radius: 13px;
+  background: #111923;
+  color: #eff7ff;
+  font: inherit;
+  font-size: 16px; /* prevents iOS WebView focus zoom */
+}
+.app-shell .intel-field input::placeholder { color: #8e9cad; }
+.app-shell .intel-field input:focus-visible,
+.app-shell .intel-field select:focus-visible,
+.app-shell .intel-reset:focus-visible,
+.app-shell .intel-compare-button:focus-visible { outline: 2px solid #d1fa78; outline-offset: 2px; }
+.app-shell .intel-search { grid-column: 1 / -1; }
+.app-shell .intel-reset {
+  grid-column: 1 / -1;
+  justify-self: end;
+  min-height: 34px;
+  border: 1px solid rgba(209, 250, 120, .3);
+  border-radius: 999px;
+  padding: 6px 14px;
+  background: rgba(209, 250, 120, .055);
+  color: #d1fa78;
+  font: inherit;
+  font-size: .72rem;
+  font-weight: 740;
+}
+.app-shell .intel-meta { margin: 10px 0 12px; color: #aebfce; font-size: .71rem; line-height: 1.5; }
+.app-shell .intel-meta[data-kind='warning'] { color: #ffd59c; }
+.app-shell #desk-fixtures .desk-row { flex-wrap: wrap; }
+.app-shell #desk-fixtures .intel-compare-button {
+  flex: 1 0 100%;
+  width: 100%;
+  max-width: none;
+  margin-top: 2px;
+  min-height: 33px;
+  border-color: rgba(156, 220, 242, .25);
+  background: rgba(156, 220, 242, .055);
+  color: #bde7f6;
+}
+.app-shell .intel-comparison { animation: intel-open .3s cubic-bezier(.18, .85, .27, 1) both; }
+.app-shell .intel-comparison .desk-heading .eyebrow,
+.app-shell .intel-reliability .desk-heading .eyebrow { margin-bottom: 3px; color: #9cdcf2; }
+.app-shell .intel-market-list,
+.app-shell .intel-reports { display: grid; gap: 8px; margin-top: 12px; }
+.app-shell .intel-market-row,
+.app-shell .intel-report {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px 12px;
+  padding: 12px;
+  border: 1px solid rgba(209, 229, 246, .14);
+  border-radius: 15px;
+  background: rgba(9, 16, 25, .6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
+}
+.app-shell .intel-market-row > div:first-child { min-width: 0; }
+.app-shell .intel-market-row strong,
+.app-shell .intel-report > strong { display: block; color: #f4f8fe; font-size: .78rem; overflow-wrap: anywhere; }
+.app-shell .intel-market-row span { display: block; color: #b9c7d6; font-size: .72rem; margin-top: 3px; }
+.app-shell .intel-selected { display: block; margin-top: 5px; color: #d1fa78; font-size: .58rem; font-weight: 830; letter-spacing: .075em; }
+.app-shell .intel-price { text-align: right; font-variant-numeric: tabular-nums; }
+.app-shell .intel-price strong { font-size: 1rem; color: #d1fa78; }
+.app-shell .intel-price small { display: block; margin-top: 4px; white-space: nowrap; color: #a1c6da; font-size: .61rem; }
+.app-shell .intel-market-time { grid-column: 1 / -1; color: #9dabbc; font-size: .64rem; }
+.app-shell .intel-warning { margin: 5px 0; padding: 9px 11px; border-left: 2px solid rgba(255, 209, 139, .7); border-radius: 0 10px 10px 0; color: #ffdaa7; background: rgba(220, 161, 89, .045); font-size: .7rem; line-height: 1.5; }
+.app-shell .intel-reliability { margin: 10px 0 14px; }
+.app-shell .intel-report { grid-template-columns: 1fr; gap: 5px; }
+.app-shell .intel-report > span,
+.app-shell .intel-report > small { color: #aebfce; font-size: .7rem; }
+.app-shell .intel-report > .intel-ok { color: #d1fa78; }
+.app-shell .intel-report > .intel-bad { color: #ffd59c; }
+.app-shell .intel-report .intel-warning { margin: 0; }
+.app-shell .pick-actions button[data-compare-pick] { border-color: rgba(156, 220, 242, .35); color: #bde7f6; }
+@keyframes intel-open { from { opacity: .5; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (max-width: 365px) {
+  .app-shell .intel-filters { gap: 8px; padding: 9px; }
+  .app-shell .intel-market-row { padding: 9px; gap: 6px; }
+  .app-shell .intel-price small { font-size: .57rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .intel-comparison { animation: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .app-shell .intel-filters { background: #1b2430; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
