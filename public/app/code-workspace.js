@@ -1,238 +1,196 @@
-// Imported-code editing is intentionally ephemeral until the user explicitly saves to My Slip.
-// Never cache Telegram initData, signed tokens or unconfirmed edits in history.
-const workspaceStyle = document.createElement('link');
-workspaceStyle.rel = 'stylesheet';
-workspaceStyle.href = '/app/code-workspace.css?v=5.4.0';
-document.head.append(workspaceStyle);
-const workspaceResult = document.querySelector('#analysis-result');
-const workspacePanel = document.createElement('section');
-workspacePanel.className = 'desk-panel code-workspace hidden';
-workspacePanel.setAttribute('aria-label', 'Edit and trim an analyzed booking code');
-workspaceResult?.after(workspacePanel);
-let codeSlip = null;
-let dirtyCode = false;
-let codeBusy = false;
-let optionsIndex = -1;
-let optionsList = [];
-const wNode = (tag, className = '', value) => {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (value !== undefined) node.textContent = String(value);
-  return node;
+// A pasted code stays in memory until explicitly moved to My Slip. Never store Telegram initData here.
+const style = document.createElement('link');
+style.rel = 'stylesheet'; style.href = '/app/code-workspace.css?v=5.4.0';
+document.head.append(style);
+const analysisResult = document.querySelector('#analysis-result');
+const panel = document.createElement('section');
+panel.className = 'desk-panel code-workspace hidden';
+panel.setAttribute('aria-label', 'Edit and trim an analyzed booking code');
+analysisResult?.after(panel);
+let slip = null, pending = false, busy = false, optionsIndex = -1, options = [];
+const node = (tag, cls = '', text) => {
+  const el = document.createElement(tag);
+  if (cls) el.className = cls;
+  if (text !== undefined) el.textContent = String(text);
+  return el;
 };
-const wOdds = (value) => Number.isFinite(Number(value)) ? Number(value).toFixed(2) : '—';
-const wCombined = (selections) => selections.reduce((odds, item) => odds * item.odds, 1);
-const wStatus = wNode('p', 'code-workspace-status');
-wStatus.setAttribute('role', 'status');
-wStatus.setAttribute('aria-live', 'polite');
-function report(message, error = false) {
-  wStatus.textContent = message;
-  wStatus.dataset.kind = error ? 'error' : 'info';
+const fmt = (n) => Number.isFinite(Number(n)) ? Number(n).toFixed(2) : '—';
+const product = (selections) => selections.reduce((n, pick) => n * pick.odds, 1);
+const state = node('p', 'code-workspace-status');
+state.setAttribute('role', 'status'); state.setAttribute('aria-live', 'polite');
+function message(text, warning = false) {
+  state.textContent = text; state.dataset.kind = warning ? 'error' : 'info';
 }
-async function callWorkspace(path, body) {
+async function api(path, body) {
   const initData = window.Telegram?.WebApp?.initData;
-  if (!initData) throw new Error('Open AUREX through the Telegram launcher to edit a real booking code.');
+  if (!initData) throw new Error('Open the AUREX Mini App from Telegram for verified editing.');
   let response;
-  try {
-    response = await fetch(path, { method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-telegram-init-data': initData },
-      body: JSON.stringify(body), signal: AbortSignal.timeout(55_000) });
-  } catch { throw new Error('Provider request timed out or connection failed. No bet was placed.'); }
+  try { response = await fetch(path, { method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-telegram-init-data': initData },
+    body: JSON.stringify(body), signal: AbortSignal.timeout(55_000) }); }
+  catch { throw new Error('Provider unavailable or request timed out. No bet was placed.'); }
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const error = new Error(data.message || data.error || 'The provider request failed.');
-    error.status = response.status;
-    error.data = data;
-    throw error;
+    const error = new Error(data.message || data.error || 'Provider request failed.');
+    error.status = response.status; error.data = data; throw error;
   }
   return data;
 }
-function makeButton(text, callback, disabled = false) {
-  const button = wNode('button', '', text);
-  button.type = 'button'; button.disabled = disabled || codeBusy;
-  button.addEventListener('click', callback);
-  return button;
+function button(text, handler, disabled = false) {
+  const el = node('button', '', text); el.type = 'button'; el.disabled = disabled;
+  el.addEventListener('click', handler); return el;
 }
-function renderCodeWorkspace() {
-  if (!workspaceResult || !codeSlip?.selections?.length) {
-    workspacePanel.classList.add('hidden');
-    return;
-  }
-  workspacePanel.classList.remove('hidden');
-  workspacePanel.replaceChildren();
-  const title = wNode('div', 'desk-heading');
-  const info = wNode('div');
-  info.append(wNode('p', 'eyebrow', 'VERIFIED BOOKING-CODE WORKSPACE'),
-    wNode('h3', '', 'Edit & trim your code'));
-  const original = wNode('p', 'desk-note',
-    `Original: ${codeSlip.sourceCode || 'Imported code'} · ${codeSlip.selections.length} editable selections. Changes do not modify your original booking code.`);
-  title.append(info, wNode('strong', 'code-workspace-odds', `${wOdds(wCombined(codeSlip.selections))} odds`));
-  const summary = wNode('p', 'desk-note', codeSlip.summary || 'AI review completed.');
-  const rows = wNode('div', 'code-workspace-list');
-  codeSlip.selections.forEach((pick, index) => {
-    const row = wNode('article', 'code-workspace-row');
-    const details = wNode('div');
-    details.append(wNode('strong', '', `${index + 1}. ${pick.homeTeam} vs ${pick.awayTeam}`),
-      wNode('small', '', `${pick.marketName} · ${pick.selectionName} @ ${wOdds(pick.odds)} · ${pick.risk} risk`));
-    const actions = wNode('div', 'code-workspace-actions');
-    actions.append(makeButton('Edit odds / market', () => void showOptions(index), dirtyCode),
-      makeButton('Remove', () => {
-        if (codeSlip.selections.length < 2) { report('At least one selection must remain.', true); return; }
-        codeSlip.selections.splice(index, 1);
-        dirtyCode = true; optionsIndex = -1;
-        renderCodeWorkspace();
-        report('Selection removed. Reanalyze to approve the remaining markets before generating a new code.');
+function render() {
+  if (!analysisResult || !slip?.selections?.length) { panel.classList.add('hidden'); return; }
+  panel.classList.remove('hidden'); panel.replaceChildren();
+  const heading = node('div', 'desk-heading'), headingText = node('div');
+  headingText.append(node('p', 'eyebrow', 'VERIFIED CODE WORKSPACE'), node('h3', '', 'Edit & trim code'));
+  heading.append(headingText, node('strong', 'code-workspace-odds', `${fmt(product(slip.selections))} odds`));
+  const intro = node('p', 'desk-note',
+    `Original code: ${slip.sourceCode || 'Imported'} · ${slip.selections.length} editable picks. The original code never changes.`);
+  const summary = node('p', 'desk-note', slip.summary || 'AI review completed.');
+  const rows = node('div', 'code-workspace-list');
+  slip.selections.forEach((pick, i) => {
+    const row = node('article', 'code-workspace-row');
+    const label = node('div');
+    label.append(node('strong', '', `${i + 1}. ${pick.homeTeam} vs ${pick.awayTeam}`),
+      node('small', '', `${pick.marketName} · ${pick.selectionName} @ ${fmt(pick.odds)} · ${pick.risk} risk`));
+    const actions = node('div', 'code-workspace-actions');
+    actions.append(button('Edit odds / market', () => void loadOptions(i), pending),
+      button('Remove', () => {
+        if (busy) return;
+        if (slip.selections.length < 2) { message('At least one pick must remain.', true); return; }
+        slip.selections.splice(i, 1); pending = true; optionsIndex = -1;
+        render(); message('Pick removed. Reanalyze remaining markets before creating another code.');
       }));
-    row.append(details, actions); rows.append(row);
+    row.append(label, actions); rows.append(row);
   });
-  const trimForm = wNode('form', 'code-workspace-trim');
-  const targetLabel = wNode('label');
-  targetLabel.append(wNode('span', '', 'Trim down to combined odds (approximate)'));
-  const target = wNode('input');
-  target.type = 'number'; target.step = '0.01'; target.min = '1.01';
-  target.placeholder = 'e.g. 5 or 10'; target.required = true;
-  target.setAttribute('aria-label', 'Maximum target combined odds');
-  targetLabel.append(target);
-  const trim = wNode('button', '', 'Trim selections'); trim.type = 'submit'; trim.disabled = codeBusy;
-  trimForm.append(targetLabel, trim, wNode('p', 'desk-note',
-    'Trimming removes whole selections; it cannot guarantee an exact target. Review which games remain before reanalysis.'));
-  trimForm.addEventListener('submit', (event) => {
-    event.preventDefault();
-    const maximum = Number(target.value);
-    if (!Number.isFinite(maximum) || maximum < 1.01) { report('Enter a valid target of at least 1.01.', true); return; }
-    let remaining = [...codeSlip.selections];
-    if (wCombined(remaining) <= maximum) { report('The slip is already at or below that target. No picks were removed.'); return; }
-    while (wCombined(remaining) > maximum && remaining.length > 1) {
-      const combinations = remaining.map((_pick, index) => ({ index,
-        product: wCombined(remaining.filter((_item, position) => position !== index)) }));
-      const within = combinations.filter((item) => item.product <= maximum)
-        .sort((a, b) => b.product - a.product);
-      const choice = within[0] || combinations.sort((a, b) => a.product - b.product)[0];
-      if (!choice) break;
-      remaining.splice(choice.index, 1);
+  const form = node('form', 'code-workspace-trim');
+  const label = node('label');
+  label.append(node('span', '', 'Trim to maximum combined odds'));
+  const target = node('input'); target.type = 'number'; target.min = '1.01';
+  target.step = '0.01'; target.placeholder = 'e.g. 5 or 10'; target.required = true;
+  target.setAttribute('aria-label', 'Maximum combined odds'); label.append(target);
+  const trim = node('button', '', 'Trim selections'); trim.type = 'submit';
+  form.append(label, trim, node('p', 'desk-note',
+    'Only whole picks can be removed. An exact target is not guaranteed; check all remaining games.'));
+  form.addEventListener('submit', (event) => {
+    event.preventDefault(); if (busy) return;
+    const max = Number(target.value);
+    if (!Number.isFinite(max) || max < 1.01) { message('Enter a valid odds target of at least 1.01.', true); return; }
+    let items = [...slip.selections];
+    if (product(items) <= max) { message('The current slip is already at or below that target.'); return; }
+    while (product(items) > max && items.length > 1) {
+      const possible = items.map((_pick, i) => ({ i, odds: product(items.filter((_item, j) => i !== j)) }));
+      const sufficient = possible.filter((item) => item.odds <= max).sort((a, b) => b.odds - a.odds);
+      const remove = sufficient[0] || possible.sort((a, b) => a.odds - b.odds)[0];
+      if (!remove) break;
+      items.splice(remove.i, 1);
     }
-    if (wCombined(remaining) > maximum) {
-      report(`Even the last selection exceeds ${wOdds(maximum)} odds. Use Edit odds / market to choose a lower-priced verified option.`, true);
+    if (product(items) > max) {
+      message(`The last remaining pick exceeds ${fmt(max)} odds. Edit that market to choose a lower-priced outcome.`, true);
       return;
     }
-    const removed = codeSlip.selections.length - remaining.length;
-    codeSlip.selections = remaining; dirtyCode = true; optionsIndex = -1;
-    renderCodeWorkspace();
-    report(`Removed ${removed} selection(s). Current estimate: ${wOdds(wCombined(remaining))} odds versus ${wOdds(maximum)} target. Review and tap Reanalyze.`);
+    const removed = slip.selections.length - items.length;
+    slip.selections = items; pending = true; optionsIndex = -1;
+    render(); message(`Removed ${removed} pick(s). Estimate ${fmt(product(items))} versus ${fmt(max)} target. Review and reanalyze.`);
   });
-  const tools = wNode('div', 'code-workspace-toolbar');
-  tools.append(makeButton(dirtyCode ? 'Reanalyze changes' : 'Refresh analysis', () => void reanalyzeCode(), false),
-    makeButton('Generate NEW booking code', () => void generateEditedCode(), dirtyCode),
-    makeButton('Move to My Slip', () => saveAsActive(), dirtyCode));
-  const options = wNode('div', 'code-workspace-options');
+  const alternativePanel = node('div', 'code-workspace-options');
   if (optionsIndex >= 0) {
-    options.append(wNode('h4', '', 'Choose the exact provider market and odds'));
-    options.append(wNode('p', 'desk-note',
-      'Prices are current supplier snapshots, not recommendations. Selecting an outcome reanalyzes the full code.'));
-    if (!optionsList.length) options.append(wNode('p', 'desk-empty', 'No eligible replacement outcomes were returned.'));
-    optionsList.forEach((item) => {
-      const selected = codeSlip.selections[optionsIndex];
-      if (selected?.marketId === item.marketId && selected?.selectionId === item.selectionId &&
-          (selected?.specifier ?? null) === item.specifier) return;
-      options.append(makeButton(`${item.marketName} · ${item.selectionName} @ ${wOdds(item.odds)}`,
-        () => void chooseMarket(optionsIndex, item), dirtyCode));
+    alternativePanel.append(node('h4', '', 'Choose a specific active market'),
+      node('p', 'desk-note', 'These are SportyBet snapshots, not AI recommendations. Your full slip will be reanalyzed.'));
+    if (!options.length) alternativePanel.append(node('p', 'desk-empty', 'No eligible active outcomes were returned.'));
+    options.forEach((item) => {
+      const current = slip.selections[optionsIndex];
+      if (current?.marketId === item.marketId && current?.selectionId === item.selectionId &&
+        (current?.specifier ?? null) === item.specifier) return;
+      alternativePanel.append(button(`${item.marketName} · ${item.selectionName} @ ${fmt(item.odds)}`,
+        () => void choose(optionsIndex, item), pending));
     });
-    options.append(makeButton('Close market choices', () => { optionsIndex = -1; renderCodeWorkspace(); }));
+    alternativePanel.append(button('Close choices', () => { optionsIndex = -1; render(); }));
   }
-  workspacePanel.append(title, original, summary, rows, trimForm, options, tools, wStatus);
+  const toolbar = node('div', 'code-workspace-toolbar');
+  toolbar.append(button(pending ? 'Reanalyze changes' : 'Refresh analysis', () => void reanalyze()),
+    button('Generate NEW booking code', () => void generate(), pending),
+    button('Move to My Slip', () => saveToSlip(), pending));
+  panel.append(heading, intro, summary, rows, form, alternativePanel, toolbar, state);
 }
-async function showOptions(index) {
-  if (codeBusy || dirtyCode || !codeSlip.selections[index]) return;
-  codeBusy = true;
-  report('Loading active provider markets for this fixture…');
+async function loadOptions(index) {
+  if (busy || pending || !slip?.selections[index]) return;
+  busy = true; message('Loading available outcomes from SportyBet…');
   try {
-    const pick = codeSlip.selections[index];
-    const response = await callWorkspace('/api/miniapp/code-options', {
-      eventId: pick.eventId, sport: pick.sport });
-    optionsIndex = index; optionsList = response.options || [];
-    renderCodeWorkspace();
-    report(`${optionsList.length} options · ${response.source} · checked ${response.checkedAt}. ${response.truncated ? 'More markets exist; this list is limited.' : ''}`);
-  } catch (error) { report(error instanceof Error ? error.message : 'Market list unavailable.', true); }
-  finally { codeBusy = false; }
+    const pick = slip.selections[index];
+    const data = await api('/api/miniapp/code-options', { eventId: pick.eventId, sport: pick.sport });
+    optionsIndex = index; options = data.options || [];
+    render(); message(`${options.length} current outcomes · checked ${data.checkedAt}. ${data.truncated ? 'More markets exist beyond this list.' : ''}`);
+  } catch (error) { message(error instanceof Error ? error.message : 'Market search failed.', true); }
+  finally { busy = false; }
 }
-async function reanalyzeCode() {
-  if (codeBusy || !codeSlip?.selections?.length) return;
-  codeBusy = true; report('Refreshing the remaining markets and reanalyzing every selection…');
+async function edit(action, extra = {}) {
+  if (busy || !slip?.selections?.length) return;
+  busy = true; message('Refreshing every market and requesting complete AI reanalysis…');
   try {
-    const updated = await callWorkspace('/api/miniapp/edit-slip', {
-      action: 'reanalyze', selections: codeSlip.selections,
-      analysisToken: codeSlip.analysisToken, riskMode: codeSlip.riskMode || 'balanced',
+    const updated = await api('/api/miniapp/edit-slip', {
+      action, ...extra, selections: slip.selections,
+      analysisToken: slip.analysisToken, riskMode: slip.riskMode || 'balanced',
     });
-    codeSlip = { ...updated, sourceCode: codeSlip.sourceCode };
-    dirtyCode = false; optionsIndex = -1; optionsList = [];
-    renderCodeWorkspace(); report(`Reanalysis complete. ${updated.selections.length} picks · ${wOdds(updated.combinedOdds)} odds. No bet was placed.`);
-  } catch (error) { report(error instanceof Error ? error.message : 'Reanalysis failed; do not generate a code.', true); }
-  finally { codeBusy = false; }
+    slip = { ...updated, sourceCode: slip.sourceCode };
+    pending = false; optionsIndex = -1; options = [];
+    render(); message(`${updated.selections.length} picks verified and reanalyzed. Combined odds: ${fmt(updated.combinedOdds)}. No bet placed.`);
+  } catch (error) { message(error instanceof Error ? error.message : 'Reanalysis failed; edits are not approved.', true); }
+  finally { busy = false; }
 }
-async function chooseMarket(index, option) {
-  if (codeBusy || dirtyCode || !codeSlip?.selections?.[index]) return;
-  codeBusy = true; report('Verifying your chosen market and reanalyzing the complete slip…');
-  try {
-    const updated = await callWorkspace('/api/miniapp/edit-slip', {
-      action: 'choose', index, marketId: option.marketId,
-      selectionId: option.selectionId, specifier: option.specifier,
-      selections: codeSlip.selections, analysisToken: codeSlip.analysisToken,
-      riskMode: codeSlip.riskMode || 'balanced',
-    });
-    codeSlip = { ...updated, sourceCode: codeSlip.sourceCode };
-    dirtyCode = false; optionsIndex = -1; optionsList = [];
-    renderCodeWorkspace(); report(`Chosen market independently verified and reanalyzed. New combined odds: ${wOdds(updated.combinedOdds)}.`);
-  } catch (error) { report(error instanceof Error ? error.message : 'Could not change that market.', true); }
-  finally { codeBusy = false; }
+async function reanalyze() { await edit('reanalyze'); }
+async function choose(index, option) {
+  if (pending) { message('Reanalyze your existing removals first.', true); return; }
+  await edit('choose', { index, marketId: option.marketId,
+    selectionId: option.selectionId, specifier: option.specifier });
 }
-async function generateEditedCode() {
-  if (codeBusy || dirtyCode || !codeSlip?.analysisToken) return;
-  codeBusy = true; report('Validating every market and requesting a new SportyBet code…');
+async function generate() {
+  if (busy || pending || !slip?.analysisToken) return;
+  busy = true; message('Refreshing odds before requesting the new code…');
   try {
+    const data = { selections: slip.selections, analysisToken: slip.analysisToken };
     let result;
-    const body = { selections: codeSlip.selections, analysisToken: codeSlip.analysisToken };
-    try { result = await callWorkspace('/api/miniapp/code', body); }
+    try { result = await api('/api/miniapp/code', data); }
     catch (error) {
       if (error.status !== 409 || error.data?.status !== 'odds_changed') throw error;
-      if (!window.confirm(`Provider odds changed from ${wOdds(error.data.previousOdds)} to ${wOdds(error.data.currentOdds)}. Generate the NEW code at current odds?`)) {
-        report('Code generation cancelled. No wager was placed.'); return;
-      }
-      result = await callWorkspace('/api/miniapp/code', { ...body, acceptOddsChange: true });
+      const yes = window.confirm(`Odds changed from ${fmt(error.data.previousOdds)} to ${fmt(error.data.currentOdds)}. Generate the new code with the updated odds?`);
+      if (!yes) { message('Code generation cancelled. No bet placed.'); return; }
+      result = await api('/api/miniapp/code', { ...data, acceptOddsChange: true });
     }
-    const codeBox = wNode('div', 'code-workspace-code');
-    codeBox.append(wNode('strong', '', 'New SportyBet code'), wNode('code', '', result.code),
-      wNode('p', 'desk-note', `${result.selections} selections · ${wOdds(result.odds)} current odds. No wager was placed.`));
-    codeBox.append(makeButton('Copy new code', async () => {
-      try { await navigator.clipboard.writeText(result.code); report('New code copied.'); }
-      catch { window.prompt('Copy your new booking code:', result.code); }
+    panel.querySelector('.code-workspace-code')?.remove();
+    const output = node('div', 'code-workspace-code');
+    output.append(node('strong', '', 'Your NEW SportyBet booking code'),
+      node('code', '', result.code), node('p', 'desk-note',
+        `${result.selections} picks · current ${fmt(result.odds)} odds · no wager placed.`));
+    output.append(button('Copy code', async () => {
+      try { await navigator.clipboard.writeText(result.code); message('New code copied.'); }
+      catch { window.prompt('Copy your new code:', result.code); }
     }));
-    workspacePanel.querySelector('.code-workspace-code')?.remove();
-    workspacePanel.append(codeBox);
-    report('Your NEW booking code is ready. The original code was not modified.');
-  } catch (error) { report(error instanceof Error ? error.message : 'Could not create the new code.', true); }
-  finally { codeBusy = false; }
+    panel.append(output); message('A new code was created. Your original booking code remains unchanged.');
+  } catch (error) { message(error instanceof Error ? error.message : 'Could not generate the new code.', true); }
+  finally { busy = false; }
 }
-function saveAsActive() {
-  if (dirtyCode || !codeSlip?.analysisToken) { report('Reanalyze edits first.', true); return; }
+function saveToSlip() {
+  if (busy || pending || !slip?.analysisToken) { message('Reanalyze edits before saving.', true); return; }
   let existing;
   try { existing = localStorage.getItem('aurex-active-slip'); }
-  catch { report('Browser storage is unavailable; could not open My Slip.', true); return; }
-  if (existing && !window.confirm('Replace the active My Slip on this device with the verified imported code?')) return;
+  catch { message('Device storage is unavailable.', true); return; }
+  if (existing && !window.confirm('Replace your current My Slip on this device with this imported and reviewed code?')) return;
   try {
-    localStorage.setItem('aurex-active-slip', JSON.stringify(codeSlip));
+    localStorage.setItem('aurex-active-slip', JSON.stringify(slip));
     localStorage.removeItem('aurex-slip-needs-analysis-v1');
     sessionStorage.setItem('aurex-return-to-slip', '1');
     window.location.reload();
-  } catch { report('Could not save the imported slip. It has not replaced My Slip.', true); }
+  } catch { message('Could not save this slip. Your existing slip was not replaced.', true); }
 }
 document.addEventListener('aurex:code-workspace-clear', () => {
-  codeSlip = null; dirtyCode = false; optionsIndex = -1;
-  optionsList = []; workspacePanel.classList.add('hidden');
+  slip = null; pending = false; optionsIndex = -1; options = []; panel.classList.add('hidden');
 });
 document.addEventListener('aurex:code-analyzed', (event) => {
-  if (!event.detail?.editableSlip?.selections?.length) return;
-  codeSlip = event.detail.editableSlip;
-  dirtyCode = false; optionsIndex = -1; optionsList = [];
-  renderCodeWorkspace();
-  report('Select Edit odds / market for a particular game, Remove a game, or Trim to target odds.');
+  const imported = event.detail?.editableSlip;
+  if (!imported?.selections?.length) return;
+  slip = imported; pending = false; optionsIndex = -1; options = [];
+  render(); message('Edit a particular market, remove picks or trim the combined odds.');
 });
