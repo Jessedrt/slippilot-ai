@@ -5,7 +5,7 @@ import type { NormalizedMarket } from '../src/types/domain.js';
 
 afterEach(() => vi.useRealTimers());
 describe('verified day fallback', () => {
-  it('does not treat today's failed market feed as zero eligible matches or search tomorrow', async () => {
+  it("does not treat today's failed market feed as zero eligible matches or search tomorrow", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date('2026-09-18T10:00:00Z'));
     const events = [
