@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#090c11" />
-    <meta name="description" content="Build, analyze and prepare supported sports slips in AUREX." />
+    <meta name="description" content="Build, analyze and review supported sports slips in AUREX." />
     <link rel="icon" href="/favicon.svg" />
     <link rel="stylesheet" href="/app/app.css?v=3.0.4" />
     <link rel="stylesheet" href="/app/refined.css?v=4.0.0" />
@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="/app/interaction-fixes.css?v=4.7.0" />
     <link rel="stylesheet" href="/app/contrast.css?v=4.8.0" />
     <link rel="stylesheet" href="/app/premium-motion.css?v=4.9.0" />
+    <link rel="stylesheet" href="/app/desk.css?v=5.0.0" />
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <title>AUREX Mini App</title>
   </head>
@@ -54,7 +55,6 @@
             </div>
             <div class="odds-estimate" role="status" aria-live="polite"><div><span>Estimated matches</span><strong id="estimated-games">Enter target odds</strong></div><p>Calculated automatically from your target and risk mode. The final number of selections and combined odds may differ.</p></div>
             <p class="field-help">Today's fixtures only (Lagos time). Matches and target odds cannot be guaranteed.</p>
-            <!-- Compatibility only: the final game count is chosen server-side. -->
             <div class="chips hidden" id="count-chips" aria-hidden="true"><button type="button" class="selected" data-count="5" tabindex="-1">5</button><button type="button" data-count="3" tabindex="-1">3</button></div>
             <button class="primary" type="submit"><span>Build &amp; analyze</span><b aria-hidden="true">→</b></button>
           </form>
@@ -81,26 +81,43 @@
           <div id="slip-content" class="hidden">
             <div class="slip-summary"><div><span>COMBINED ODDS</span><strong id="combined-odds">—</strong></div><div><span>AVG. AI SCORE</span><strong id="average-confidence">—</strong></div></div>
             <p class="field-help">These are actual returned selections, not a promise to reach the requested odds or game count. AI scores are not winning probabilities.</p>
+            <section class="desk-panel" id="slip-insights" aria-label="Slip insights" aria-live="polite"></section>
+            <div class="desk-edit-bar"><div><strong>Slip editor</strong><span>Remove a selection below, replace its market, or refresh the analysis.</span></div><button type="button" id="reanalyze-slip">Reanalyze</button></div>
+            <p id="slip-editor-status" class="desk-status hidden" role="status" aria-live="polite"></p>
             <div class="slip-actions"><span>Selections</span><button type="button" id="clear-slip">Clear all</button></div>
             <div class="pick-list" id="pick-list"></div>
             <div class="sticky-action"><p>Live markets are refreshed before creating a code.</p><button class="primary" id="generate-code"><span>Generate SportyBet code</span><b aria-hidden="true">→</b></button></div>
           </div>
           <div class="result-panel hidden" id="code-result" role="status" aria-live="polite"></div>
         </section>
+        <section class="view" id="explore-view" aria-labelledby="explore-tab">
+          <div class="section-title"><p class="eyebrow">AUREX DESK</p><h2>Explore.</h2><p>Today’s fixtures, your watchlist and recent research in one place.</p></div>
+          <section class="desk-panel" aria-labelledby="fixtures-heading">
+            <div class="desk-heading"><div><span class="eyebrow">LIVE SOURCE</span><h3 id="fixtures-heading">Today’s fixtures</h3></div><button type="button" id="refresh-fixtures">Refresh</button></div>
+            <div class="desk-filter" role="group" aria-label="Fixture sport"><button type="button" data-fixture-sport="football" aria-pressed="true">⚽ Football</button><button type="button" data-fixture-sport="basketball" aria-pressed="false">🏀 Basketball</button></div>
+            <p id="desk-status" class="desk-status" role="status" aria-live="polite">Open in Telegram to load today's fixtures.</p>
+            <div id="desk-fixtures" class="desk-rows"></div>
+            <p class="desk-note">SportyBet-supplied schedule. Listings do not guarantee active odds or a bookable market.</p>
+          </section>
+          <section class="desk-panel" aria-labelledby="watch-heading">
+            <div class="desk-heading"><div><span class="eyebrow">TRACKED MATCHES</span><h3 id="watch-heading">Watchlist</h3></div><button type="button" id="refresh-watchlist">Refresh</button></div>
+            <p class="desk-note">Save fixtures here and refresh to check changes. Background alerts and Telegram notifications are not active yet.</p>
+            <p id="watch-status" class="desk-status" role="status" aria-live="polite"></p>
+            <div id="watch-items" class="desk-rows"></div>
+          </section>
+          <section class="desk-panel" aria-labelledby="history-heading">
+            <div class="desk-heading"><div><span class="eyebrow">PRIVATE ACTIVITY</span><h3 id="history-heading">Analysis history</h3></div><button type="button" id="clear-history">Clear</button></div>
+            <p class="desk-note">Recent slip builds and successful booking-code reviews are saved on this device only, not synced across Telegram devices.</p>
+            <div id="history-items" class="desk-rows"></div>
+          </section>
+          <div class="desk-shortcuts"><button type="button" data-go="analyze">Analyze a code →</button><button type="button" data-go="build">Build a slip →</button></div>
+        </section>
       </main>
       <nav class="bottom-nav" aria-label="Primary navigation: tap or swipe to change sections">
-        <button type="button" class="nav-item active" id="build-tab" data-view="build" aria-current="page">
-          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 16.5h7M16.5 13v7" /></svg></span>
-          <span class="nav-label">Build</span>
-        </button>
-        <button type="button" class="nav-item" id="analyze-tab" data-view="analyze">
-          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="5.8" /><path d="m15.1 15.1 4.5 4.5" /></svg></span>
-          <span class="nav-label">Analyze</span>
-        </button>
-        <button type="button" class="nav-item" id="slip-tab" data-view="slip">
-          <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3h10l3 3v15l-4-2-4 2-4-2-4 2V6l3-3Z" /><path d="M9 9h6M9 13h6" /></svg><i id="slip-count" class="is-empty">0</i></span>
-          <span class="nav-label">My slip</span>
-        </button>
+        <button type="button" class="nav-item active" id="build-tab" data-view="build" aria-current="page"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 16.5h7M16.5 13v7" /></svg></span><span class="nav-label">Build</span></button>
+        <button type="button" class="nav-item" id="analyze-tab" data-view="analyze"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="5.8" /><path d="m15.1 15.1 4.5 4.5" /></svg></span><span class="nav-label">Analyze</span></button>
+        <button type="button" class="nav-item" id="slip-tab" data-view="slip"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3h10l3 3v15l-4-2-4 2-4-2-4 2V6l3-3Z" /><path d="M9 9h6M9 13h6" /></svg><i id="slip-count" class="is-empty">0</i></span><span class="nav-label">My slip</span></button>
+        <button type="button" class="nav-item" id="explore-tab" data-view="explore"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m15.3 8.7-2 4.6-4.6 2 2-4.6 4.6-2Z"/></svg></span><span class="nav-label">Explore</span></button>
       </nav>
     </div>
     <div class="toast" id="toast" role="status"></div>
@@ -112,5 +129,6 @@
     <script type="module" src="/app/glass-drag.js?v=4.7.0"></script>
     <script type="module" src="/app/glass-feel.js?v=4.9.0"></script>
     <script type="module" src="/app/code-analysis.js?v=4.7.0"></script>
+    <script type="module" src="/app/desk.js?v=5.0.0"></script>
   </body>
 </html>
