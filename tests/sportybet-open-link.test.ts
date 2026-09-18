@@ -8,7 +8,7 @@ const readyMessage = (code: string) =>
   `✅ SportyBet booking code created\n\nCode:\n<pre>${code}</pre>\n\nNo wager was submitted.`;
 
 function recordingContext() {
-  const send = vi.fn(async (_message: string, _options?: unknown) => ({ message_id: 1 }));
+  const send = vi.fn((...args: [message: string, options?: unknown]) => Promise.resolve({ message_id: args[0].length }));
   const ctx = { reply: send } as unknown as Context;
   attachBookingCodeLink(ctx);
   return { ctx, send };
