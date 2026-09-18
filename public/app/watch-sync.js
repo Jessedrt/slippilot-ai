@@ -177,19 +177,26 @@ importButton.addEventListener('click', async () => {
   await refresh(false);
   setBanner(`Imported ${added} provider-verified fixtures. ${failed} could not be imported and remain on this device.`, failed > 0);
 });
-// Preserve desk.js's existing Watch button and synchronize its actual device-local mutation.
-// The server is authoritative; a failed save rolls the local change back.
+// Preserve desk.js's Watch button, but wait for its target listener to finish
+// updating localStorage before calculating the actual server-side change.
 document.addEventListener('click', (event) => {
   const button = event.target.closest('#desk-fixtures .desk-row button[aria-pressed]');
-  if (!button || !fixtureRows?.contains(button) || !watchInit || busy) return;
+  if (!button || !fixtureRows?.contains(button) || !watchInit) return;
+  if (busy) {
+    event.preventDefault();
+    event.stopPropagation();
+    setBanner('Watchlist sync is in progress. Please try again when it finishes.', true);
+    return;
+  }
   const previous = readLocal();
-  queueMicrotask(async () => {
+  window.setTimeout(async () => {
     const current = readLocal();
     const priorIds = new Set(previous.map((item) => item.id));
     const currentIds = new Set(current.map((item) => item.id));
     const added = current.find((item) => !priorIds.has(item.id));
     const removed = previous.find((item) => !currentIds.has(item.id));
     if (!added && !removed) return;
+    busy = true;
     try {
       const change = added ? { eventId: added.id, sport: added.sport, watch: true } :
         { eventId: removed.id, sport: removed.sport, watch: false };
@@ -201,8 +208,8 @@ document.addEventListener('click', (event) => {
       try { sessionStorage.setItem('aurex-watch53-error', error instanceof Error ? error.message : 'Cloud save failed.'); }
       catch { /* restricted browser */ }
       window.location.reload();
-    }
-  });
+    } finally { busy = false; }
+  }, 0);
 }, true);
 try {
   const error = sessionStorage.getItem('aurex-watch53-error');
