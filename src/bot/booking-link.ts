@@ -6,7 +6,8 @@ export function attachBookingCodeLink(ctx: Context): void {
   const originalReply = ctx.reply.bind(ctx);
   ctx.reply = (message, extra) => {
     // Do not add links to pasted, imported, failed or unconfirmed codes.
-    if (!/^✅ (?:SportyBet booking code created|Split [A-Z] SportyBet code)\b/.test(message)) {
+    if (typeof message !== 'string' ||
+      !/^✅ (?:SportyBet booking code created|Split [A-Z] SportyBet code)\b/.test(message)) {
       return originalReply(message, extra);
     }
     const code = /<pre>([A-Za-z0-9]{4,20})<\/pre>/.exec(message)?.[1];
