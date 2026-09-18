@@ -11,6 +11,7 @@ import { landingPage, landingStyles } from '../web/landing-v4.js';
 import { registerMiniAppRoutes, type MiniAppDependencies } from './mini-app-routes.js';
 import { registerBookingCodeAnalysisRoute } from './booking-code-analysis.js';
 import { registerDeskRoutes } from './desk-routes.js';
+import { registerIntelligenceRoutes } from './intelligence-routes.js';
 import { registerSlipEditorRoutes } from './slip-editor-routes.js';
 
 interface TelegramWebhook {
@@ -68,6 +69,7 @@ export async function createServer(
     registerMiniAppRoutes(app as unknown as FastifyInstance, miniApp);
     registerBookingCodeAnalysisRoute(app as unknown as FastifyInstance, miniApp);
     registerDeskRoutes(app as unknown as FastifyInstance, miniApp.sportyBet);
+    registerIntelligenceRoutes(app as unknown as FastifyInstance, miniApp);
     registerSlipEditorRoutes(app as unknown as FastifyInstance, miniApp);
   }
   app.setErrorHandler((error, request, reply) => {
