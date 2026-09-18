@@ -68,7 +68,7 @@ export async function importBookingCode(code: string, deps: Deps, initData: stri
     const payload = Buffer.from(JSON.stringify({ expiresAt: Date.now() + 30 * 60_000,
       session: createHash('sha256').update(initData).digest('base64url'),
       selections: accepted.map(key) })).toString('base64url');
-    const signature = createHmac('sha256', deps.telegramBotToken!)
+    const signature = createHmac('sha256', deps.telegramBotToken)
       .update(`aurex-miniapp-analysis-v1.${payload}`).digest('base64url');
     const selections = accepted.map(({ verdict: _verdict, reason: _reason, ...item }) => {
       void _verdict; void _reason;
