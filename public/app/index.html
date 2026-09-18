@@ -20,19 +20,19 @@
     <link rel="stylesheet" href="/app/desk.css?v=5.0.0" />
     <link rel="stylesheet" href="/app/nav-alignment.css?v=5.1.0" />
     <link rel="stylesheet" href="/app/intelligence.css?v=5.2.0" />
+    <link rel="stylesheet" href="/app/watch-sync.css?v=5.3.0" />
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <title>AUREX Mini App</title>
   </head>
   <body>
     <div class="app-shell">
-      <!-- Keep the connection-state node for app.js without displaying the removed top bar. -->
       <div class="live-pill" style="display:none" aria-hidden="true"><i></i> READY</div>
       <main style="padding-top:max(12px, env(safe-area-inset-top, 0px))">
         <section class="view active" id="build-view" aria-labelledby="build-tab">
           <div class="hero-copy">
             <p class="eyebrow">SLIP BUILDER</p>
             <h1>Build your next <span class="hero-highlight">slip.</span></h1>
-            <p>Set an odds target and review today's fixtures.</p>
+            <p>Set an odds target. If today's eligible markets are empty, AUREX checks up to two days ahead.</p>
           </div>
           <div class="build-steps" aria-label="How it works">
             <div><span>01</span><strong>Set target</strong></div>
@@ -56,8 +56,8 @@
               <label class="field"><span>Risk mode</span><select id="risk-mode" aria-describedby="risk-mode-help"><option value="conservative">Conservative</option><option selected value="balanced">Balanced</option><option value="aggressive">Aggressive</option></select><small class="field-help" id="risk-mode-help">Changes the match-count estimate; not a guarantee of safety.</small></label>
             </div>
             <div class="odds-estimate" role="status" aria-live="polite"><div><span>Estimated matches</span><strong id="estimated-games">Enter target odds</strong></div><p>Calculated automatically from your target and risk mode. The final number of selections and combined odds may differ.</p></div>
-            <p class="field-help">Today's fixtures only (Lagos time). Matches and target odds cannot be guaranteed.</p>
-            <div class="chips hidden" id="count-chips" aria-hidden="true"><button type="button" class="selected" data-count="5" tabindex="-1">5</button><button type="button" data-count="3" tabindex="-1">3</button></div>
+            <p class="field-help">Today first; tomorrow or the following day only when no eligible active markets are available on earlier days (Lagos time). Odds are never guaranteed.</p>
+            <div class="chips hidden" id="count-chips" aria-hidden="true"><button type="button" class="selected" data-count="5" tabindex="-1">5</button><button type="button" class="selected" data-count="3" tabindex="-1">3</button></div>
             <button class="primary" type="submit"><span>Build &amp; analyze</span><b aria-hidden="true">→</b></button>
           </form>
           <details class="help-panel">
@@ -68,9 +68,9 @@
           <div class="notice hidden" id="build-error" role="alert"></div>
         </section>
         <section class="view" id="analyze-view" aria-labelledby="analyze-tab">
-          <div class="section-title"><p class="eyebrow">ANALYSIS TOOLS</p><h2>Look closer at a slip.</h2><p>Review a booking code, a public X post or a clear screenshot.</p></div>
+          <div class="section-title"><p class="eyebrow">ANALYSIS TOOLS</p><h2>Look closer at a slip.</h2><p>Paste a booking code to analyze, edit individual markets and trim odds, or review a public X post or screenshot.</p></div>
           <div class="tool-grid">
-            <form class="tool-card" id="read-code-form"><span class="tool-icon">#</span><div><h3>Booking code</h3><p>Analyze every selection with current markets and AI risk reasoning.</p></div><input id="read-code" maxlength="20" placeholder="Paste code" aria-label="Booking code" required /><button type="submit">Analyze code</button></form>
+            <form class="tool-card" id="read-code-form"><span class="tool-icon">#</span><div><h3>Booking code · edit &amp; trim</h3><p>Verify each current selection, choose a specific alternative market or trim your code to a target.</p></div><input id="read-code" maxlength="20" placeholder="Paste code" aria-label="Booking code" required /><button type="submit">Analyze &amp; edit code</button></form>
             <form class="tool-card" id="x-form"><span class="tool-icon">𝕏</span><div><h3>X / Twitter post</h3><p>Extract public booking codes from post text.</p></div><input id="x-url" type="url" placeholder="https://x.com/…/status/…" aria-label="X post URL" required /><button type="submit">Read post</button></form>
             <form class="tool-card" id="shot-form"><span class="tool-icon">▣</span><div><h3>Slip screenshot</h3><p>Extract teams, markets, odds and visible codes. PNG, JPG or WebP; maximum 6 MB.</p></div><label class="upload"><input id="shot-file" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Choose a slip screenshot" required /><span>Choose screenshot</span></label><button type="submit">Analyze image</button></form>
           </div>
@@ -93,23 +93,23 @@
           <div class="result-panel hidden" id="code-result" role="status" aria-live="polite"></div>
         </section>
         <section class="view" id="explore-view" aria-labelledby="explore-tab">
-          <div class="section-title"><p class="eyebrow">AUREX DESK</p><h2>Explore.</h2><p>Today’s fixtures, your watchlist and recent research in one place.</p></div>
+          <div class="section-title"><p class="eyebrow">AUREX DESK</p><h2>Explore.</h2><p>Today-first fixture discovery, watchlist and recent research in one place.</p></div>
           <section class="desk-panel" aria-labelledby="fixtures-heading">
-            <div class="desk-heading"><div><span class="eyebrow">LIVE SOURCE</span><h3 id="fixtures-heading">Today’s fixtures</h3></div><button type="button" id="refresh-fixtures">Refresh</button></div>
+            <div class="desk-heading"><div><span class="eyebrow">LIVE SOURCE</span><h3 id="fixtures-heading">Upcoming fixtures</h3></div><button type="button" id="refresh-fixtures">Refresh</button></div>
             <div class="desk-filter" role="group" aria-label="Fixture sport"><button type="button" data-fixture-sport="football" aria-pressed="true">⚽ Football</button><button type="button" data-fixture-sport="basketball" aria-pressed="false">🏀 Basketball</button></div>
-            <p id="desk-status" class="desk-status" role="status" aria-live="polite">Open in Telegram to load today's fixtures.</p>
+            <p id="desk-status" class="desk-status" role="status" aria-live="polite">Open in Telegram to load provider fixtures.</p>
             <div id="desk-fixtures" class="desk-rows"></div>
             <p class="desk-note">SportyBet-supplied schedule. Listings do not guarantee active odds or a bookable market.</p>
           </section>
           <section class="desk-panel" aria-labelledby="watch-heading">
             <div class="desk-heading"><div><span class="eyebrow">TRACKED MATCHES</span><h3 id="watch-heading">Watchlist</h3></div><button type="button" id="refresh-watchlist">Refresh</button></div>
-            <p class="desk-note">Save fixtures here and refresh to check changes. Background alerts and Telegram notifications are not active yet.</p>
+            <p class="desk-note">Save fixtures and refresh to check changes. Background alerts require explicit opt-in and confirmed server configuration.</p>
             <p id="watch-status" class="desk-status" role="status" aria-live="polite"></p>
             <div id="watch-items" class="desk-rows"></div>
           </section>
           <section class="desk-panel" aria-labelledby="history-heading">
             <div class="desk-heading"><div><span class="eyebrow">PRIVATE ACTIVITY</span><h3 id="history-heading">Analysis history</h3></div><button type="button" id="clear-history">Clear</button></div>
-            <p class="desk-note">Recent slip builds and successful booking-code reviews are saved on this device only, not synced across Telegram devices.</p>
+            <p class="desk-note">Recent slip builds and booking-code reviews are saved on this device only, not synced across Telegram devices.</p>
             <div id="history-items" class="desk-rows"></div>
           </section>
           <div class="desk-shortcuts"><button type="button" data-go="analyze">Analyze a code →</button><button type="button" data-go="build">Build a slip →</button></div>
@@ -130,8 +130,9 @@
     <script type="module" src="/app/delight.js?v=4.6.0"></script>
     <script type="module" src="/app/glass-drag.js?v=4.7.0"></script>
     <script type="module" src="/app/glass-feel.js?v=4.9.0"></script>
-    <script type="module" src="/app/code-analysis.js?v=4.7.0"></script>
+    <script type="module" src="/app/code-analysis.js?v=5.4.0"></script>
     <script type="module" src="/app/desk.js?v=5.0.0"></script>
     <script type="module" src="/app/intelligence.js?v=5.2.0"></script>
+    <script type="module" src="/app/watch-sync.js?v=5.3.0"></script>
   </body>
 </html>

@@ -6,14 +6,24 @@ export { isAllowedBasketballOverMarket } from './basketball-over-markets.js';
 export interface LiveSlipSnapshot {
   slip: SlipDraft;
   combinedOdds: number;
+  scheduleDate: string;
+  dayOffset: 0 | 1 | 2;
 }
 
-/** A business-level absence, not an AI outage or unexpected server failure. */
+/** Backwards-compatible error class. No unavailable fixtures or markets are invented. */
 export class NoTodayMarketsError extends Error {
   readonly statusCode = 404;
   constructor(sport: Sport) {
-    super(`No supported ${sport} matches with active SportyBet markets remain today in Nigeria (WAT). No later-day games were included. Try another sport or check again tomorrow.`);
+    super(`No supported ${sport} matches with eligible active SportyBet markets were found today, tomorrow or the following day in Nigeria (WAT). No later dates were included. Try another sport or check later.`);
     this.name = 'NoTodayMarketsError';
+  }
+}
+
+export class MarketVerificationUnavailableError extends Error {
+  readonly statusCode = 424;
+  constructor() {
+    super('The sports provider could not verify all markets for the selected day. No later day was substituted or fixtures invented. Please retry.');
+    this.name = 'MarketVerificationUnavailableError';
   }
 }
 
@@ -86,10 +96,7 @@ export function chooseVariedMarket(
 
 export function lagosCalendarDay(date: Date): string {
   return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Africa/Lagos',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
+    timeZone: 'Africa/Lagos', year: 'numeric', month: '2-digit', day: '2-digit',
   }).format(date);
 }
 
@@ -110,16 +117,13 @@ export function interleaveLeagues(events: SportyBetEvent[]): SportyBetEvent[] {
   while (remaining > 0) {
     for (const group of ordered) {
       const next = group.shift();
-      if (next) {
-        result.push(next);
-        remaining -= 1;
-      }
+      if (next) { result.push(next); remaining -= 1; }
     }
   }
   return result;
 }
 
-/** All general discovery is restricted to today's Africa/Lagos calendar date. */
+/** Build from one verified calendar day at a time. Never mix future dates into a partly filled current day. */
 export async function buildLiveSlipSnapshot(
   provider: SportyBetProvider,
   sport: Sport,
@@ -127,80 +131,72 @@ export async function buildLiveSlipSnapshot(
   targetOdds?: number,
   _todayOnly = true,
 ): Promise<LiveSlipSnapshot> {
-  void _todayOnly;
+  void _todayOnly; // Retained for older callers; the explicit three-day fallback applies to all requests.
   if (!Number.isSafeInteger(gameCount) || gameCount < 1) {
     throw new Error('The number of games must be a positive whole number.');
   }
-  const count = gameCount;
   const now = new Date();
-  const today = lagosCalendarDay(now);
-  const seenEventIds = new Set<string>();
-  const events = (await provider.listEvents(sport))
-    .filter((event) => {
-      if (event.status !== 'scheduled' || event.startsAt.getTime() <= now.getTime()) return false;
-      if (lagosCalendarDay(event.startsAt) !== today) return false;
-      if (seenEventIds.has(event.providerEventId)) return false;
-      seenEventIds.add(event.providerEventId);
-      return true;
-    })
-    .sort((left, right) => left.startsAt.getTime() - right.startsAt.getTime());
-  const diverseEvents = interleaveLeagues(events);
-  const availableLegs = Math.max(1, Math.min(count, events.length));
-  const desiredPerLeg = Math.max(1.05, Math.pow(targetOdds ?? 3, 1 / availableLegs));
-  const candidates: CandidateSelection[] = [];
-  const usedFamilies = new Map<string, number>();
-  const usedDirections = new Map<string, number>();
+  const seen = new Set<string>();
+  const events = (await provider.listEvents(sport)).filter((event) => {
+    if (event.status !== 'scheduled' || !Number.isFinite(event.startsAt.getTime()) ||
+        event.startsAt.getTime() <= now.getTime() || seen.has(event.providerEventId)) return false;
+    seen.add(event.providerEventId);
+    return true;
+  }).sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 
-  for (let offset = 0; offset < diverseEvents.length && candidates.length < count;) {
-    const batch = diverseEvents.slice(offset, offset + Math.min(4, count - candidates.length));
-    offset += batch.length;
-    const results = await Promise.allSettled(batch.map((event) => provider.getMarkets(event.providerEventId)));
-    for (const [index, result] of results.entries()) {
-      if (result.status !== 'fulfilled') continue;
-      const event = batch[index];
-      if (!event) continue;
-      const markets = result.value.filter((market) => market.sport === sport);
-      const market = chooseVariedMarket(markets, desiredPerLeg, usedFamilies, usedDirections);
-      if (!market) continue;
-      const family = marketFamily(market);
-      const direction = selectionDirection(market);
-      usedFamilies.set(family, (usedFamilies.get(family) ?? 0) + 1);
-      usedDirections.set(direction, (usedDirections.get(direction) ?? 0) + 1);
-      const impliedProbability = rounded(Math.min(95, 100 / market.odds));
-      candidates.push({
-        ...market,
-        fixture: {
-          id: event.providerEventId,
-          providerId: event.providerEventId,
-          sport,
-          league: event.league ?? 'Unknown competition',
-          homeTeam: event.homeTeam,
-          awayTeam: event.awayTeam,
-          startsAt: event.startsAt,
-          status: event.status,
-        },
-        modelProbability: impliedProbability,
-        confidenceScore: impliedProbability,
-        dataQuality: 'medium',
-        riskLevel: riskLevel(market.odds),
-        reasoning: [
-          'Live SportyBet market snapshot.',
-          'Chosen using target-price proximity and market-family diversity; not a prediction of a win.',
-        ],
-      });
-      if (candidates.length === count) break;
+  for (const offset of [0, 1, 2] as const) {
+    const date = lagosCalendarDay(new Date(now.getTime() + offset * 86_400_000));
+    const dayEvents = events.filter((event) => lagosCalendarDay(event.startsAt) === date);
+    if (!dayEvents.length) continue;
+    const diverseEvents = interleaveLeagues(dayEvents);
+    const desiredPerLeg = Math.max(1.05, Math.pow(targetOdds ?? 3, 1 / Math.max(1, Math.min(gameCount, dayEvents.length))));
+    const candidates: CandidateSelection[] = [];
+    const usedFamilies = new Map<string, number>();
+    const usedDirections = new Map<string, number>();
+    let marketVerificationFailed = false;
+    for (let index = 0; index < diverseEvents.length && candidates.length < gameCount;) {
+      const batch = diverseEvents.slice(index, index + Math.min(4, gameCount - candidates.length));
+      index += batch.length;
+      const results = await Promise.allSettled(batch.map((event) => provider.getMarkets(event.providerEventId)));
+      for (const [position, result] of results.entries()) {
+        if (result.status !== 'fulfilled') { marketVerificationFailed = true; continue; }
+        const event = batch[position];
+        if (!event) continue;
+        const markets = result.value.filter((market) => market.sport === sport);
+        const market = chooseVariedMarket(markets, desiredPerLeg, usedFamilies, usedDirections);
+        if (!market) continue;
+        const family = marketFamily(market);
+        const direction = selectionDirection(market);
+        usedFamilies.set(family, (usedFamilies.get(family) ?? 0) + 1);
+        usedDirections.set(direction, (usedDirections.get(direction) ?? 0) + 1);
+        const impliedProbability = rounded(Math.min(95, 100 / market.odds));
+        candidates.push({
+          ...market,
+          fixture: {
+            id: event.providerEventId, providerId: event.providerEventId, sport,
+            league: event.league ?? 'Unknown competition', homeTeam: event.homeTeam,
+            awayTeam: event.awayTeam, startsAt: event.startsAt, status: event.status,
+          },
+          modelProbability: impliedProbability, confidenceScore: impliedProbability,
+          dataQuality: 'medium', riskLevel: riskLevel(market.odds),
+          reasoning: ['Live SportyBet market snapshot.',
+            'Chosen using target-price proximity and market-family diversity; not a prediction of a win.'],
+        });
+        if (candidates.length === gameCount) break;
+      }
     }
+    if (!candidates.length) {
+      // Only a verifiably empty day may trigger tomorrow's search.
+      if (marketVerificationFailed) throw new MarketVerificationUnavailableError();
+      continue;
+    }
+    const selections = candidates.slice(0, gameCount);
+    return {
+      scheduleDate: date, dayOffset: offset,
+      combinedOdds: rounded(selections.reduce((total, selection) => total * selection.odds, 1)),
+      slip: { id: crypto.randomUUID(), selections,
+        ...(targetOdds ? { targetOdds } : {}), riskMode: 'balanced' },
+    };
   }
-  const selections = candidates.slice(0, count);
-  if (!selections.length) throw new NoTodayMarketsError(sport);
-  const combinedOdds = rounded(selections.reduce((total, selection) => total * selection.odds, 1));
-  return {
-    combinedOdds,
-    slip: {
-      id: crypto.randomUUID(),
-      selections,
-      ...(targetOdds ? { targetOdds } : {}),
-      riskMode: 'balanced',
-    },
-  };
+  throw new NoTodayMarketsError(sport);
 }

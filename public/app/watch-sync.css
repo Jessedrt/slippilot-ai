@@ -1,0 +1,29 @@
+/* The existing four-tab dock and the builder remain untouched. */
+.watch53 { display: grid; gap: 12px; }
+.watch53 .desk-heading { margin-bottom: 0; }
+.watch53-message { color: #cbd8e1; font-size: .77rem; line-height: 1.5; margin: 0; border: 1px solid rgba(194,220,239,.13); border-radius: 12px; padding: 10px 11px; background: rgba(8,14,24,.32); }
+.watch53-message[data-kind='warning'] { color: #ffe1a9; border-color: rgba(255,214,150,.25); }
+.watch53-row { border: 1px solid rgba(190,211,229,.15); background: rgba(8,14,22,.42); border-radius: 15px; padding: 12px; display: grid; gap: 10px; min-width: 0; }
+.watch53-row strong { display: block; color: #f3f6fc; font-size: .82rem; overflow-wrap: anywhere; }
+.watch53-row small { display: block; margin-top: 4px; font-size: .72rem; line-height: 1.45; color: #acbac8; }
+.watch53-row small.watch53-warning { color: #ffbfac; }
+.watch53-row small.watch53-pending { color: #f4dfac; }
+.watch53-row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.watch53 .watch53-row-actions button, .watch53-import, .watch53-manual, .watch53-save { border: 1px solid rgba(182,215,239,.26); border-radius: 999px; background: rgba(157,203,233,.07); color: #e9f5ff; min-height: 36px; padding: 8px 14px; font: inherit; font-weight: 750; font-size: .72rem; cursor: pointer; }
+.watch53 .watch53-row-actions button[aria-pressed='true'] { border-color: rgba(209,250,120,.48); color: var(--lime,#d1fa78); }
+.watch53-import { border-color: rgba(255,215,151,.38); color: #ffe0ab; }
+.watch53-manual { width: 100%; }
+.watch53-settings { display: grid; gap: 12px; border-top: 1px solid rgba(206,229,243,.13); padding-top: 15px; }
+.watch53-settings h4 { margin: 0; font-size: .86rem; color: #e8f5ff; }
+.watch53-toggle { display: flex; align-items: center; gap: 11px; font-size: .76rem; line-height: 1.45; color: #d9e7ef; cursor: pointer; }
+.watch53-toggle input { accent-color: #cffa75; width: 18px; height: 18px; flex: none; }
+.watch53-times { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 9px; }
+.watch53-times label { min-width: 0; display: grid; gap: 5px; color: #acbac8; font-size: .7rem; }
+.watch53-times input { box-sizing: border-box; width: 100%; min-height: 39px; background: #111c27; color: #f2f7fd; border: 1px solid rgba(195,220,240,.22); border-radius: 11px; padding: 8px; color-scheme: dark; font: inherit; }
+.watch53-times input:disabled { opacity: .45; }
+.watch53-save { border-color: rgba(209,250,120,.48); color: var(--lime,#d1fa78); min-height: 43px; }
+.watch53 :is(button,input):focus-visible { outline: 2px solid var(--lime,#d1fa78); outline-offset: 2px; }
+.watch53 button:disabled { opacity: .55; cursor: wait; }
+.watch53 .desk-note { margin: 0; }
+@media (prefers-reduced-motion: reduce) { .watch53 * { scroll-behavior: auto !important; } }
+@media (prefers-reduced-transparency: reduce) { .watch53-row, .watch53-message { background: #131d27; } }
