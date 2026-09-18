@@ -153,7 +153,7 @@ export function registerSlipEditorRoutes(
       averageConfidence: selections.reduce((total, item) => total + item.confidence, 0) / selections.length,
       summary: analysis.summary, rejected: 0,
       oddsChanged: selections.some((item, index) => item.odds !== input.selections[index]?.odds),
-      analysisToken: signedToken(selections, initData, deps.telegramBotToken!),
+      analysisToken: signedToken(selections, initData, deps.telegramBotToken),
     };
   });
 }
