@@ -17,6 +17,7 @@ export const envSchema = z
         .regex(/^[A-Za-z0-9_-]+$/)
         .optional(),
     ),
+    CRON_SECRET: z.preprocess(blankToUndefined, z.string().min(16).max(256).optional()),
     DATABASE_URL: z
       .string()
       .url()
@@ -39,6 +40,7 @@ export const envSchema = z
     YDC_API_KEY_6: z.preprocess(blankToUndefined, z.string().min(8).optional()),
     YDC_API_KEY_7: z.preprocess(blankToUndefined, z.string().min(8).optional()),
     YDC_API_KEY_8: z.preprocess(blankToUndefined, z.string().min(8).optional()),
+    YDC_API_ENABLED: z.stringbool().optional(),
     YDC_API_KEY_9: z.preprocess(blankToUndefined, z.string().min(8).optional()),
     YDC_API_KEY_10: z.preprocess(blankToUndefined, z.string().min(8).optional()),
     YOU_SEARCH_ENABLED: z.stringbool().default(true),
