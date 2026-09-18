@@ -1,0 +1,85 @@
+/* AUREX soft geometry: round the interface without increasing its dimensions.
+   Loaded last so earlier compact sizing and glass animations remain intact. */
+:root {
+  --aurex-card-radius: 22px;
+  --aurex-control-radius: 14px;
+}
+
+/* A capsule dock and capsule moving lens, rather than rounded rectangles. */
+.app-shell .bottom-nav {
+  border-radius: 999px;
+}
+.app-shell .bottom-nav .nav-item,
+.app-shell .bottom-nav .glass-indicator {
+  border-radius: 999px;
+}
+.app-shell .bottom-nav .glass-indicator::before {
+  border-radius: inherit;
+}
+.app-shell .bottom-nav .nav-item .nav-icon {
+  border-radius: 50%;
+}
+
+/* Soft, consistent card corners; no new height, padding or oversized shadows. */
+.app-shell .builder-card,
+.app-shell .tool-card,
+.app-shell .result-panel,
+.app-shell .loading-card,
+.app-shell .empty-state,
+.app-shell .slip-summary {
+  border-radius: var(--aurex-card-radius);
+}
+.app-shell .build-steps > div,
+.app-shell .quick-presets button,
+.app-shell .odds-estimate,
+.app-shell .help-panel,
+.app-shell .analysis-status,
+.app-shell .notice,
+.app-shell .pick-row,
+.app-shell .code-block,
+.app-shell .toast {
+  border-radius: 17px;
+}
+.app-shell .quick-presets button {
+  border-radius: 18px;
+}
+.app-shell .build-steps > div {
+  border-radius: 15px;
+}
+
+/* Form and secondary actions are comfortably rounded but retain 44–48px targets. */
+.app-shell .field input,
+.app-shell .field select,
+.app-shell .tool-card input,
+.app-shell .upload {
+  border-radius: var(--aurex-control-radius);
+}
+.app-shell .segmented {
+  border-radius: 999px;
+}
+.app-shell .segmented span {
+  border-radius: 999px;
+}
+.app-shell .primary,
+.app-shell .tool-card button,
+.app-shell .empty-state button,
+.app-shell .sportybet-open-link,
+.app-shell .code-block button {
+  border-radius: 999px;
+}
+.app-shell .slip-actions button {
+  border-radius: 999px;
+}
+.app-shell .tool-icon,
+.app-shell .empty-state > span {
+  border-radius: 15px;
+}
+.app-shell .logo span {
+  border-radius: 12px;
+}
+.app-shell .logo em {
+  border-radius: 7px;
+}
+
+/* The dock is intentionally not clipped: selection badge and focus rings stay visible. */
+.app-shell .bottom-nav { overflow: visible; }
