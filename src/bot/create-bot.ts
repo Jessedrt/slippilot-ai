@@ -1,5 +1,6 @@
 import { Telegraf } from 'telegraf';
 import { createBot as createLegacyBot } from './create-bot-legacy.js';
+import { attachBookingCodeLink } from './booking-link.js';
 import { oddsDiscoveryText } from '../slips/odds-target.js';
 import type { Sport } from '../types/domain.js';
 
@@ -104,6 +105,11 @@ export function createBot(...args: Parameters<typeof createLegacyBot>): ReturnTy
     return next();
   });
 
+  // Add a load-in-SportyBet URL to successful booking-code replies from the existing handlers.
+  bot.use((ctx, next) => {
+    attachBookingCodeLink(ctx);
+    return next();
+  });
   bot.use(legacy.middleware());
   bot.catch((error) => deps.logger.error({ err: error }, 'AUREX Telegram handler failed'));
   return bot;
