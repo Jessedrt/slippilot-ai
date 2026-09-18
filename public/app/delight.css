@@ -1,0 +1,292 @@
+/* AUREX delight layer — more character without increasing the mobile layout's density. */
+:root { --aurex-ease: cubic-bezier(.2, .85, .25, 1); }
+
+.app-shell {
+  background:
+    radial-gradient(ellipse 85% 270px at 102% 85px, rgba(122, 192, 84, .16), transparent 76%),
+    radial-gradient(ellipse 70% 210px at -22% 330px, rgba(62, 172, 134, .085), transparent 78%),
+    #080e0c;
+}
+.app-shell::before {
+  content: '';
+  display: block;
+  position: absolute;
+  top: 56px;
+  left: 0;
+  right: 0;
+  height: 320px;
+  z-index: 0;
+  pointer-events: none;
+  opacity: .6;
+  background:
+    radial-gradient(ellipse 170px 125px at 92% 30%, rgba(178, 247, 107, .14), transparent 75%),
+    radial-gradient(ellipse 150px 110px at 8% 88%, rgba(61, 202, 156, .095), transparent 75%);
+  -webkit-mask-image: linear-gradient(#000 30%, transparent 100%);
+  mask-image: linear-gradient(#000 30%, transparent 100%);
+  animation: aurex-ambient 13s ease-in-out infinite alternate;
+}
+.app-shell::after { display: none; }
+.app-shell main { position: relative; z-index: 1; }
+.app-shell .topbar {
+  border-bottom-color: rgba(207, 249, 183, .13);
+  background: linear-gradient(100deg, rgba(10, 19, 15, .97), rgba(16, 30, 22, .93));
+}
+.app-shell .logo span { transform: none; border-color: rgba(205, 250, 165, .28); box-shadow: 0 0 15px rgba(180, 250, 111, .09); }
+.app-shell .live-pill { border-color: rgba(195, 244, 118, .27); background: linear-gradient(130deg, rgba(199, 244, 109, .095), rgba(199, 244, 109, .018)); }
+.app-shell .live-pill:not(.offline) i { animation: aurex-beacon 2.8s ease-in-out infinite; }
+.app-shell .live-pill.offline i { animation: none; }
+
+/* A small atmospheric glow, accent word and hairline: no oversized hero artwork. */
+.app-shell .hero-copy { position: relative; isolation: isolate; }
+.app-shell .hero-copy::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  right: -10px;
+  top: -19px;
+  width: min(46vw, 190px);
+  height: 125px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(179, 248, 109, .13), transparent 71%);
+  pointer-events: none;
+  animation: aurex-hero-breathe 8s ease-in-out infinite alternate;
+}
+.app-shell .hero-copy .eyebrow { display: flex; align-items: center; gap: 8px; }
+.app-shell .hero-copy .eyebrow::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--lime);
+  box-shadow: 0 0 11px rgba(200, 255, 130, .75);
+}
+.app-shell .hero-highlight {
+  display: inline;
+  color: #d6ff9a;
+  background: linear-gradient(105deg, #bced72 0%, #f2ffcf 27%, #b6f67b 54%, #eaffad 79%, #bced72 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: aurex-type-shine 9s ease-in-out infinite;
+}
+.app-shell .hero-copy h1::after {
+  content: '';
+  display: block;
+  width: 58px;
+  height: 2px;
+  margin-top: 11px;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--lime), rgba(140, 233, 153, .25), transparent);
+  transform-origin: left;
+  animation: aurex-line-in .65s var(--aurex-ease) both;
+}
+
+/* The step guide feels connected, not like three large static boxes. */
+.app-shell .build-steps > div {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(195, 241, 170, .15);
+  background: linear-gradient(145deg, rgba(32, 55, 38, .86), rgba(14, 29, 20, .83));
+}
+.app-shell .build-steps > div::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 9px;
+  width: calc(100% - 18px);
+  height: 1px;
+  background: linear-gradient(90deg, rgba(199, 244, 109, .6), transparent);
+  opacity: .65;
+}
+.app-shell .build-steps span { color: #dcffa7; }
+
+/* Shortcuts respond with light, sheen and a crisp selected state. */
+.app-shell .quick-presets button {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(211, 247, 189, .19);
+  background: linear-gradient(135deg, #1b3021, #101e18 70%);
+  box-shadow: inset 0 1px 0 rgba(247, 255, 237, .06), 0 5px 16px rgba(0, 0, 0, .12);
+  transition: transform .22s var(--aurex-ease), border-color .22s ease, box-shadow .22s ease, background .22s ease;
+}
+.app-shell .quick-presets button::before {
+  content: '';
+  position: absolute;
+  inset: -60% auto -60% -65%;
+  width: 45%;
+  background: linear-gradient(95deg, transparent, rgba(255, 255, 255, .17), transparent);
+  transform: skewX(-21deg) translateX(-110%);
+  pointer-events: none;
+  transition: transform .72s ease;
+}
+.app-shell .quick-presets button[aria-pressed='true'] {
+  border-color: rgba(202, 255, 126, .75);
+  background: linear-gradient(135deg, #294a2d, #1b3020 80%);
+  box-shadow: inset 0 1px 0 rgba(241, 255, 226, .13), 0 0 0 2px rgba(182, 246, 111, .065);
+  animation: aurex-pick .38s var(--aurex-ease);
+}
+.app-shell .quick-presets button[aria-pressed='true']::before { transform: skewX(-21deg) translateX(650%); }
+.app-shell .quick-presets button:active { transform: scale(.975); }
+@media (hover: hover) and (pointer: fine) {
+  .app-shell .quick-presets button:hover { transform: translateY(-2px); border-color: rgba(205, 250, 152, .48); box-shadow: 0 8px 20px rgba(0, 0, 0, .2); }
+  .app-shell .quick-presets button:active { transform: translateY(0) scale(.98); }
+}
+
+/* One intentionally accented form panel, without adding height or larger typography. */
+.app-shell .builder-card {
+  position: relative;
+  border-color: rgba(207, 251, 173, .18);
+  background: linear-gradient(148deg, #19291d 0%, #121e17 43%, #101b16 100%);
+  box-shadow: inset 0 1px 0 rgba(234, 255, 216, .065), 0 10px 32px rgba(0, 0, 0, .16);
+}
+.app-shell .builder-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 24px;
+  width: 80px;
+  height: 2px;
+  border-radius: 0 0 8px 8px;
+  background: linear-gradient(90deg, transparent, #c7f46d, transparent);
+  pointer-events: none;
+}
+.app-shell .segmented input:checked + span {
+  color: #eaffc9;
+  background: linear-gradient(120deg, #30512a, #263d26);
+  box-shadow: inset 0 1px 0 rgba(243, 255, 221, .11), inset 0 0 0 1px rgba(199, 244, 109, .3);
+  transition: background .2s ease, color .2s ease;
+}
+.app-shell .field input:focus,
+.app-shell .field select:focus,
+.app-shell .tool-card input:focus { box-shadow: 0 0 0 3px rgba(185, 244, 104, .11), 0 0 16px rgba(181, 244, 104, .045); }
+.app-shell .odds-estimate { border-color: rgba(192, 247, 122, .28); background: linear-gradient(115deg, #20331e, #16261b); }
+.app-shell #estimated-games.aurex-number-pop { animation: aurex-number-pop .34s var(--aurex-ease); }
+
+/* A premium CTA with a restrained travelling reflection and tactile press. */
+.app-shell .primary {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(244, 255, 205, .48);
+  background: linear-gradient(115deg, #b9e96b 0%, #e1ff9b 36%, #c5f17b 68%, #aee25e 100%);
+  color: #0d1b10;
+  box-shadow: 0 6px 20px rgba(154, 226, 88, .15), inset 0 1px 0 rgba(255, 255, 255, .34);
+  transition: transform .2s var(--aurex-ease), box-shadow .2s ease, filter .2s ease;
+}
+.app-shell .primary::before {
+  content: '';
+  position: absolute;
+  inset: -45% auto -45% -55%;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .48), transparent);
+  transform: skewX(-24deg) translateX(-170%);
+  animation: aurex-button-shine 7s ease-in-out infinite;
+  pointer-events: none;
+}
+.app-shell .primary > span,
+.app-shell .primary > b { position: relative; z-index: 1; }
+.app-shell .primary:active:not(:disabled) { transform: scale(.985); box-shadow: 0 2px 8px rgba(154, 226, 88, .12); }
+.app-shell .primary:disabled::before { animation: none; }
+@media (hover: hover) and (pointer: fine) {
+  .app-shell .primary:hover:not(:disabled) { filter: brightness(1.045); box-shadow: 0 9px 24px rgba(154, 226, 88, .23); }
+}
+
+/* Secondary pages have personality without adding ornaments to every surface. */
+.app-shell .section-title .eyebrow { color: #c7f46d; }
+.app-shell .tool-card {
+  border-color: rgba(207, 246, 188, .15);
+  background: linear-gradient(145deg, #18281e, #101b16 75%);
+  box-shadow: inset 0 1px 0 rgba(239, 255, 224, .04);
+  transition: border-color .24s ease, box-shadow .24s ease;
+}
+.app-shell .tool-card:focus-within { border-color: rgba(198, 252, 142, .43); box-shadow: 0 0 0 2px rgba(199, 244, 109, .04); }
+.app-shell .tool-icon { background: linear-gradient(130deg, rgba(199, 244, 109, .15), rgba(199, 244, 109, .025)); transition: transform .28s var(--aurex-ease); }
+.app-shell .tool-card:focus-within .tool-icon { transform: rotate(-6deg) scale(1.05); }
+.app-shell .tool-card button,
+.app-shell .empty-state button { position: relative; overflow: hidden; transition: background .2s ease, border-color .2s ease, transform .2s var(--aurex-ease); }
+.app-shell .tool-card button:active,
+.app-shell .empty-state button:active { transform: scale(.985); }
+.app-shell .slip-summary { border-color: rgba(197, 250, 134, .28); background: linear-gradient(135deg, #223521, #16251a); }
+.app-shell .view.active .pick-row { animation: aurex-rise .36s var(--aurex-ease) both; }
+.app-shell .view.active .pick-row:nth-child(2) { animation-delay: 55ms; }
+.app-shell .view.active .pick-row:nth-child(3) { animation-delay: 95ms; }
+.app-shell .view.active .pick-row:nth-child(4) { animation-delay: 130ms; }
+.app-shell .view.active .pick-row:nth-child(n+5) { animation-delay: 155ms; }
+
+/* Extra movement when switching screens; the existing lens remains the source of truth. */
+.app-shell .bottom-nav { border-color: rgba(234, 255, 232, .3); box-shadow: 0 13px 36px rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .21); }
+.app-shell .bottom-nav::before { content: ''; position: absolute; inset: 1px 9px auto; height: 1px; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .34), transparent); pointer-events: none; }
+.app-shell .bottom-nav .glass-indicator { transition: transform 480ms cubic-bezier(.2, 1.12, .31, 1), width 450ms var(--aurex-ease), height 450ms var(--aurex-ease); }
+.app-shell .bottom-nav .nav-item.active .nav-icon svg { animation: aurex-nav-icon .38s var(--aurex-ease); }
+.app-shell .bottom-nav .nav-item:active { transform: scale(.975); }
+.app-shell .view.active { animation: aurex-view-forward .31s var(--aurex-ease) both; }
+.app-shell[data-nav-direction='backward'] .view.active { animation-name: aurex-view-backward; }
+.app-shell .view.active .hero-copy,
+.app-shell .view.active .section-title { animation: aurex-rise .43s var(--aurex-ease) both; }
+.app-shell .view.active .build-steps,
+.app-shell .view.active .tool-card:nth-child(1) { animation: aurex-rise .43s .045s var(--aurex-ease) both; }
+.app-shell .view.active .quick-presets,
+.app-shell .view.active .tool-card:nth-child(2) { animation: aurex-rise .43s .085s var(--aurex-ease) both; }
+.app-shell .view.active .builder-card,
+.app-shell .view.active .tool-card:nth-child(3),
+.app-shell .view.active .empty-state,
+.app-shell .view.active .slip-summary { animation: aurex-rise .45s .125s var(--aurex-ease) both; }
+.app-shell .view.active .help-panel { animation: aurex-rise .45s .17s var(--aurex-ease) both; }
+
+/* Pointer-positioned ripple is decorative; all original click handlers stay untouched. */
+.app-shell .aurex-ripple {
+  position: absolute;
+  z-index: 2;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .3);
+  pointer-events: none;
+  transform: scale(0);
+  animation: aurex-ripple .58s ease-out forwards;
+}
+
+@keyframes aurex-ambient { from { transform: translate3d(-9px, -5px, 0); opacity: .46; } to { transform: translate3d(8px, 8px, 0); opacity: .7; } }
+@keyframes aurex-beacon { 0%, 100% { opacity: .65; box-shadow: 0 0 4px rgba(199, 244, 109, .24); } 50% { opacity: 1; box-shadow: 0 0 11px rgba(199, 244, 109, .78); } }
+@keyframes aurex-hero-breathe { from { transform: translate3d(-6px, 1px, 0) scale(.92); opacity: .53; } to { transform: translate3d(8px, -3px, 0) scale(1.08); opacity: .82; } }
+@keyframes aurex-type-shine { 0%, 23%, 100% { background-position: 100% center; } 60% { background-position: 0% center; } }
+@keyframes aurex-line-in { from { transform: scaleX(0); opacity: .35; } to { transform: scaleX(1); opacity: 1; } }
+@keyframes aurex-pick { 0% { transform: scale(.97); } 58% { transform: scale(1.018); } 100% { transform: scale(1); } }
+@keyframes aurex-number-pop { 0% { transform: translateY(4px) scale(.96); opacity: .65; } 100% { transform: translateY(0) scale(1); opacity: 1; } }
+@keyframes aurex-button-shine { 0%, 57%, 100% { transform: skewX(-24deg) translateX(-170%); } 74% { transform: skewX(-24deg) translateX(740%); } }
+@keyframes aurex-nav-icon { 0% { transform: translateY(2px) scale(.9); } 65% { transform: translateY(-1px) scale(1.14); } 100% { transform: translateY(0) scale(1.06); } }
+@keyframes aurex-view-forward { from { opacity: .55; transform: translate3d(9px, 4px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+@keyframes aurex-view-backward { from { opacity: .55; transform: translate3d(-9px, 4px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+@keyframes aurex-rise { from { opacity: .5; transform: translate3d(0, 9px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+@keyframes aurex-ripple { from { opacity: .7; transform: scale(0); } to { opacity: 0; transform: scale(1); } }
+
+@media (prefers-reduced-transparency: reduce) {
+  .app-shell::before, .app-shell .hero-copy::before { display: none; }
+  .app-shell .topbar { background: #101a15; }
+  .app-shell .bottom-nav { background: #18271d; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell::before,
+  .app-shell .hero-copy::before,
+  .app-shell .hero-highlight,
+  .app-shell .hero-copy h1::after,
+  .app-shell .live-pill i,
+  .app-shell .primary::before,
+  .app-shell .quick-presets button,
+  .app-shell #estimated-games.aurex-number-pop,
+  .app-shell .bottom-nav .nav-item.active .nav-icon svg,
+  .app-shell .view.active,
+  .app-shell .view.active .hero-copy,
+  .app-shell .view.active .section-title,
+  .app-shell .view.active .build-steps,
+  .app-shell .view.active .quick-presets,
+  .app-shell .view.active .builder-card,
+  .app-shell .view.active .help-panel,
+  .app-shell .view.active .tool-card,
+  .app-shell .view.active .empty-state,
+  .app-shell .view.active .slip-summary,
+  .app-shell .view.active .pick-row,
+  .app-shell .aurex-ripple { animation: none !important; }
+  .app-shell .bottom-nav .glass-indicator,
+  .app-shell .quick-presets button,
+  .app-shell .primary { transition: none !important; }
+}
