@@ -7,7 +7,7 @@ import { registerAdminRoutes } from '../admin/routes.js';
 import type { AdminDependencies } from '../admin/routes.js';
 import type { Telegraf } from 'telegraf';
 import { ZodError } from 'zod';
-import { landingPage, landingStyles } from '../web/landing-page.js';
+import { landingPage, landingStyles } from '../web/landing-v4.js';
 import { registerMiniAppRoutes, type MiniAppDependencies } from './mini-app-routes.js';
 import { registerBookingCodeAnalysisRoute } from './booking-code-analysis.js';
 import { registerDeskRoutes } from './desk-routes.js';
