@@ -16,6 +16,8 @@ if (form && oddsInput && riskInput && buildError && estimate) {
     .odds-estimate span { color: #b8cac0; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
     .odds-estimate strong { color: #c8ff45; font-size: 1.12rem; text-align: right; font-variant-numeric: tabular-nums; }
     .odds-estimate p { margin: 9px 0 0; color: #91a29b; font-size: .74rem; line-height: 1.5; }
+    .sportybet-open-link { display: flex; justify-content: center; align-items: center; min-height: 46px; margin-top: 12px; padding: 10px 14px; background: #c8ff45; color: #07110f; text-align: center; font-size: .9rem; font-weight: 900; text-decoration: none; }
+    .sportybet-open-link:focus-visible { outline: 2px solid #f4f7ef; outline-offset: 3px; }
     @media (max-width: 375px) { .form-row { grid-template-columns: 1fr; } }
   `;
   document.head.append(styles);
@@ -71,4 +73,31 @@ if (form && oddsInput && riskInput && buildError && estimate) {
     oddsInput.value = raw;
   }, true);
   updateEstimate();
+}
+
+// The primary generator in app.js renders the result asynchronously. Only show this
+// action for a successfully generated, valid SportyBet code; keep Copy as a fallback.
+const codePanel = document.querySelector('#code-result');
+if (codePanel) {
+  const addOpenLink = () => {
+    if (codePanel.querySelector('h3')?.textContent !== 'Booking code ready') return;
+    const block = codePanel.querySelector('.code-block');
+    const code = block?.querySelector('code')?.textContent?.trim().toUpperCase();
+    if (!code || !/^[A-Z0-9]{4,20}$/.test(code) || codePanel.querySelector('.sportybet-open-link')) return;
+    const link = document.createElement('a');
+    link.className = 'sportybet-open-link';
+    link.textContent = '↗ Open in SportyBet';
+    link.href = `https://www.sportybet.com/ng/?shareCode=${encodeURIComponent(code)}`;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.addEventListener('click', (event) => {
+      const openLink = window.Telegram?.WebApp?.openLink;
+      if (!openLink) return;
+      event.preventDefault();
+      openLink.call(window.Telegram.WebApp, link.href);
+    });
+    block.after(link);
+  };
+  new MutationObserver(addOpenLink).observe(codePanel, { childList: true });
+  addOpenLink();
 }
