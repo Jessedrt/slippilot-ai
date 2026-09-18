@@ -7,8 +7,10 @@ import type { CandidateSelection, NormalizedMarket } from '../types/domain.js';
 
 interface Deps { sportyBet: SportyBetProvider; slipAnalyzer: SlipAnalyzer; telegramBotToken?: string }
 const requestSchema = z.object({ code: z.string().trim().regex(/^[A-Za-z0-9]{4,20}$/) });
-const key = (item: { eventId: string; marketId: string; selectionId: string }) =>
-  `${item.eventId}\u0000${item.marketId}\u0000${item.selectionId}`;
+const key = (item: { eventId: string; marketId: string; selectionId: string; specifier?: string | null }) => {
+  const base = `${item.eventId}\u0000${item.marketId}\u0000${item.selectionId}`;
+  return item.specifier == null ? base : `${base}\u0000${item.specifier}`;
+};
 
 /** Import only verified current SportyBet identities; never treat the pasted text as a ready bet. */
 export async function importBookingCode(code: string, deps: Deps, initData: string) {
@@ -34,7 +36,7 @@ export async function importBookingCode(code: string, deps: Deps, initData: stri
     }
     const matching = available.filter((market: NormalizedMarket) =>
       market.providerMarketId === item.marketId && market.providerSelectionId === item.selectionId &&
-      (item.specifier == null || (market.specifier ?? null) === item.specifier));
+      (item.specifier == null ? market.specifier == null : market.specifier === item.specifier));
     if (matching.length !== 1 || matching[0]?.status !== 'active') {
       throw new Error('A selection cannot be matched to one active market. No editable slip was created.');
     }
@@ -88,7 +90,6 @@ export async function importBookingCode(code: string, deps: Deps, initData: stri
 }
 
 export function registerCodeWorkspaceRoutes(app: FastifyInstance, deps: Deps): void {
-  // Inherits the verified Telegram Mini App preHandler; no token or auth data is persisted here.
   app.post('/api/miniapp/import-code', async (request) => {
     const { code } = requestSchema.parse(request.body);
     return importBookingCode(code.toUpperCase(), deps,
