@@ -1,5 +1,5 @@
 import { Telegraf } from 'telegraf';
-import { createBot as createLegacyBot } from './create-bot-legacy.js';
+import type { createBot as createLegacyBot } from './create-bot-legacy.js';
 import { BOT_COMMANDS, homeMenu } from './menu.js';
 
 export { automaticLegCount as automaticGameCount } from '../slips/odds-target.js';
