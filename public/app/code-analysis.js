@@ -1,4 +1,5 @@
 import './code-workspace.js?v=5.4.0';
+import './schedule-hints.js?v=5.4.0';
 
 // Verified code import replaces the old count-only echo. Other forms keep their existing handlers.
 const codeForm = document.querySelector('#read-code-form');
@@ -18,7 +19,7 @@ if (codeForm && codeInput && resultPanel) {
     const show = (html) => {
       resultPanel.innerHTML = html;
       resultPanel.classList.remove('hidden');
-      resultPanel.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
+      resultPanel.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce').matches ? 'auto' : 'smooth', block: 'nearest' });
     };
     try {
       const response = await fetch('/api/miniapp/import-code', {
