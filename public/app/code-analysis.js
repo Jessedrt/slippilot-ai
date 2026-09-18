@@ -52,6 +52,11 @@ if (codeForm && codeInput && resultPanel) {
         <p class="analysis-summary">${encode(data.summary)}</p>
         ${items}
         <p class="analysis-disclaimer">${encode(data.disclaimer || 'AI scores are not winning probabilities. No bet was placed.')}</p>`);
+      // Only successful, real AI reviews qualify as history. Never save auth or tokens.
+      document.dispatchEvent(new CustomEvent('aurex:code-analyzed', {
+        detail: { code: data.code, analyzedAt: data.analyzedAt,
+          summary: data.summary, combinedOdds: data.combinedOdds, selections: data.selections },
+      }));
     } catch (error) {
       const message = error?.name === 'TimeoutError' || error?.name === 'AbortError'
         ? 'Analysis timed out. Please try again; no bet was placed.'
