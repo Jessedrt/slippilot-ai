@@ -23,7 +23,7 @@ describe('API failure handling', () => {
   const apps: Array<Awaited<ReturnType<typeof createServer>>> = [];
   afterEach(async () => Promise.all(apps.splice(0).map((app) => app.close())));
 
-  it('boots and reports optional provider failures without crashing', async () => {
+  it('boots and serves the redesigned public homepage even when optional providers are down', async () => {
     const config = loadConfig({
       NODE_ENV: 'test',
       LOG_LEVEL: 'silent',
@@ -48,7 +48,15 @@ describe('API failure handling', () => {
     const landing = await app.inject({ method: 'GET', url: '/' });
     expect(landing.statusCode).toBe(200);
     expect(landing.headers['content-type']).toContain('text/html');
-    expect(landing.body).toContain('Precision behind');
+    expect(landing.body).toContain('A clearer way');
+    expect(landing.body).toContain('Explore the workspace');
+    expect(landing.body).toContain('data-tab="explore"');
+    expect(landing.body).toContain('INTERFACE PREVIEW');
+    expect(landing.body).not.toContain('Precision behind');
+    const styles = await app.inject({ method: 'GET', url: '/styles.css?v=4.0.0' });
+    expect(styles.statusCode).toBe(200);
+    expect(styles.headers['content-type']).toContain('text/css');
+    expect(styles.body).toContain('.device-frame');
   });
 
   it('authenticates and processes Telegram webhook updates', async () => {
@@ -93,4 +101,3 @@ describe('API failure handling', () => {
     expect(updates).toEqual([{ update_id: 2 }]);
   });
 });
-
