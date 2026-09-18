@@ -25,18 +25,19 @@ const market = {
 };
 
 function deps() {
+  const resolveMock = vi.fn<SportyBetProvider['resolveBookingCode']>()
+    .mockResolvedValue([{ eventId: event.providerEventId, marketId: '1', selectionId: '12', odds: 1.38 }]);
+  const getMarketsMock = vi.fn<SportyBetProvider['getMarkets']>().mockResolvedValue([market]);
   const sportyBet = {
-    resolveBookingCode: vi.fn().mockResolvedValue([{
-      eventId: event.providerEventId, marketId: '1', selectionId: '12', odds: 1.38,
-    }]),
-    getEvent: vi.fn().mockResolvedValue(event),
-    getMarkets: vi.fn().mockResolvedValue([market]),
+    resolveBookingCode: resolveMock,
+    getEvent: vi.fn<SportyBetProvider['getEvent']>().mockResolvedValue(event),
+    getMarkets: getMarketsMock,
   } as unknown as SportyBetProvider;
-  const analyze = vi.fn(async (selections) => ({
+  const analyze = vi.fn<SlipAnalyzer['analyze']>((selections) => Promise.resolve({
     model: 'test-research',
     analyzedAt: '2026-09-18T17:00:00Z',
     summary: 'Market reviewed with limited evidence.',
-    selections: selections.map((_pick: unknown, index: number) => ({
+    selections: selections.map((_pick, index) => ({
       index: index + 1,
       confidence: 55,
       risk: 'medium' as const,
@@ -44,7 +45,7 @@ function deps() {
       reason: 'Lineups have not been independently verified.',
     })),
   }));
-  return { sportyBet, slipAnalyzer: { analyze } as unknown as SlipAnalyzer, analyze };
+  return { sportyBet, slipAnalyzer: { analyze }, analyze, getMarketsMock, resolveMock };
 }
 
 describe('booking code analysis', () => {
@@ -66,14 +67,14 @@ describe('booking code analysis', () => {
 
   it('does not pretend to analyze a code when a market is missing', async () => {
     const services = deps();
-    vi.mocked(services.sportyBet.getMarkets).mockResolvedValueOnce([]);
+    services.getMarketsMock.mockResolvedValueOnce([]);
     await expect(analyzeBookingCode('ABCD1234', services)).rejects.toThrow('unique live market');
     expect(services.analyze).not.toHaveBeenCalled();
   });
 
   it('does not send an empty code to AI', async () => {
     const services = deps();
-    vi.mocked(services.sportyBet.resolveBookingCode).mockResolvedValueOnce([]);
+    services.resolveMock.mockResolvedValueOnce([]);
     await expect(analyzeBookingCode('ABCD1234', services)).rejects.toThrow('no selections');
     expect(services.analyze).not.toHaveBeenCalled();
   });
