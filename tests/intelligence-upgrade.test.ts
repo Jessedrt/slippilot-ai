@@ -2,6 +2,7 @@ import sensible from '@fastify/sensible';
 import Fastify from 'fastify';
 import { createHash, createHmac } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ZodError } from 'zod';
 import { registerDeskRoutes } from '../src/api/desk-routes.js';
 import { registerIntelligenceRoutes } from '../src/api/intelligence-routes.js';
 import { registerMiniAppRoutes } from '../src/api/mini-app-routes.js';
@@ -39,9 +40,9 @@ const provider: SportyBetProvider = {
   createBookingCode: () => Promise.resolve('TESTCODE'),
   health: () => Promise.resolve({ ok: true, detail: 'test' }),
 };
-function telegramAuth() {
+function telegramAuth(queryId = 'intelligence-test') {
   const params = new URLSearchParams({ auth_date: String(Math.floor(Date.now() / 1000)),
-    query_id: 'intelligence-test', user: JSON.stringify({ id: 135 }) });
+    query_id: queryId, user: JSON.stringify({ id: 135 }) });
   const check = [...params.entries()].sort(([a], [b]) => a.localeCompare(b))
     .map(([key, value]) => `${key}=${value}`).join('\n');
   const secret = createHmac('sha256', 'WebAppData').update(botToken).digest();
@@ -72,6 +73,11 @@ async function setup() {
   });
   registerDeskRoutes(app, provider);
   registerIntelligenceRoutes(app, { sportyBet: provider, telegramBotToken: botToken });
+  // Production createServer maps Zod validation errors to 400 and respects sensible 401s.
+  app.setErrorHandler((error, _request, reply) => {
+    const code = error instanceof ZodError ? 400 : (error.statusCode || 500);
+    return reply.status(code).send({ message: error.message });
+  });
   return app;
 }
 
@@ -87,7 +93,7 @@ describe('AUREX 5.2 intelligence', () => {
         payload: { sport: 'football', query: 'madrid', league: 'La Liga',
           status: 'scheduled', kickoff: 'evening' } });
       expect(query.statusCode).toBe(200);
-      expect(query.json<{ fixtures: Array<{ id: string }>; totalMatching: number }>() )
+      expect(query.json<{ fixtures: Array<{ id: string }>; totalMatching: number }>())
         .toMatchObject({ totalMatching: 1, fixtures: [{ id: 'event-2' }] });
       const early = await app.inject({ method: 'POST', url: '/api/miniapp/fixtures', headers,
         payload: { sport: 'football', status: 'scheduled', kickoff: 'next3h' } });
@@ -139,8 +145,8 @@ describe('AUREX 5.2 intelligence', () => {
         payload: { selections: [{ ...slip, selectionId: 'fabricated' }], analysisToken } });
       expect(tampered.statusCode).toBe(401);
       const wrongSession = await app.inject({ method: 'POST', url: '/api/miniapp/reliability',
-        headers: { 'x-telegram-init-data': telegramAuth().replace('desk-test', 'wrong') },
-        payload: { selections: [slip], analysisToken: 'tampered.token' } });
+        headers: { 'x-telegram-init-data': telegramAuth('other-session') },
+        payload: { selections: [slip], analysisToken } });
       expect(wrongSession.statusCode).toBe(401);
     } finally { await app.close(); }
   });
