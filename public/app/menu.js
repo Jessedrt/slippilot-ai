@@ -1,20 +1,42 @@
-// Navigation enhancement: keep the existing app.js view switching as the source
-// of truth. This module only adds accessibility, badge display, and feedback.
+// Preserve app.js as the source of truth for view switching. Enhance the dock
+// with a non-interactive sliding glass lens, accessible state, and feedback.
 const navigation = document.querySelector('.bottom-nav');
 
 if (navigation) {
   const items = [...navigation.querySelectorAll('button[data-view]')];
   const countNode = navigation.querySelector('#slip-count');
   const slipItem = navigation.querySelector('[data-view="slip"]');
+  const lens = document.createElement('span');
+  lens.className = 'glass-indicator';
+  lens.setAttribute('aria-hidden', 'true');
+  navigation.append(lens);
+
+  let lensScheduled = false;
+  const moveLens = () => {
+    if (lensScheduled) return;
+    lensScheduled = true;
+    requestAnimationFrame(() => {
+      lensScheduled = false;
+      if (!navigation.isConnected) return;
+      const active = items.find((item) => item.classList.contains('active')) || items[0];
+      if (!active) return;
+      const navBox = navigation.getBoundingClientRect();
+      const tabBox = active.getBoundingClientRect();
+      if (!navBox.width || !tabBox.width || !tabBox.height) return;
+      navigation.style.setProperty('--glass-x', `${tabBox.left - navBox.left}px`);
+      navigation.style.setProperty('--glass-y', `${tabBox.top - navBox.top}px`);
+      navigation.style.setProperty('--glass-width', `${tabBox.width}px`);
+      navigation.style.setProperty('--glass-height', `${tabBox.height}px`);
+      navigation.classList.add('liquid-ready');
+    });
+  };
 
   const syncActiveState = () => {
     items.forEach((item) => {
-      if (item.classList.contains('active')) {
-        item.setAttribute('aria-current', 'page');
-      } else {
-        item.removeAttribute('aria-current');
-      }
+      if (item.classList.contains('active')) item.setAttribute('aria-current', 'page');
+      else item.removeAttribute('aria-current');
     });
+    moveLens();
   };
 
   const syncSlipBadge = () => {
@@ -42,19 +64,26 @@ if (navigation) {
     });
   }
 
-  // A light selection haptic only when moving between views.
+  // Keep the glass aligned on rotation, viewport changes, and text resizing.
+  if ('ResizeObserver' in window) {
+    const resizeObserver = new ResizeObserver(moveLens);
+    resizeObserver.observe(navigation);
+    items.forEach((item) => resizeObserver.observe(item));
+  }
+  window.addEventListener('resize', moveLens, { passive: true });
+
+  // One selection haptic per real navigation change; no haptic on repeat taps.
   navigation.addEventListener('click', (event) => {
     const item = event.target.closest('button[data-view]');
     if (!item || !navigation.contains(item) || item.classList.contains('active')) return;
     try {
       window.Telegram?.WebApp?.HapticFeedback?.selectionChanged?.();
     } catch {
-      // Navigation must work outside Telegram too.
+      // Web browsers without Telegram still navigate normally.
     }
   }, { capture: true });
 
-  // Native Tab/Enter remain intact; arrows and Home/End are optional shortcuts
-  // for people navigating this dock using a hardware keyboard.
+  // Native Tab/Enter work unchanged; arrow/Home/End are optional shortcuts.
   navigation.addEventListener('keydown', (event) => {
     if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
     const focused = event.target.closest('button[data-view]');
