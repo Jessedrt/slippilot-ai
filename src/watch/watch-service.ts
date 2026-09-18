@@ -202,8 +202,9 @@ export class WatchService {
   async check(id: string, sendAlert = false, now = new Date()) {
     const state = await this.store.get(id);
     const cursor = state.items.length ? state.cursor % state.items.length : 0;
-    const batch = [...state.items.slice(cursor, cursor + 12),
-      ...state.items.slice(0, Math.max(0, cursor + 12 - state.items.length))];
+    const size = Math.min(12, state.items.length);
+    const batch = [...state.items.slice(cursor, cursor + size),
+      ...state.items.slice(0, Math.max(0, cursor + size - state.items.length))];
     const counts = { checked: 0, changed: 0, unavailable: 0, delivered: 0 };
     for (const item of batch) {
       const result = await this.checkItem(id, item, sendAlert, now);
@@ -212,8 +213,9 @@ export class WatchService {
       if (result.outcome === 'unavailable') counts.unavailable += 1;
       if (result.delivered) counts.delivered += 1;
     }
-    if (state.items.length > 12) await this.mutate(id, (current) => ({ ...current,
-      cursor: current.items.length ? (cursor + batch.length) % current.items.length : 0 }));
+    // Change even an empty list's updatedAt, so idle subscribers do not monopolize daily batches.
+    if (state.items.length > 12 || !state.items.length) await this.mutate(id, (current) => ({ ...current,
+      lastCheckedAt: now.toISOString(), cursor: current.items.length ? (cursor + size) % current.items.length : 0 }));
     return { ...counts, checkedAt: now.toISOString() };
   }
   async monitor(now = new Date()) {
