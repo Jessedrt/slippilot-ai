@@ -75,8 +75,9 @@ async function setup() {
   registerIntelligenceRoutes(app, { sportyBet: provider, telegramBotToken: botToken });
   // Production createServer maps Zod validation errors to 400 and respects sensible 401s.
   app.setErrorHandler((error, _request, reply) => {
-    const code = error instanceof ZodError ? 400 : (error.statusCode || 500);
-    return reply.status(code).send({ message: error.message });
+    if (error instanceof ZodError) return reply.status(400).send({ message: error.message });
+    const failure = error as Error & { statusCode?: number };
+    return reply.status(failure.statusCode ?? 500).send({ message: failure.message });
   });
   return app;
 }
