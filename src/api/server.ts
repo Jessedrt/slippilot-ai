@@ -27,7 +27,7 @@ export async function createServer(
   dependencies: AdminDependencies,
   telegram?: TelegramWebhook,
   miniApp?: MiniAppDependencies,
-  watch?: { service: WatchService; cronSecret?: string; production: boolean },
+  watch?: { service: WatchService; cronSecret?: string },
 ) {
   const app = Fastify({ loggerInstance: logger, bodyLimit: 8_500_000, requestTimeout: 60_000 });
   await app.register(sensible);
@@ -76,7 +76,7 @@ export async function createServer(
     registerDeskRoutes(app as unknown as FastifyInstance, miniApp.sportyBet);
     registerIntelligenceRoutes(app as unknown as FastifyInstance, miniApp);
     registerSlipEditorRoutes(app as unknown as FastifyInstance, miniApp);
-    if (watch) registerWatchRoutes(app as unknown as FastifyInstance, watch);
+    if (watch) registerWatchRoutes(app as unknown as FastifyInstance, watch.service, watch.cronSecret);
   }
   app.setErrorHandler((error, request, reply) => {
     dependencies.metrics.increment('errors');
