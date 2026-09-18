@@ -10,6 +10,7 @@ import { ZodError } from 'zod';
 import { landingPage, landingStyles } from '../web/landing-v4.js';
 import { registerMiniAppRoutes, type MiniAppDependencies } from './mini-app-routes.js';
 import { registerBookingCodeAnalysisRoute } from './booking-code-analysis.js';
+import { registerCodeWorkspaceRoutes } from './code-workspace-routes.js';
 import { registerDeskRoutes } from './desk-routes.js';
 import { registerIntelligenceRoutes } from './intelligence-routes.js';
 import { registerSlipEditorRoutes } from './slip-editor-routes.js';
@@ -26,7 +27,7 @@ export async function createServer(
   dependencies: AdminDependencies,
   telegram?: TelegramWebhook,
   miniApp?: MiniAppDependencies,
-  watch?: { service: WatchService; cronSecret?: string },
+  watch?: { service: WatchService; cronSecret?: string; production: boolean },
 ) {
   const app = Fastify({ loggerInstance: logger, bodyLimit: 8_500_000, requestTimeout: 60_000 });
   await app.register(sensible);
@@ -71,10 +72,11 @@ export async function createServer(
   if (miniApp) {
     registerMiniAppRoutes(app as unknown as FastifyInstance, miniApp);
     registerBookingCodeAnalysisRoute(app as unknown as FastifyInstance, miniApp);
+    registerCodeWorkspaceRoutes(app as unknown as FastifyInstance, miniApp);
     registerDeskRoutes(app as unknown as FastifyInstance, miniApp.sportyBet);
     registerIntelligenceRoutes(app as unknown as FastifyInstance, miniApp);
     registerSlipEditorRoutes(app as unknown as FastifyInstance, miniApp);
-    if (watch) registerWatchRoutes(app as unknown as FastifyInstance, watch.service, watch.cronSecret);
+    if (watch) registerWatchRoutes(app as unknown as FastifyInstance, watch);
   }
   app.setErrorHandler((error, request, reply) => {
     dependencies.metrics.increment('errors');
