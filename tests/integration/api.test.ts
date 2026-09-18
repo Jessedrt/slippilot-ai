@@ -48,7 +48,8 @@ describe('API failure handling', () => {
     const landing = await app.inject({ method: 'GET', url: '/' });
     expect(landing.statusCode).toBe(200);
     expect(landing.headers['content-type']).toContain('text/html');
-    expect(landing.body).toContain('Precision behind');
+    expect(landing.body).toContain('whole slip.');
+    expect(landing.body).toContain('Illustrative interface');
   });
 
   it('authenticates and processes Telegram webhook updates', async () => {
@@ -93,4 +94,3 @@ describe('API failure handling', () => {
     expect(updates).toEqual([{ update_id: 2 }]);
   });
 });
-
