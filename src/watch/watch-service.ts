@@ -5,15 +5,18 @@ import type { Sport } from '../types/domain.js';
 export type WatchItem = {
   id: string; sport: Sport; league: string; homeTeam: string; awayTeam: string;
   startsAt: string; status: SportyBetEvent['status']; observedAt: string; muted: boolean;
-  baselinePending?: boolean; pending?: { key: string; message: string; since: string; leaseUntil?: number };
-  lastError?: string;
+  baselinePending?: boolean | undefined;
+  pending?: { key: string; message: string; since: string; leaseUntil?: number } | undefined;
+  lastError?: string | undefined;
 };
 export type WatchState = {
   enabled: boolean; quietStart: string | null; quietEnd: string | null;
-  items: WatchItem[]; lastCheckedAt: string | null;
+  items: WatchItem[]; lastCheckedAt: string | null; cursor: number;
 };
+export class WatchConflict extends Error { readonly statusCode = 409; }
 const key = 'aurexWatch53';
-const defaultState = (): WatchState => ({ enabled: false, quietStart: null, quietEnd: null, items: [], lastCheckedAt: null });
+const defaultState = (): WatchState => ({ enabled: false, quietStart: null, quietEnd: null,
+  items: [], lastCheckedAt: null, cursor: 0 });
 const object = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 const validStatus = (value: unknown): value is WatchItem['status'] =>
   value === 'scheduled' || value === 'live' || value === 'finished' || value === 'cancelled';
@@ -31,6 +34,7 @@ export function readWatchState(value: unknown): WatchState {
     quietStart: typeof raw.quietStart === 'string' ? raw.quietStart : null,
     quietEnd: typeof raw.quietEnd === 'string' ? raw.quietEnd : null,
     items, lastCheckedAt: typeof raw.lastCheckedAt === 'string' ? raw.lastCheckedAt : null,
+    cursor: Number.isInteger(raw.cursor) && Number(raw.cursor) >= 0 ? Number(raw.cursor) : 0,
   };
 }
 export function isQuiet(state: WatchState, now: Date): boolean {
@@ -78,7 +82,7 @@ export class PrismaWatchStore implements WatchStore {
         data: { preferences } });
       if (result.count === 1) return next;
     }
-    throw new Error('Watchlist was changed concurrently. Please retry.');
+    throw new WatchConflict('Watchlist was changed concurrently. Please retry.');
   }
   async enabledUsers(limit: number): Promise<string[]> {
     const users = await this.prisma.user.findMany({
@@ -106,20 +110,21 @@ export class WatchService {
   constructor(private readonly store: WatchStore, private readonly provider: Pick<SportyBetProvider, 'getEvent'>,
     private readonly sender: TelegramSender | null, private readonly alertsReady: boolean) {}
   private async mutate(id: string, fn: (state: WatchState) => WatchState) { return this.store.change(id, fn); }
-  async state(id: string) { return { ...(await this.store.get(id)), alertsReady: this.alertsReady, source: 'SportyBet fixture feed', frequency: 'Daily scheduled check (production only)' }; }
+  async state(id: string) { return { ...(await this.store.get(id)), alertsReady: this.alertsReady,
+    source: 'SportyBet fixture feed', frequency: 'Daily batch check in production. Some fixtures may be checked on subsequent days.' }; }
   async toggle(id: string, eventId: string, sport: Sport, watch: boolean) {
     if (!watch) return this.mutate(id, (state) => ({ ...state, items: state.items.filter((item) => item.id !== eventId) }));
     const existing = (await this.store.get(id)).items.find((item) => item.id === eventId);
     if (existing) return this.store.get(id);
     const fixture = await this.provider.getEvent(eventId);
     if (!fixture || !Number.isFinite(fixture.startsAt.getTime()) || !fixture.homeTeam || !fixture.awayTeam ||
-      !['scheduled', 'live'].includes(fixture.status)) throw new Error('This fixture is not currently verifiable or watchable.');
+      !['scheduled', 'live'].includes(fixture.status)) throw new WatchConflict('This fixture is not currently verifiable or watchable.');
     const item: WatchItem = { id: fixture.providerEventId, sport, homeTeam: fixture.homeTeam,
       awayTeam: fixture.awayTeam, league: fixture.league || 'Competition not supplied',
       startsAt: fixture.startsAt.toISOString(), status: fixture.status, observedAt: new Date().toISOString(), muted: false };
     return this.mutate(id, (state) => {
       if (state.items.some((value) => value.id === eventId)) return state;
-      if (state.items.length >= 24) throw new Error('Watchlist is full (24 fixtures).');
+      if (state.items.length >= 24) throw new WatchConflict('Watchlist is full (24 fixtures).');
       return { ...state, items: [item, ...state.items] };
     });
   }
@@ -136,15 +141,15 @@ export class WatchService {
         { ...item, muted, ...(muted ? { pending: undefined } : { baselinePending: true }) } : item),
     }));
   }
-  async clear(id: string) { return this.mutate(id, (state) => ({ ...state, enabled: false, items: [] })); }
-  private async checkItem(id: string, item: WatchItem, sendAlert: boolean, now: Date): Promise<'changed'|'same'|'unavailable'> {
+  async clear(id: string) { return this.mutate(id, (state) => ({ ...state, enabled: false, items: [], cursor: 0 })); }
+  private async checkItem(id: string, item: WatchItem, sendAlert: boolean, now: Date): Promise<{ outcome: 'changed'|'same'|'unavailable'; delivered: boolean }> {
     let fixture: SportyBetEvent | null;
     try { fixture = await this.provider.getEvent(item.id); }
     catch { fixture = null; }
     if (!fixture || !Number.isFinite(fixture.startsAt.getTime()) || fixture.providerEventId !== item.id || !validStatus(fixture.status)) {
       await this.mutate(id, (state) => ({ ...state, items: state.items.map((entry) => entry.id === item.id ?
         { ...entry, lastError: 'Fixture could not be verified by the provider.' } : entry) }));
-      return 'unavailable';
+      return { outcome: 'unavailable', delivered: false };
     }
     const observedAt = now.toISOString();
     let changed = false;
@@ -160,8 +165,8 @@ export class WatchService {
           pending, lastError: undefined };
       }),
     }));
-    if (sendAlert) await this.deliver(id, item.id, now);
-    return changed ? 'changed' : 'same';
+    const delivered = sendAlert ? await this.deliver(id, item.id, now) : false;
+    return { outcome: changed ? 'changed' : 'same', delivered };
   }
   private async deliver(id: string, eventId: string, now: Date): Promise<boolean> {
     if (!this.alertsReady || !this.sender) return false;
@@ -196,24 +201,28 @@ export class WatchService {
   }
   async check(id: string, sendAlert = false, now = new Date()) {
     const state = await this.store.get(id);
+    const cursor = state.items.length ? state.cursor % state.items.length : 0;
+    const batch = [...state.items.slice(cursor, cursor + 12),
+      ...state.items.slice(0, Math.max(0, cursor + 12 - state.items.length))];
     const counts = { checked: 0, changed: 0, unavailable: 0, delivered: 0 };
-    for (const item of state.items.slice(0, 12)) {
-      const outcome = await this.checkItem(id, item, sendAlert, now);
+    for (const item of batch) {
+      const result = await this.checkItem(id, item, sendAlert, now);
       counts.checked += 1;
-      if (outcome === 'changed') counts.changed += 1;
-      if (outcome === 'unavailable') counts.unavailable += 1;
-      const after = await this.store.get(id);
-      if (sendAlert && !after.items.find((entry) => entry.id === item.id)?.pending && outcome === 'changed') counts.delivered += 1;
+      if (result.outcome === 'changed') counts.changed += 1;
+      if (result.outcome === 'unavailable') counts.unavailable += 1;
+      if (result.delivered) counts.delivered += 1;
     }
+    if (state.items.length > 12) await this.mutate(id, (current) => ({ ...current,
+      cursor: current.items.length ? (cursor + batch.length) % current.items.length : 0 }));
     return { ...counts, checkedAt: now.toISOString() };
   }
   async monitor(now = new Date()) {
     if (!this.alertsReady || !this.sender) throw new Error('Scheduled monitoring is not configured.');
     const ids = await this.store.enabledUsers(5);
-    const totals = { users: 0, checked: 0, changed: 0, unavailable: 0 };
+    const totals = { users: 0, checked: 0, changed: 0, unavailable: 0, delivered: 0 };
     for (const id of ids) {
       const result = await this.check(id, true, now);
-      totals.users += 1; totals.checked += result.checked;
+      totals.users += 1; totals.checked += result.checked; totals.delivered += result.delivered;
       totals.changed += result.changed; totals.unavailable += result.unavailable;
     }
     return totals;
