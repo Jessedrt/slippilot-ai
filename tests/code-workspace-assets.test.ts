@@ -16,15 +16,14 @@ describe('Mini App imported-code workspace and fixture fallback assets', () => {
     expect(code).toContain("import './schedule-hints.js?v=5.4.0'");
     expect(code).toContain('/api/miniapp/import-code');
     expect(editor).toContain('/api/miniapp/code-options');
-    expect(editor).toContain("action, ...extra");
+    expect(editor).toContain('action, ...extra');
     expect(editor).toContain('Trim selections');
     expect(schedule).toContain('scheduleDay');
     expect(css).toContain('prefers-reduced-motion');
     for (const tab of ['build', 'analyze', 'slip', 'explore'])
       expect(html).toContain(`id="${tab}-tab"`);
-    for (const [filename, content] of [['editor', editor], ['schedule', schedule]]) {
-      expect(() => new Script(content, { filename })).not.toThrow();
-    }
+    expect(() => new Script(editor, { filename: 'code-workspace.js' })).not.toThrow();
+    expect(() => new Script(schedule, { filename: 'schedule-hints.js' })).not.toThrow();
     expect(() => new Script(code.replace(/^import .*;\n/gm, ''), { filename: 'code-analysis.js' }))
       .not.toThrow();
   });
