@@ -11,6 +11,7 @@ import { landingPage, landingStyles } from '../web/landing-v4.js';
 import { registerMiniAppRoutes, type MiniAppDependencies } from './mini-app-routes.js';
 import { registerBookingCodeAnalysisRoute } from './booking-code-analysis.js';
 import { registerCodeWorkspaceRoutes } from './code-workspace-routes.js';
+import { registerCodeMarketOptions } from './code-market-options.js';
 import { registerDeskRoutes } from './desk-routes.js';
 import { registerIntelligenceRoutes } from './intelligence-routes.js';
 import { registerSlipEditorRoutes } from './slip-editor-routes.js';
@@ -41,24 +42,15 @@ export async function createServer(
   });
   app.get('/', (_request, reply) => reply.type('text/html; charset=utf-8').send(landingPage));
   app.get('/styles.css', (_request, reply) =>
-    reply
-      .header('cache-control', 'public, max-age=3600, stale-while-revalidate=86400')
-      .type('text/css; charset=utf-8')
-      .send(landingStyles),
-  );
+    reply.header('cache-control', 'public, max-age=3600, stale-while-revalidate=86400')
+      .type('text/css; charset=utf-8').send(landingStyles));
   app.get('/health', async () => {
     const [database, redis, sportsProvider, sportyBetProvider] = await Promise.all([
-      dependencies.database.health(),
-      dependencies.cache.health(),
-      dependencies.sports.health(),
-      dependencies.sportyBet.health(),
+      dependencies.database.health(), dependencies.cache.health(),
+      dependencies.sports.health(), dependencies.sportyBet.health(),
     ]);
-    return {
-      service: 'AUREX',
-      version: '3.0.0',
-      status: 'ok',
-      dependencies: { database, redis, sportsProvider, sportyBetProvider },
-    };
+    return { service: 'AUREX', version: '3.0.0', status: 'ok',
+      dependencies: { database, redis, sportsProvider, sportyBetProvider } };
   });
   app.post('/api/telegram', async (request, reply) => {
     if (!telegram) return reply.notFound();
@@ -73,6 +65,7 @@ export async function createServer(
     registerMiniAppRoutes(app as unknown as FastifyInstance, miniApp);
     registerBookingCodeAnalysisRoute(app as unknown as FastifyInstance, miniApp);
     registerCodeWorkspaceRoutes(app as unknown as FastifyInstance, miniApp);
+    registerCodeMarketOptions(app as unknown as FastifyInstance, miniApp.sportyBet);
     registerDeskRoutes(app as unknown as FastifyInstance, miniApp.sportyBet);
     registerIntelligenceRoutes(app as unknown as FastifyInstance, miniApp);
     registerSlipEditorRoutes(app as unknown as FastifyInstance, miniApp);
@@ -80,30 +73,16 @@ export async function createServer(
   }
   app.setErrorHandler((error, request, reply) => {
     dependencies.metrics.increment('errors');
-    if (error instanceof ZodError) {
-      return reply.status(400).send({
-        error: 'Invalid request',
-        message: error.issues[0]?.message ?? 'Check the supplied values.',
-        requestId: request.id,
-      });
-    }
+    if (error instanceof ZodError) return reply.status(400).send({ error: 'Invalid request',
+      message: error.issues[0]?.message ?? 'Check the supplied values.', requestId: request.id });
     const normalized = error instanceof Error ? error : new Error('Unknown request failure');
-    const suppliedStatus =
-      typeof error === 'object' &&
-      error !== null &&
-      'statusCode' in error &&
-      typeof error.statusCode === 'number'
-        ? error.statusCode
-        : undefined;
+    const suppliedStatus = typeof error === 'object' && error !== null &&
+      'statusCode' in error && typeof error.statusCode === 'number' ? error.statusCode : undefined;
     const statusCode = suppliedStatus && suppliedStatus < 500 ? suppliedStatus : 500;
-    if (statusCode >= 500)
-      logger.error({ err: normalized, requestId: request.id }, 'Request failed');
+    if (statusCode >= 500) logger.error({ err: normalized, requestId: request.id }, 'Request failed');
     return reply.status(statusCode).send({
       error: statusCode >= 500 ? 'Service temporarily unavailable' : normalized.name,
-      message:
-        statusCode >= 500
-          ? 'The request could not be completed. Nothing was booked.'
-          : normalized.message,
+      message: statusCode >= 500 ? 'The request could not be completed. Nothing was booked.' : normalized.message,
       requestId: request.id,
     });
   });
