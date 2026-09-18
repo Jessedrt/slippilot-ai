@@ -1,0 +1,112 @@
+/* Functional AUREX desk — small controls, clear evidence and restrained glass depth. */
+.app-shell .bottom-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.app-shell .bottom-nav .nav-item { min-width: 0; padding-inline: 2px; }
+.app-shell .bottom-nav .nav-item .nav-label { font-size: .64rem; letter-spacing: -.01em; }
+.app-shell .bottom-nav .nav-item .nav-icon { width: 31px; }
+.app-shell .bottom-nav .nav-item .nav-icon svg { width: 20px; height: 20px; }
+
+.desk-panel {
+  margin: 14px 0;
+  padding: 16px;
+  border: 1px solid rgba(205, 224, 240, .15);
+  border-radius: 22px;
+  background: linear-gradient(150deg, rgba(31, 42, 54, .95), rgba(17, 24, 34, .98));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .055), 0 10px 24px rgba(0, 0, 0, .14);
+}
+.desk-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.desk-heading .eyebrow { margin: 0 0 5px; font-size: .58rem; }
+.desk-heading h3 { margin: 0; font-size: 1.03rem; letter-spacing: -.025em; }
+.desk-heading button,
+.desk-edit-bar button,
+.desk-shortcuts button,
+.desk-row button,
+.desk-filter button,
+.pick-actions button {
+  border: 1px solid rgba(180, 211, 230, .28);
+  border-radius: 999px;
+  background: rgba(176, 213, 236, .07);
+  color: #ecf6ff;
+  font: inherit;
+  font-size: .72rem;
+  font-weight: 750;
+  padding: 8px 12px;
+  min-height: 35px;
+  cursor: pointer;
+  transition: transform 200ms ease, border-color 200ms ease, background 200ms ease;
+}
+.desk-heading button:active,
+.desk-edit-bar button:active,
+.desk-row button:active,
+.desk-shortcuts button:active { transform: scale(.96); }
+.desk-heading button:focus-visible,
+.desk-edit-bar button:focus-visible,
+.desk-row button:focus-visible,
+.desk-shortcuts button:focus-visible,
+.desk-filter button:focus-visible,
+.pick-actions button:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; }
+.desk-filter { display: flex; gap: 6px; margin: 16px 0 4px; }
+.desk-filter button { flex: 1; }
+.desk-filter button[aria-pressed='true'] { border-color: rgba(209, 250, 120, .55); color: var(--lime); background: rgba(209, 250, 120, .085); }
+.desk-note, .desk-status {
+  margin: 12px 0 0;
+  color: var(--muted, #a8b2bd);
+  font-size: .74rem;
+  line-height: 1.5;
+}
+.desk-status:not(:empty) { padding: 9px 0; }
+.desk-status[data-kind='error'] { color: #ffb9ac; }
+.desk-rows { display: grid; gap: 9px; margin-top: 12px; }
+.desk-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  min-width: 0;
+  border: 1px solid rgba(209, 224, 242, .105);
+  border-radius: 15px;
+  background: rgba(8, 14, 22, .43);
+  padding: 11px 10px;
+  animation: aurex-desk-enter 280ms ease both;
+}
+.desk-row:nth-child(2) { animation-delay: 45ms; }
+.desk-row:nth-child(3) { animation-delay: 80ms; }
+.desk-row > div:first-child { min-width: 0; flex: 1; }
+.desk-row strong { display: block; color: #f1f5f8; font-size: .82rem; line-height: 1.4; overflow-wrap: anywhere; }
+.desk-row small { display: block; margin-top: 3px; color: #aab7c5; font-size: .7rem; line-height: 1.4; }
+.desk-row button { flex: none; padding: 7px 10px; max-width: 108px; line-height: 1.2; }
+.desk-row button[aria-pressed='true'] { color: var(--lime); border-color: rgba(209, 250, 120, .5); }
+.desk-empty { margin: 0; padding: 12px; border: 1px dashed rgba(214, 230, 242, .19); border-radius: 14px; color: var(--muted); font-size: .78rem; line-height: 1.5; }
+.desk-shortcuts { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin: 16px 0; }
+.desk-shortcuts button { border-color: rgba(209, 250, 120, .27); min-height: 43px; }
+
+#slip-insights { margin: 14px 0 10px; padding: 14px; }
+#slip-insights h3 { margin: 0 0 10px; font-size: .96rem; }
+.insight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.insight-cell { background: rgba(8, 16, 24, .45); border: 1px solid rgba(209, 224, 242, .09); border-radius: 13px; padding: 10px; }
+.insight-cell span { display: block; color: var(--muted); font-size: .65rem; }
+.insight-cell strong { display: block; margin-top: 4px; color: #f0f7fd; font-size: .86rem; font-variant-numeric: tabular-nums; }
+.insight-warning { margin: 9px 0 0; color: #ffdea0; font-size: .74rem; line-height: 1.5; }
+.insight-summary { margin: 10px 0 0; color: #ccd9e4; font-size: .75rem; line-height: 1.5; }
+.desk-edit-bar { display: flex; gap: 10px; align-items: center; justify-content: space-between; border: 1px solid rgba(164, 206, 233, .16); padding: 12px; border-radius: 16px; background: rgba(158, 207, 242, .04); }
+.desk-edit-bar > div { min-width: 0; }
+.desk-edit-bar strong, .desk-edit-bar span { display: block; }
+.desk-edit-bar strong { font-size: .83rem; }
+.desk-edit-bar span { color: var(--muted); margin-top: 3px; font-size: .68rem; line-height: 1.35; }
+.desk-edit-bar button { color: var(--lime); border-color: rgba(209, 250, 120, .32); }
+.desk-edit-bar button:disabled, .desk-row button:disabled { opacity: .55; cursor: wait; }
+.pick-row .pick-actions { grid-column: 2 / 4; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pick-row .pick-actions button { grid-column: auto; width: auto; padding: 6px 11px; font-size: .7rem; min-height: 32px; }
+.pick-row .pick-actions button[data-remove] { border-color: rgba(255, 170, 160, .24); color: #ffb2aa; }
+.pick-row .pick-actions button[data-replace] { border-color: rgba(164, 208, 242, .35); color: #d5edff; }
+@keyframes aurex-desk-enter { from { opacity: .64; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (max-width: 365px) {
+  .desk-panel { padding: 12px; }
+  .desk-row { padding: 10px 8px; }
+  .desk-row button { padding: 7px 8px; font-size: .68rem; }
+  .app-shell .bottom-nav .nav-item .nav-label { font-size: .59rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .desk-row { animation: none !important; }
+  .desk-heading button, .desk-row button, .desk-edit-bar button, .desk-shortcuts button { transition: none !important; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .desk-panel { background: #171f29; }
+  .desk-row { background: #101720; }
+}
