@@ -1,0 +1,184 @@
+/* AUREX motion system: visual enhancement only, no changes to app navigation or analysis. */
+:root { --motion-ease: cubic-bezier(.22, 1, .36, 1); }
+
+/* Separate the neutral content layers from the atmospheric backdrop. */
+.app-shell {
+  background:
+    radial-gradient(ellipse 72% 310px at 96% 60px, rgba(117, 172, 241, .12), transparent 76%),
+    radial-gradient(ellipse 55% 250px at -19% 330px, rgba(151, 185, 235, .065), transparent 78%),
+    #090c11;
+}
+.app-shell .hero-copy::before {
+  opacity: .85;
+  background: radial-gradient(ellipse, rgba(169, 200, 247, .16), transparent 72%);
+  animation: aurex-atmosphere 8s ease-in-out infinite alternate;
+}
+.app-shell .hero-highlight { animation-duration: 6.5s; }
+.app-shell .hero-copy h1 { text-shadow: 0 9px 30px rgba(0,0,0,.2); }
+.app-shell .hero-copy h1::after { width: 70px; height: 2px; }
+
+/* The dock is a transparent material, not a green card. Preserve its compact size. */
+.app-shell .bottom-nav {
+  isolation: isolate;
+  background:
+    linear-gradient(162deg, rgba(255,255,255,.16) 0%, rgba(198,223,247,.095) 24%, rgba(65,85,110,.13) 53%, rgba(13,18,27,.72) 100%),
+    rgba(24,32,44,.72);
+  border-color: rgba(239,248,255,.37);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.34),
+    inset 0 -1px 0 rgba(255,255,255,.055),
+    0 12px 32px rgba(0,0,0,.47),
+    0 0 0 1px rgba(0,0,0,.14);
+  -webkit-backdrop-filter: blur(30px) saturate(170%);
+  backdrop-filter: blur(30px) saturate(170%);
+}
+.app-shell .bottom-nav::before {
+  inset: 1px 14px auto;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.6) 40%, rgba(255,255,255,.22) 70%, transparent);
+}
+.app-shell .bottom-nav .glass-indicator {
+  border-color: rgba(246,252,255,.58);
+  background:
+    radial-gradient(ellipse 70% 105% at var(--glass-glint, 40%) -22%, rgba(255,255,255,.37), transparent 78%),
+    linear-gradient(164deg, rgba(255,255,255,.26), rgba(198,224,244,.13) 43%, rgba(150,181,220,.11) 78%, rgba(238,251,255,.16));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.57),
+    inset 0 -1px 0 rgba(248,253,255,.16),
+    inset 1px 0 0 rgba(255,255,255,.13),
+    0 5px 15px rgba(0,0,0,.25),
+    0 0 18px rgba(145,191,241,.085);
+  transform: translate3d(var(--glass-x, 0px), var(--glass-y, 0px), 0) scaleX(var(--glass-stretch, 1));
+  transform-origin: center;
+  transition:
+    transform 490ms cubic-bezier(.18, 1.22, .3, 1),
+    width 460ms var(--motion-ease),
+    height 460ms var(--motion-ease),
+    box-shadow 250ms ease;
+}
+.app-shell .bottom-nav .glass-indicator::before {
+  inset: 1px 2px 48%;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,.31), transparent);
+}
+.app-shell .bottom-nav .glass-indicator::after {
+  top: 1px;
+  left: 18%;
+  width: 64%;
+  background: rgba(255,255,255,.68);
+  box-shadow: 0 1px 9px rgba(255,255,255,.23);
+}
+.app-shell .bottom-nav.glass-dragging .glass-indicator {
+  transition: none !important;
+  filter: brightness(1.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.65), inset 0 -1px 0 rgba(255,255,255,.2), 0 9px 20px rgba(0,0,0,.28), 0 0 22px rgba(181,221,255,.19);
+}
+.app-shell .bottom-nav.glass-dragging { border-color: rgba(242,251,255,.57); }
+.app-shell .bottom-nav .nav-item {
+  transition: color 250ms ease, transform 320ms var(--motion-ease);
+}
+.app-shell .bottom-nav .nav-item .nav-icon svg { transition: transform 360ms var(--motion-ease), color 220ms ease; }
+.app-shell .bottom-nav.liquid-ready .nav-item.active .nav-icon svg { transform: scale(1.13) translateY(-1px); }
+.app-shell .bottom-nav .nav-item:active { transform: scale(.955); }
+.app-shell .bottom-nav .nav-label { transition: color 240ms ease, letter-spacing 320ms ease; }
+.app-shell .bottom-nav .nav-item.active .nav-label { letter-spacing: .012em; }
+
+/* Fast navigation transitions: motion supports hierarchy without blocking taps. */
+.app-shell .view.active { animation: aurex-screen-enter 360ms var(--motion-ease) both; }
+.app-shell[data-nav-direction='backward'] .view.active { animation-name: aurex-screen-enter-reverse; }
+.app-shell .view.active .hero-copy,
+.app-shell .view.active .section-title { animation: aurex-item-enter 420ms 25ms var(--motion-ease) both; }
+.app-shell .view.active .build-steps,
+.app-shell .view.active .tool-card:nth-child(1) { animation: aurex-item-enter 430ms 65ms var(--motion-ease) both; }
+.app-shell .view.active .quick-presets,
+.app-shell .view.active .tool-card:nth-child(2) { animation: aurex-item-enter 450ms 105ms var(--motion-ease) both; }
+.app-shell .view.active .builder-card,
+.app-shell .view.active .tool-card:nth-child(3),
+.app-shell .view.active .empty-state,
+.app-shell .view.active .slip-summary { animation: aurex-item-enter 470ms 140ms var(--motion-ease) both; }
+
+/* Subtle physical feedback and visibly focused state without growing components. */
+.app-shell .builder-card,
+.app-shell .tool-card,
+.app-shell .quick-presets button,
+.app-shell .empty-state,
+.app-shell #analysis-result .analysis-pick {
+  transition: border-color 240ms ease, box-shadow 280ms ease, transform 360ms var(--motion-ease);
+}
+.app-shell .tool-card:focus-within,
+.app-shell .builder-card:focus-within {
+  border-color: rgba(195,224,249,.32);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 12px 28px rgba(0,0,0,.2), 0 0 0 1px rgba(180,215,244,.045);
+}
+.app-shell .tool-card button,
+.app-shell .empty-state button,
+.app-shell .quick-presets button {
+  transition: transform 240ms var(--motion-ease), border-color 240ms ease, background 240ms ease, box-shadow 280ms ease;
+}
+.app-shell .primary {
+  transition: transform 240ms var(--motion-ease), filter 220ms ease, box-shadow 300ms ease;
+}
+.app-shell .primary:active:not(:disabled),
+.app-shell .tool-card button:active,
+.app-shell .quick-presets button:active,
+.app-shell .empty-state button:active { transform: scale(.965); }
+.app-shell .empty-state > span { animation: aurex-empty-breathe 4s ease-in-out infinite; }
+.app-shell .analysis-pick { animation: aurex-item-enter 420ms var(--motion-ease) both; }
+.app-shell .analysis-pick:nth-child(2) { animation-delay: 55ms; }
+.app-shell .analysis-pick:nth-child(3) { animation-delay: 95ms; }
+
+@media (hover: hover) and (pointer: fine) {
+  .app-shell .quick-presets button:hover { transform: translateY(-3px); border-color: rgba(203,236,249,.43); box-shadow: 0 10px 24px rgba(0,0,0,.26); }
+  .app-shell .tool-card:hover { transform: translateY(-2px); border-color: rgba(180,213,238,.29); box-shadow: 0 14px 28px rgba(0,0,0,.22); }
+  .app-shell .primary:hover:not(:disabled) { filter: brightness(1.05); }
+}
+@keyframes aurex-screen-enter {
+  from { opacity: .68; transform: translate3d(8px,5px,0); }
+  to { opacity: 1; transform: translate3d(0,0,0); }
+}
+@keyframes aurex-screen-enter-reverse {
+  from { opacity: .68; transform: translate3d(-8px,5px,0); }
+  to { opacity: 1; transform: translate3d(0,0,0); }
+}
+@keyframes aurex-item-enter {
+  from { opacity: .55; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes aurex-atmosphere {
+  from { opacity: .55; transform: translate3d(0,0,0) scale(.96); }
+  to { opacity: .85; transform: translate3d(-9px,6px,0) scale(1.05); }
+}
+@keyframes aurex-empty-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(209,250,120,.015); }
+  50% { box-shadow: 0 0 0 9px rgba(209,250,120,.045); }
+}
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .app-shell .bottom-nav { background: #1d2630; }
+  .app-shell .bottom-nav .glass-indicator { background: #3b4b5c; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .app-shell .bottom-nav { background: #1c252e; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .app-shell .bottom-nav .glass-indicator { background: #465462; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .view.active,
+  .app-shell .view.active .hero-copy,
+  .app-shell .view.active .section-title,
+  .app-shell .view.active .build-steps,
+  .app-shell .view.active .quick-presets,
+  .app-shell .view.active .builder-card,
+  .app-shell .view.active .tool-card,
+  .app-shell .view.active .empty-state,
+  .app-shell .view.active .slip-summary,
+  .app-shell .analysis-pick,
+  .app-shell .hero-copy::before,
+  .app-shell .hero-highlight,
+  .app-shell .empty-state > span { animation: none !important; }
+  .app-shell .bottom-nav .glass-indicator,
+  .app-shell .bottom-nav .nav-item,
+  .app-shell .bottom-nav .nav-icon svg,
+  .app-shell .bottom-nav .nav-label,
+  .app-shell .builder-card,
+  .app-shell .tool-card,
+  .app-shell .quick-presets button,
+  .app-shell .primary { transition: none !important; }
+}
