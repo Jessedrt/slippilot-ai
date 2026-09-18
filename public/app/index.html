@@ -19,11 +19,9 @@
   </head>
   <body>
     <div class="app-shell">
-      <header class="topbar glass">
-        <a class="logo" href="./" aria-label="AUREX home"><span><img src="/assets/aurex-mark-neon.png" alt="" /></span><b>AUREX <em>V3</em></b></a>
-        <div class="live-pill"><i></i> READY</div>
-      </header>
-      <main>
+      <!-- Keep the connection-state node for app.js without displaying the removed top bar. -->
+      <div class="live-pill" style="display:none" aria-hidden="true"><i></i> READY</div>
+      <main style="padding-top:max(12px, env(safe-area-inset-top, 0px))">
         <section class="view active" id="build-view" aria-labelledby="build-tab">
           <div class="hero-copy">
             <p class="eyebrow">SLIP BUILDER</p>
