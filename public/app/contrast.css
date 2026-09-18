@@ -1,0 +1,187 @@
+/* AUREX contrast study — neutral graphite foundations, intentional lime accents.
+   Layered last, preserving compact geometry, drag navigation and app logic. */
+:root {
+  --bg: #090c11;
+  --panel: #141a21;
+  --panel2: #19212a;
+  --ink: #f5f7f8;
+  --muted: #a8b2bd;
+  --lime: #d1fa78;
+  --line: rgba(209, 225, 237, .13);
+  --glass-line: rgba(235, 248, 255, .24);
+  --glow: rgba(158, 205, 242, .065);
+  --aurex-aqua: #9cdcf2;
+  color-scheme: dark;
+}
+html { background: var(--bg); }
+body { background: var(--bg); color: var(--ink); }
+.app-shell {
+  background:
+    radial-gradient(ellipse 73% 265px at 99% 100px, rgba(95, 139, 190, .115), transparent 73%),
+    radial-gradient(ellipse 58% 190px at -18% 350px, rgba(113, 148, 211, .055), transparent 76%),
+    var(--bg);
+}
+.app-shell::before {
+  opacity: .45;
+  background:
+    radial-gradient(ellipse 170px 125px at 92% 30%, rgba(135, 185, 240, .11), transparent 75%),
+    radial-gradient(ellipse 150px 110px at 8% 88%, rgba(122, 174, 216, .075), transparent 75%);
+}
+.app-shell .hero-copy::before {
+  background: radial-gradient(ellipse, rgba(157, 198, 246, .095), transparent 71%);
+}
+.app-shell .eyebrow, .app-shell .section-title .eyebrow { color: var(--aurex-aqua); }
+.app-shell .hero-copy .eyebrow::before { background: var(--lime); box-shadow: 0 0 10px rgba(209, 250, 120, .5); }
+.app-shell .hero-copy h1, .app-shell .section-title h2 { color: #fafcfe; }
+.app-shell .hero-highlight {
+  color: var(--lime);
+  background: linear-gradient(105deg, #b8ec60 0%, #efffc6 34%, #cafa79 62%, #b8ec60 100%);
+  background-size: 180% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.app-shell .hero-copy > p:last-child,
+.app-shell .section-title > p:last-child { color: var(--muted); }
+.app-shell .hero-copy h1::after { background: linear-gradient(90deg, var(--lime), rgba(151, 205, 230, .4), transparent); }
+
+/* Flat-looking green-on-green surfaces become two distinct neutral elevations. */
+.app-shell .builder-card,
+.app-shell .tool-card,
+.app-shell .result-panel,
+.app-shell .loading-card,
+.app-shell .empty-state,
+.app-shell .slip-summary {
+  border-color: rgba(212, 225, 242, .145);
+  background: linear-gradient(152deg, #1b232d 0%, #141a22 54%, #111720 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .045), 0 12px 28px rgba(0, 0, 0, .16);
+}
+.app-shell .builder-card::before { background: linear-gradient(90deg, transparent, var(--lime), transparent); }
+.app-shell .build-steps > div {
+  border-color: rgba(205, 218, 235, .12);
+  background: linear-gradient(145deg, #1a222c, #111720);
+}
+.app-shell .build-steps > div::after { background: linear-gradient(90deg, rgba(148, 207, 231, .4), transparent); }
+.app-shell .build-steps span { color: var(--aurex-aqua); }
+.app-shell .build-steps strong { color: #e8edf2; }
+.app-shell .quick-presets button {
+  border-color: rgba(203, 220, 238, .18);
+  background: linear-gradient(135deg, #202934, #151b23 75%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .045), 0 5px 16px rgba(0, 0, 0, .13);
+}
+.app-shell .quick-presets button span { color: #f3f7fa; }
+.app-shell .quick-presets button small { color: var(--muted); }
+.app-shell .quick-presets button[aria-pressed='true'] {
+  border-color: rgba(209, 250, 120, .74);
+  background: linear-gradient(128deg, #29352e, #1c2728 80%);
+  box-shadow: inset 0 1px 0 rgba(242, 255, 229, .09), 0 0 0 2px rgba(209, 250, 120, .045);
+}
+
+/* Text hierarchy: readable labels, unobtrusive details and clearer fields. */
+.app-shell legend, .app-shell .field > span { color: #e6ecf2; }
+.app-shell .field-help, .app-shell .odds-estimate p { color: var(--muted); }
+.app-shell .segmented {
+  background: #0e131a;
+  border-color: rgba(209, 225, 237, .17);
+}
+.app-shell .segmented span { color: #b5c0cc; }
+.app-shell .segmented input:checked + span {
+  background: linear-gradient(125deg, #35463b, #29382f);
+  color: #ebffd3;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .11), inset 0 0 0 1px rgba(209, 250, 120, .33);
+}
+.app-shell .field input,
+.app-shell .field select,
+.app-shell .tool-card input,
+.app-shell .upload {
+  background: #0d131a;
+  border-color: rgba(213, 229, 244, .17);
+  color: #f2f7fc;
+}
+.app-shell .field input::placeholder, .app-shell .tool-card input::placeholder { color: #8f9ca9; }
+.app-shell .field input:focus, .app-shell .field select:focus, .app-shell .tool-card input:focus {
+  border-color: var(--lime);
+  box-shadow: 0 0 0 3px rgba(209, 250, 120, .11);
+}
+.app-shell .odds-estimate {
+  border-color: rgba(164, 205, 230, .24);
+  background: linear-gradient(120deg, #1a2a34, #17212b);
+}
+.app-shell .odds-estimate span { color: #c7dbe8; }
+.app-shell .odds-estimate strong { color: var(--lime); }
+.app-shell .primary {
+  background: linear-gradient(115deg, #c0ef72, #e0ffa2 42%, #caf17d 77%, #b8e665);
+  border-color: rgba(239, 255, 202, .54);
+  color: #12200e;
+  box-shadow: 0 6px 20px rgba(187, 240, 106, .13), inset 0 1px 0 rgba(255, 255, 255, .3);
+}
+
+/* Analysis tools get recognisable, limited supporting accents, not three green slabs. */
+.app-shell .tool-card { gap: 6px 10px; }
+.app-shell .tool-card h3 { color: #f4f8fb; }
+.app-shell .tool-card p { color: var(--muted); }
+.app-shell .tool-card .tool-icon {
+  border: 1px solid rgba(156, 220, 242, .27);
+  background: rgba(156, 220, 242, .09);
+  color: var(--aurex-aqua);
+}
+.app-shell .tool-card:nth-child(2) .tool-icon {
+  border-color: rgba(206, 217, 245, .25);
+  background: rgba(206, 217, 245, .075);
+  color: #d6e0fb;
+}
+.app-shell .tool-card:nth-child(3) .tool-icon {
+  border-color: rgba(209, 250, 120, .28);
+  background: rgba(209, 250, 120, .075);
+  color: var(--lime);
+}
+.app-shell .tool-card:focus-within { border-color: rgba(166, 218, 244, .45); box-shadow: 0 0 0 2px rgba(166, 218, 244, .045); }
+.app-shell .tool-card button, .app-shell .empty-state button {
+  border-color: rgba(169, 211, 234, .4);
+  background: rgba(150, 205, 235, .08);
+  color: #e2f4ff;
+}
+.app-shell .tool-card button:focus-visible, .app-shell .empty-state button:focus-visible { outline-color: var(--lime); }
+.app-shell .upload { border-style: dashed; }
+.app-shell .empty-state { padding: 28px 18px; border-style: dashed; border-color: rgba(212, 225, 242, .2); }
+.app-shell .empty-state > span { color: var(--lime); background: rgba(209, 250, 120, .07); }
+.app-shell .slip-summary { background: linear-gradient(135deg, #1d2b33, #141c26); }
+.app-shell .pick-row { background: #171e27; border-color: rgba(212, 225, 242, .13); }
+.app-shell .code-block { background: #0c1219; border-color: rgba(212, 225, 242, .14); }
+.app-shell #analysis-result .analysis-summary { color: #e6edf4; }
+.app-shell #analysis-result .analysis-pick { background: linear-gradient(135deg, #202936, #131a23); border-color: rgba(211, 226, 242, .15); }
+.app-shell #analysis-result .analysis-pick .analysis-market { color: #dce7f1; }
+.app-shell #analysis-result .analysis-pick .analysis-reason { color: #b8c5d1; }
+.app-shell #analysis-result .analysis-verdict { color: #dcffab; border-color: rgba(209, 250, 120, .39); }
+.app-shell #analysis-result .analysis-verdict.caution { color: #ffdf9c; border-color: rgba(255, 221, 144, .45); }
+.app-shell #analysis-result .analysis-verdict.reject { color: #ffbdb9; border-color: rgba(255, 175, 172, .43); }
+
+/* The capsule stays glass-like, but the whole dock no longer turns green. */
+.app-shell .bottom-nav {
+  border-color: rgba(234, 244, 255, .29);
+  background: linear-gradient(165deg, rgba(249, 253, 255, .135), rgba(158, 177, 198, .055) 44%, rgba(20, 27, 38, .76)), rgba(22, 30, 41, .73);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .43), inset 0 1px 0 rgba(255, 255, 255, .19);
+}
+.app-shell .bottom-nav .glass-indicator {
+  border-color: rgba(244, 250, 255, .44);
+  background: linear-gradient(150deg, rgba(255,255,255,.24), rgba(208,226,243,.16) 47%, rgba(152,179,208,.11) 84%, rgba(255,255,255,.16));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 4px 14px rgba(0,0,0,.16);
+}
+.app-shell .bottom-nav .nav-item { color: #bac7d3; }
+.app-shell .bottom-nav.liquid-ready .nav-item.active,
+.app-shell .bottom-nav.liquid-ready .nav-item[aria-current='page'] { color: #f6ffed; }
+.app-shell .bottom-nav.liquid-ready .nav-item.active .nav-icon,
+.app-shell .bottom-nav.liquid-ready .nav-item[aria-current='page'] .nav-icon { color: var(--lime); }
+.app-shell .bottom-nav #slip-count { border-color: #202833; }
+.app-shell .toast { background: #d8f7a2; color: #101810; }
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .app-shell .bottom-nav { background: #1d2630; }
+  .app-shell .bottom-nav .glass-indicator { background: #3b4b5c; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .app-shell .bottom-nav { background: #1c252e; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .app-shell .bottom-nav .glass-indicator { background: #465462; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .hero-highlight { animation: none; }
+}
