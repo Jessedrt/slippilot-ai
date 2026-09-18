@@ -9,6 +9,7 @@ import type { Telegraf } from 'telegraf';
 import { ZodError } from 'zod';
 import { landingPage, landingStyles } from '../web/landing-page.js';
 import { registerMiniAppRoutes, type MiniAppDependencies } from './mini-app-routes.js';
+import { registerBookingCodeAnalysisRoute } from './booking-code-analysis.js';
 
 interface TelegramWebhook {
   bot: Pick<Telegraf, 'handleUpdate'>;
@@ -61,7 +62,10 @@ export async function createServer(
     return { ok: true };
   });
   registerAdminRoutes(app as unknown as FastifyInstance, dependencies);
-  if (miniApp) registerMiniAppRoutes(app as unknown as FastifyInstance, miniApp);
+  if (miniApp) {
+    registerMiniAppRoutes(app as unknown as FastifyInstance, miniApp);
+    registerBookingCodeAnalysisRoute(app as unknown as FastifyInstance, miniApp);
+  }
   app.setErrorHandler((error, request, reply) => {
     dependencies.metrics.increment('errors');
     if (error instanceof ZodError) {
@@ -93,4 +97,3 @@ export async function createServer(
   });
   return app;
 }
-
