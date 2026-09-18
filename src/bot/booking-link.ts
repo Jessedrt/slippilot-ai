@@ -4,7 +4,7 @@ import { sportyBetShareUrl } from '../booking/sportybet-share-link.js';
 /** Add a direct-loading button to all successful Telegram booking-code replies. */
 export function attachBookingCodeLink(ctx: Context): void {
   const originalReply = ctx.reply.bind(ctx);
-  ctx.reply = ((message: string, extra?: Parameters<typeof ctx.reply>[1]) => {
+  ctx.reply = (message, extra) => {
     // Do not add links to pasted, imported, failed or unconfirmed codes.
     if (!/^✅ (?:SportyBet booking code created|Split [A-Z] SportyBet code)\b/.test(message)) {
       return originalReply(message, extra);
@@ -21,5 +21,5 @@ export function attachBookingCodeLink(ctx: Context): void {
         ...previous,
       ]),
     });
-  }) as typeof ctx.reply;
+  };
 }
