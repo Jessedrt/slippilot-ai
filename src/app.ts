@@ -12,6 +12,7 @@ import { RedisCache } from './services/cache.js';
 import { DisabledSportsProvider } from './sports/provider.js';
 import { BrowserSportyBetProvider, UnsupportedSportyBetProvider } from './sportybet/provider.js';
 import { createLogger } from './utils/logger.js';
+import { PrismaWatchStore, TelegramWatchSender, WatchService } from './watch/watch-service.js';
 import { YouClient } from './you/client.js';
 import { DisabledWebResearchProvider, YouProvider } from './you/provider.js';
 
@@ -91,6 +92,13 @@ export function createApplication() {
     slipAnalyzer,
     screenshotAnalyzer,
   });
+  // A preview never dispatches Telegram messages. Production requires CRON_SECRET,
+  // configured provider, bot token and a real scheduled request before alerts work.
+  const alertReady = Boolean(config.CRON_SECRET && config.TELEGRAM_BOT_TOKEN &&
+    config.SPORTYBET_PROVIDER_ENABLED && process.env.VERCEL_ENV === 'production');
+  const watch = new WatchService(new PrismaWatchStore(database.client), sportyBet,
+    alertReady && config.TELEGRAM_BOT_TOKEN ? new TelegramWatchSender(config.TELEGRAM_BOT_TOKEN) : null,
+    alertReady);
   const appPromise = createServer(
     logger,
     { config, metrics, cache, database, sports, sportyBet },
@@ -103,6 +111,7 @@ export function createApplication() {
       screenshotAnalyzer,
       ...(config.TELEGRAM_BOT_TOKEN ? { telegramBotToken: config.TELEGRAM_BOT_TOKEN } : {}),
     },
+    { service: watch, ...(config.CRON_SECRET ? { cronSecret: config.CRON_SECRET } : {}) },
   );
   // Telegram setup is persistent and must not run on every serverless cold start.
   const webhookRegistrationPromise = Promise.resolve(false);
