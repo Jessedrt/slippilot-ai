@@ -1,3 +1,5 @@
+import './code-workspace.js?v=5.4.0';
+
 // Verified code import replaces the old count-only echo. Other forms keep their existing handlers.
 const codeForm = document.querySelector('#read-code-form');
 const codeInput = document.querySelector('#read-code');
@@ -32,14 +34,12 @@ if (codeForm && codeInput && resultPanel) {
       }
       const items = data.selections.map((pick, index) => {
         const verdict = ['keep', 'caution', 'reject'].includes(pick.verdict) ? pick.verdict : 'caution';
-        const available = pick.status === 'active' && pick.eventStatus === 'scheduled';
         return `<article class="analysis-pick">
           <span class="analysis-verdict ${verdict}">${encode(verdict)}</span>
           <h4>${index + 1}. ${encode(pick.homeTeam)} vs ${encode(pick.awayTeam)}</h4>
           <p class="analysis-market">${encode(pick.marketName)} — ${encode(pick.selectionName)} @ ${displayOdds(pick.odds)}</p>
           <p>${encode(pick.risk)} risk · AI evidence-quality score: ${Math.round(Number(pick.confidence) || 0)}/100</p>
           <p class="analysis-reason">${encode(pick.reason)}</p>
-          ${available ? '' : '<p class="analysis-warning">Fixture or market may no longer be available.</p>'}
         </article>`;
       }).join('');
       const editableCount = data.editableSlip?.selections?.length || 0;
