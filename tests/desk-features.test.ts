@@ -70,10 +70,11 @@ describe('AUREX desk routes', () => {
     const fixtures = await app.inject({ method: 'POST', url: '/api/miniapp/fixtures',
       headers, payload: { sport: 'football' } });
     expect(fixtures.statusCode).toBe(200);
-    expect(fixtures.json().fixtures.map((item: { id: string }) => item.id)).toEqual(['ev-1']);
+    expect(fixtures.json<{ fixtures: Array<{ id: string }> }>().fixtures.map((item) => item.id)).toEqual(['ev-1']);
     const watched = await app.inject({ method: 'POST', url: '/api/miniapp/watchlist-refresh',
       headers, payload: { ids: ['ev-1', 'not-found'] } });
-    expect(watched.json().results).toMatchObject([{ available: true }, { available: false }]);
+    expect(watched.json<{ results: Array<{ available: boolean }> }>().results)
+      .toMatchObject([{ available: true }, { available: false }]);
 
     const build = await app.inject({ method: 'POST', url: '/api/miniapp/build',
       headers, payload: { sport: 'football', gameCount: 1, riskMode: 'balanced' } });
@@ -101,7 +102,7 @@ describe('AUREX desk routes', () => {
     const code = await app.inject({ method: 'POST', url: '/api/miniapp/code', headers,
       payload: { selections: confirmed.selections, analysisToken: confirmed.analysisToken } });
     expect(code.statusCode).toBe(200);
-    expect(code.json().code).toBe('AUREX123');
+    expect(code.json<{ code: string }>().code).toBe('AUREX123');
     expect(aiCalls).toBe(3);
     await app.close();
   });
