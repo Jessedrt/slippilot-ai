@@ -9,24 +9,25 @@ const fixture = (status: SportyBetEvent['status'] = 'scheduled', startsAt = '202
 });
 class MemoryStore implements WatchStore {
   data = new Map<string, WatchState>();
-  async get(id: string): Promise<WatchState> {
-    return structuredClone(this.data.get(id) || readWatchState(null));
+  get(id: string): Promise<WatchState> {
+    return Promise.resolve(structuredClone(this.data.get(id) || readWatchState(null)));
   }
   async change(id: string, fn: (state: WatchState) => WatchState): Promise<WatchState> {
     const updated = fn(await this.get(id));
     this.data.set(id, structuredClone(updated));
     return structuredClone(updated);
   }
-  async enabledUsers(limit: number): Promise<string[]> {
-    return [...this.data].filter(([, state]) => state.enabled).slice(0, limit).map(([id]) => id);
+  enabledUsers(limit: number): Promise<string[]> {
+    return Promise.resolve([...this.data].filter(([, state]) => state.enabled).slice(0, limit).map(([id]) => id));
   }
 }
 class FakeSender implements TelegramSender {
   messages: Array<{ id: string; text: string }> = [];
   fail = false;
-  async send(id: string, text: string) {
-    if (this.fail) throw new Error('simulated Telegram outage');
+  send(id: string, text: string): Promise<void> {
+    if (this.fail) return Promise.reject(new Error('simulated Telegram outage'));
     this.messages.push({ id, text });
+    return Promise.resolve();
   }
 }
 function setup() {
@@ -34,10 +35,8 @@ function setup() {
   const sender = new FakeSender();
   let actual: SportyBetEvent | null = fixture();
   let providerFails = false;
-  const provider = { getEvent: vi.fn(async (id: string) => {
-    if (providerFails) throw new Error('provider offline');
-    return id === 'event-1' ? actual : null;
-  }) };
+  const provider = { getEvent: vi.fn((id: string) =>
+    providerFails ? Promise.reject(new Error('provider offline')) : Promise.resolve(id === 'event-1' ? actual : null)) };
   const service = new WatchService(store, provider, sender, true);
   return { service, store, sender, provider, setFixture: (next: SportyBetEvent | null) => { actual = next; },
     failProvider: () => { providerFails = true; } };
@@ -82,6 +81,7 @@ describe('AUREX 5.3 watchlist and notification engine', () => {
     env.setFixture(fixture('cancelled'));
     const result = await env.service.monitor(new Date('2026-09-18T10:10:00Z'));
     expect(result.changed).toBe(1);
+    expect(result.delivered).toBe(1);
     expect(env.sender.messages).toHaveLength(1);
     expect(env.sender.messages[0]?.text).toContain('live → cancelled');
     await env.service.monitor(new Date('2026-09-18T10:11:00Z'));
