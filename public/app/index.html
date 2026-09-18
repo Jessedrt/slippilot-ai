@@ -3,10 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#07110f" />
+    <meta name="theme-color" content="#080e0c" />
     <meta name="description" content="Build, analyze and prepare supported sports slips in AUREX." />
     <link rel="icon" href="/favicon.svg" />
     <link rel="stylesheet" href="/app/app.css?v=3.0.4" />
+    <link rel="stylesheet" href="/app/refined.css?v=4.0.0" />
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <title>AUREX Mini App</title>
   </head>
@@ -19,52 +20,52 @@
       <main>
         <section class="view active" id="build-view" aria-labelledby="build-tab">
           <div class="hero-copy">
-            <p class="eyebrow">PRIVATE SPORTS INTELLIGENCE</p>
-            <h1>Set your odds target.</h1>
-            <p>Choose a sport, enter your combined odds and let AUREX estimate the matches to review from today's fixtures.</p>
+            <p class="eyebrow">YOUR SPORTS WORKSPACE</p>
+            <h1>Build your next slip.</h1>
+            <p>Choose a sport and an odds target. AUREX reviews today's fixtures and estimates how many matches may be needed.</p>
           </div>
           <div class="quick-presets" aria-label="Quick odds targets">
-            <button type="button" data-preset-odds="5" data-preset-games="5"><span>🎯 5 Odds</span><small>Set a combined-odds target</small></button>
-            <button type="button" data-preset-odds="2" data-preset-games="3"><span>🔁 2 Odds</span><small>Set a combined-odds target</small></button>
+            <button type="button" data-preset-odds="5" data-preset-games="5"><span>5.00 odds</span><small>Start with a target</small></button>
+            <button type="button" data-preset-odds="2" data-preset-games="3"><span>2.00 odds</span><small>Start with a target</small></button>
           </div>
           <form id="build-form" class="builder-card">
             <fieldset>
-              <legend>Sport</legend>
+              <legend>Choose your sport</legend>
               <div class="segmented">
-                <label><input type="radio" name="sport" value="football" checked /><span>⚽ Football</span></label>
-                <label><input type="radio" name="sport" value="basketball" /><span>🏀 Basketball</span></label>
+                <label><input type="radio" name="sport" value="football" checked /><span>Football</span></label>
+                <label><input type="radio" name="sport" value="basketball" /><span>Basketball</span></label>
               </div>
             </fieldset>
             <div class="form-row">
-              <label class="field"><span>Target combined odds</span><input id="target-odds" name="targetOdds" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 2, 10 or 150" aria-describedby="target-odds-help" required /><small class="field-help" id="target-odds-help">Required. Enter decimal odds of at least 1.01.</small></label>
+              <label class="field"><span>Target combined odds</span><input id="target-odds" name="targetOdds" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 2, 10 or 150" aria-describedby="target-odds-help" required /><small class="field-help" id="target-odds-help">Enter decimal odds of at least 1.01.</small></label>
               <label class="field"><span>Risk mode</span><select id="risk-mode"><option value="conservative">Conservative</option><option selected value="balanced">Balanced</option><option value="aggressive">Aggressive</option></select></label>
             </div>
-            <div class="odds-estimate" role="status" aria-live="polite"><div><span>Estimated game count</span><strong id="estimated-games">Enter target odds</strong></div><p>Calculated automatically from your target and risk mode. The final number of AI-approved games and combined odds may differ.</p></div>
-            <p class="field-help">Today's fixtures only (Lagos time). AUREX cannot create matches or guarantee target odds.</p>
-            <!-- Retained solely for compatibility with the existing Mini App event handlers; game count is chosen server-side. -->
+            <div class="odds-estimate" role="status" aria-live="polite"><div><span>Estimated matches</span><strong id="estimated-games">Enter target odds</strong></div><p>Calculated automatically from your target and risk mode. The final number of selections and combined odds may differ.</p></div>
+            <p class="field-help">Today's fixtures only (Lagos time). Matches and target odds cannot be guaranteed.</p>
+            <!-- Compatibility only: the final game count is chosen server-side. -->
             <div class="chips hidden" id="count-chips" aria-hidden="true"><button type="button" class="selected" data-count="5" tabindex="-1">5</button><button type="button" data-count="3" tabindex="-1">3</button></div>
-            <button class="primary" type="submit"><span>Build &amp; analyze</span><b>→</b></button>
+            <button class="primary" type="submit"><span>Build &amp; analyze</span><b aria-hidden="true">→</b></button>
           </form>
-          <div class="loading-card hidden" id="loading"><div class="pulse"></div><div><b>Reviewing live markets</b><span id="loading-label">Finding suitable fixtures…</span></div></div>
+          <div class="loading-card hidden" id="loading"><div class="pulse"></div><div><b>Reviewing markets</b><span id="loading-label">Finding suitable fixtures…</span></div></div>
           <div class="notice hidden" id="build-error" role="alert"></div>
         </section>
         <section class="view" id="analyze-view" aria-labelledby="analyze-tab">
-          <div class="section-title"><p class="eyebrow">AUREX INTELLIGENCE DESK</p><h2>Inspect every angle.</h2><p>Read a booking code, a public X post, or a clear slip screenshot.</p></div>
+          <div class="section-title"><p class="eyebrow">ANALYSIS TOOLS</p><h2>Look closer at a slip.</h2><p>Review a booking code, a public X post or a clear screenshot.</p></div>
           <div class="tool-grid">
-            <form class="tool-card" id="read-code-form"><span class="tool-icon">#</span><div><h3>Booking code</h3><p>Check selections and current combined odds.</p></div><input id="read-code" maxlength="20" placeholder="Paste code" required /><button type="submit">Analyze code</button></form>
-            <form class="tool-card" id="x-form"><span class="tool-icon">𝕏</span><div><h3>X / Twitter post</h3><p>Extract public booking codes from post text.</p></div><input id="x-url" type="url" placeholder="https://x.com/…/status/…" required /><button type="submit">Read post</button></form>
+            <form class="tool-card" id="read-code-form"><span class="tool-icon">#</span><div><h3>Booking code</h3><p>Check selections and current combined odds.</p></div><input id="read-code" maxlength="20" placeholder="Paste code" aria-label="Booking code" required /><button type="submit">Analyze code</button></form>
+            <form class="tool-card" id="x-form"><span class="tool-icon">𝕏</span><div><h3>X / Twitter post</h3><p>Extract public booking codes from post text.</p></div><input id="x-url" type="url" placeholder="https://x.com/…/status/…" aria-label="X post URL" required /><button type="submit">Read post</button></form>
             <form class="tool-card" id="shot-form"><span class="tool-icon">▣</span><div><h3>Slip screenshot</h3><p>Extract teams, markets, odds and visible codes.</p></div><label class="upload"><input id="shot-file" type="file" accept="image/png,image/jpeg,image/webp" required /><span>Choose screenshot</span></label><button type="submit">Analyze image</button></form>
           </div>
           <div class="result-panel hidden" id="analysis-result"></div>
         </section>
         <section class="view" id="slip-view" aria-labelledby="slip-tab">
-          <div class="section-title"><p class="eyebrow">ACTIVE SLIP</p><h2>Your picks.</h2></div>
-          <div id="empty-slip" class="empty-state"><span>◎</span><h3>No active slip</h3><p>Build a new analyzed slip to see it here.</p><button data-go="build">Build a slip</button></div>
-          <div id="slip-content" class="hidden"><div class="slip-summary"><div><span>COMBINED ODDS</span><strong id="combined-odds">—</strong></div><div><span>AVG. AI SCORE</span><strong id="average-confidence">—</strong></div></div><p class="field-help">These are actual returned selections, not a promise to reach the requested odds or game count. AI scores are not winning probabilities.</p><div class="pick-list" id="pick-list"></div><div class="sticky-action"><p>Live markets are refreshed before creating a code.</p><button class="primary" id="generate-code"><span>Generate SportyBet code</span><b>→</b></button></div></div>
+          <div class="section-title"><p class="eyebrow">YOUR WORKSPACE</p><h2>My slip.</h2></div>
+          <div id="empty-slip" class="empty-state"><span>◎</span><h3>No active slip</h3><p>Build an analyzed slip to see your selections here.</p><button data-go="build">Build a slip</button></div>
+          <div id="slip-content" class="hidden"><div class="slip-summary"><div><span>COMBINED ODDS</span><strong id="combined-odds">—</strong></div><div><span>AVG. AI SCORE</span><strong id="average-confidence">—</strong></div></div><p class="field-help">These are actual returned selections, not a promise to reach the requested odds or game count. AI scores are not winning probabilities.</p><div class="pick-list" id="pick-list"></div><div class="sticky-action"><p>Live markets are refreshed before creating a code.</p><button class="primary" id="generate-code"><span>Generate SportyBet code</span><b aria-hidden="true">→</b></button></div></div>
           <div class="result-panel hidden" id="code-result"></div>
         </section>
       </main>
-      <nav class="bottom-nav" aria-label="Mini app navigation"><button class="active" id="build-tab" data-view="build"><span>＋</span>Build</button><button id="analyze-tab" data-view="analyze"><span>⌕</span>Analyze</button><button id="slip-tab" data-view="slip"><span>▤</span>My slip <i id="slip-count">0</i></button></nav>
+      <nav class="bottom-nav" aria-label="Mini app navigation"><button class="active" id="build-tab" data-view="build"><span aria-hidden="true">＋</span>Build</button><button id="analyze-tab" data-view="analyze"><span aria-hidden="true">⌕</span>Analyze</button><button id="slip-tab" data-view="slip"><span aria-hidden="true">▤</span>My slip <i id="slip-count">0</i></button></nav>
     </div>
     <div class="toast" id="toast" role="status"></div>
     <script type="module" src="/app/app.js?v=3.0.4"></script>
