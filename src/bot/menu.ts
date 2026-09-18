@@ -20,12 +20,7 @@ export const BOT_COMMANDS = [
 
 export const homeMenu = () =>
   Markup.inlineKeyboard([
-    [
-      Markup.button.webApp(
-        '◆ Open AUREX Intelligence Desk',
-        'https://slippilot-ai.vercel.app/app/',
-      ),
-    ],
+    [Markup.button.webApp('◆ Open AUREX Intelligence Desk', 'https://slippilot-ai.vercel.app/app/')],
     [
       Markup.button.callback('⚽ Football', 'home:football'),
       Markup.button.callback('🏀 Basketball', 'home:basketball'),
@@ -37,6 +32,10 @@ export const homeMenu = () =>
     [
       Markup.button.callback('◈ My Portfolio', 'home:slip'),
       Markup.button.callback('◇ Risk Profile', 'home:risk'),
+    ],
+    [
+      Markup.button.callback('📷 Analyze screenshot', 'home:screenshot'),
+      Markup.button.callback('✧ See examples', 'home:examples'),
     ],
   ]);
 
