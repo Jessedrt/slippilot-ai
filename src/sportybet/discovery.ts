@@ -19,6 +19,14 @@ export class NoTodayMarketsError extends Error {
   }
 }
 
+export class MarketVerificationUnavailableError extends Error {
+  readonly statusCode = 424;
+  constructor() {
+    super('The sports provider could not verify all markets for the selected day. No later day was substituted or fixtures invented. Please retry.');
+    this.name = 'MarketVerificationUnavailableError';
+  }
+}
+
 const rounded = (value: number, digits = 2) => Number(value.toFixed(digits));
 
 const riskLevel = (odds: number): RiskLevel => {
@@ -145,12 +153,13 @@ export async function buildLiveSlipSnapshot(
     const candidates: CandidateSelection[] = [];
     const usedFamilies = new Map<string, number>();
     const usedDirections = new Map<string, number>();
+    let marketVerificationFailed = false;
     for (let index = 0; index < diverseEvents.length && candidates.length < gameCount;) {
       const batch = diverseEvents.slice(index, index + Math.min(4, gameCount - candidates.length));
       index += batch.length;
       const results = await Promise.allSettled(batch.map((event) => provider.getMarkets(event.providerEventId)));
       for (const [position, result] of results.entries()) {
-        if (result.status !== 'fulfilled') continue;
+        if (result.status !== 'fulfilled') { marketVerificationFailed = true; continue; }
         const event = batch[position];
         if (!event) continue;
         const markets = result.value.filter((market) => market.sport === sport);
@@ -176,8 +185,11 @@ export async function buildLiveSlipSnapshot(
         if (candidates.length === gameCount) break;
       }
     }
-    // A day with fixtures but no active eligible markets is still unavailable; try the next day.
-    if (!candidates.length) continue;
+    if (!candidates.length) {
+      // Only a verifiably empty day may trigger tomorrow's search.
+      if (marketVerificationFailed) throw new MarketVerificationUnavailableError();
+      continue;
+    }
     const selections = candidates.slice(0, gameCount);
     return {
       scheduleDate: date, dayOffset: offset,
