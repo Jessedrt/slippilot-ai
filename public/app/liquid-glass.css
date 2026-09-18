@@ -1,0 +1,91 @@
+/* Liquid Glass-inspired navigation. Keep the compact geometry from compact.css. */
+.app-shell .bottom-nav {
+  background: linear-gradient(160deg, rgba(238, 255, 239, .115), rgba(179, 222, 188, .035) 44%, rgba(12, 25, 19, .69) 100%), rgba(18, 29, 23, .72);
+  border: 1px solid rgba(230, 255, 231, .25);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .37), inset 0 1px 0 rgba(255, 255, 255, .17), inset 0 -1px 0 rgba(0, 0, 0, .12);
+  -webkit-backdrop-filter: blur(24px) saturate(165%);
+  backdrop-filter: blur(24px) saturate(165%);
+  isolation: isolate;
+}
+
+/* Absolutely positioned: doesn't add a fourth grid column or change tap sizes. */
+.app-shell .bottom-nav .glass-indicator {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  left: 0;
+  display: block;
+  width: var(--glass-width, 0px);
+  height: var(--glass-height, 0px);
+  border: 1px solid rgba(241, 255, 242, .34);
+  border-radius: 14px;
+  background: linear-gradient(155deg, rgba(255, 255, 255, .21) 0%, rgba(220, 255, 205, .12) 33%, rgba(190, 235, 175, .075) 78%, rgba(255, 255, 255, .12) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), inset 0 -1px 0 rgba(216, 255, 198, .065), 0 3px 10px rgba(0, 0, 0, .14);
+  -webkit-backdrop-filter: blur(16px) saturate(145%);
+  backdrop-filter: blur(16px) saturate(145%);
+  transform: translate3d(var(--glass-x, 0px), var(--glass-y, 0px), 0);
+  transition: transform 430ms cubic-bezier(.22, 1, .32, 1), width 430ms cubic-bezier(.22, 1, .32, 1), height 430ms cubic-bezier(.22, 1, .32, 1);
+  pointer-events: none;
+  opacity: 0;
+  will-change: transform;
+}
+.app-shell .bottom-nav.liquid-ready .glass-indicator { opacity: 1; }
+.app-shell .bottom-nav .glass-indicator::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: radial-gradient(ellipse at 18% 0%, rgba(255, 255, 255, .23), transparent 60%);
+  pointer-events: none;
+}
+.app-shell .bottom-nav .glass-indicator::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 17%;
+  width: 66%;
+  height: 1px;
+  border-radius: 100%;
+  background: rgba(255, 255, 255, .37);
+  pointer-events: none;
+}
+
+.app-shell .bottom-nav .nav-item { z-index: 1; }
+/* JS-driven lens replaces the static active background without changing semantics. */
+.app-shell .bottom-nav.liquid-ready .nav-item.active,
+.app-shell .bottom-nav.liquid-ready .nav-item[aria-current='page'] {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: #ecffd9;
+}
+.app-shell .bottom-nav.liquid-ready .nav-item.active .nav-icon,
+.app-shell .bottom-nav.liquid-ready .nav-item[aria-current='page'] .nav-icon {
+  background: transparent;
+  color: #dcffb0;
+}
+.app-shell .bottom-nav .nav-item .nav-icon svg {
+  transition: transform 300ms cubic-bezier(.2, .9, .25, 1), color 200ms ease;
+}
+.app-shell .bottom-nav.liquid-ready .nav-item.active .nav-icon svg { transform: scale(1.06); }
+
+/* A restrained view reveal complements the moving lens. */
+.app-shell .view.active { animation: aurex-glass-view-in 240ms cubic-bezier(.2, .8, .3, 1) both; }
+@keyframes aurex-glass-view-in {
+  from { opacity: .72; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .app-shell .bottom-nav { background: rgba(22, 35, 27, .97); }
+  .app-shell .bottom-nav .glass-indicator { background: linear-gradient(145deg, #425543, #304333); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .app-shell .bottom-nav { background: #18271d; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .app-shell .bottom-nav .glass-indicator { background: #334832; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .bottom-nav .glass-indicator,
+  .app-shell .bottom-nav .nav-item .nav-icon svg { transition: none; will-change: auto; }
+  .app-shell .view.active { animation: none; }
+}

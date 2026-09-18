@@ -1,0 +1,156 @@
+/* AUREX navigation dock — scoped overrides for the existing three-view menu. */
+.app-shell {
+  padding-bottom: calc(118px + var(--safe));
+}
+
+.bottom-nav {
+  z-index: 30;
+  width: min(520px, calc(100% - 24px));
+  height: 78px;
+  bottom: calc(10px + var(--safe));
+  padding: 7px;
+  gap: 5px;
+  border: 1px solid rgba(223, 242, 220, .16);
+  border-radius: 24px;
+  background: rgba(17, 29, 22, .97);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, .43), inset 0 1px 0 rgba(255, 255, 255, .045);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  isolation: isolate;
+}
+
+.bottom-nav .nav-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  min-height: 60px;
+  padding: 6px 4px 5px;
+  border: 1px solid transparent;
+  border-radius: 17px;
+  background: transparent;
+  color: #a1b5a5;
+  font-size: .68rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: .005em;
+  -webkit-tap-highlight-color: transparent;
+  transition: color .16s ease, border-color .16s ease, background .16s ease;
+}
+
+.bottom-nav .nav-item .nav-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 35px;
+  height: 31px;
+  margin: 0;
+  border-radius: 10px;
+  color: inherit;
+  line-height: 1;
+  transition: background .16s ease, color .16s ease;
+}
+
+.bottom-nav .nav-item .nav-icon svg {
+  display: block;
+  width: 21px;
+  height: 21px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.bottom-nav .nav-item .nav-label {
+  display: block;
+  min-width: 0;
+  margin: 0;
+  font-size: .68rem;
+  font-weight: 740;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bottom-nav .nav-item.active,
+.bottom-nav .nav-item[aria-current='page'] {
+  border-color: rgba(199, 244, 109, .19);
+  background: linear-gradient(180deg, #2a3e28, #213322);
+  color: #e2ffb5;
+  box-shadow: inset 0 1px 0 rgba(217, 255, 174, .07);
+}
+
+.bottom-nav .nav-item.active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 36%;
+  right: 36%;
+  height: 2px;
+  border-radius: 0 0 5px 5px;
+  background: var(--lime);
+}
+
+.bottom-nav .nav-item.active .nav-icon {
+  background: rgba(199, 244, 109, .12);
+  color: var(--lime);
+}
+
+.bottom-nav .nav-item:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .bottom-nav .nav-item:not(.active):hover {
+    color: #eef9e4;
+    background: rgba(215, 244, 196, .065);
+  }
+}
+
+.bottom-nav .nav-item:active { transform: scale(.98); }
+
+.bottom-nav #slip-count {
+  position: absolute;
+  top: -5px;
+  right: -10px;
+  display: grid;
+  place-items: center;
+  min-width: 21px;
+  height: 21px;
+  margin: 0;
+  padding: 0 4px;
+  border: 2px solid #17251b;
+  border-radius: 999px;
+  background: var(--lime);
+  color: #101b0d;
+  font-size: .56rem;
+  font-weight: 850;
+  font-style: normal;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  box-sizing: border-box;
+}
+
+.bottom-nav #slip-count.is-empty { display: none; }
+.toast { bottom: calc(108px + var(--safe)); }
+
+@media (max-width: 360px) {
+  .bottom-nav { width: calc(100% - 16px); height: 74px; padding: 5px; gap: 2px; border-radius: 20px; }
+  .bottom-nav .nav-item { min-height: 60px; gap: 2px; border-radius: 15px; }
+  .bottom-nav .nav-item .nav-icon { height: 29px; }
+  .bottom-nav .nav-item .nav-icon svg { width: 20px; height: 20px; }
+  .bottom-nav .nav-item .nav-label { font-size: .64rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-nav .nav-item,
+  .bottom-nav .nav-item .nav-icon { transition: none; }
+  .bottom-nav .nav-item:active { transform: none; }
+}

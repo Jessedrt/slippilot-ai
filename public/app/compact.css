@@ -1,0 +1,205 @@
+/* Compact AUREX layout. Deliberately keeps body/form text readable on iOS. */
+.app-shell {
+  padding-bottom: calc(94px + var(--safe));
+}
+
+/* Header and introduction */
+.app-shell .topbar {
+  height: 56px;
+  padding-inline: 16px;
+}
+.app-shell .logo { gap: 8px; font-size: .83rem; letter-spacing: .07em; }
+.app-shell .logo span { width: 30px; height: 30px; border-radius: 9px; }
+.app-shell .logo em { font-size: .49rem; padding: 2px 4px; }
+.app-shell .live-pill { padding: 6px 9px; font-size: .59rem; }
+.app-shell .view { padding: 14px 16px 18px; }
+.app-shell .hero-copy { padding: 12px 0 14px; }
+.app-shell .eyebrow { margin-bottom: 9px; font-size: .63rem; letter-spacing: .12em; }
+.app-shell .hero-copy h1,
+.app-shell .section-title h2 {
+  font-size: clamp(1.95rem, 7.4vw, 2.55rem);
+  line-height: 1.13;
+  letter-spacing: -.045em;
+  font-weight: 700;
+  text-wrap: balance;
+}
+.app-shell .hero-copy > p:last-child,
+.app-shell .section-title > p:last-child {
+  margin-top: 9px;
+  max-width: 510px;
+  font-size: .85rem;
+  line-height: 1.48;
+}
+
+/* Steps are a small progress guide, not three large cards. */
+.app-shell .build-steps {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 13px;
+}
+.app-shell .build-steps > div {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  min-height: 43px;
+  padding: 8px 9px;
+  border-radius: 10px;
+}
+.app-shell .build-steps span { flex: none; font-size: .65rem; }
+.app-shell .build-steps strong { font-size: .7rem; font-weight: 620; line-height: 1.2; }
+
+/* Quick odds are compact shortcuts rather than feature-size tiles. */
+.app-shell .quick-presets {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin: 0 0 14px;
+}
+.app-shell .quick-presets button {
+  min-height: 60px;
+  padding: 12px 34px 12px 13px;
+  border-radius: 13px;
+}
+.app-shell .quick-presets span { font-size: .97rem; font-weight: 700; }
+.app-shell .quick-presets small { margin-top: 3px; font-size: .68rem; }
+.app-shell .quick-presets button::after { top: 11px; right: 12px; font-size: .87rem; }
+
+/* Builder stays comfortably tappable but wastes less vertical space. */
+.app-shell .builder-card,
+.app-shell .tool-card,
+.app-shell .result-panel,
+.app-shell .empty-state,
+.app-shell .slip-summary,
+.app-shell .loading-card {
+  border-radius: 16px;
+}
+.app-shell .builder-card { padding: 16px; }
+.app-shell fieldset { margin-bottom: 15px; }
+.app-shell legend,
+.app-shell .field > span {
+  margin-bottom: 7px;
+  font-size: .72rem;
+  font-weight: 680;
+  letter-spacing: .005em;
+}
+.app-shell .segmented { padding: 3px; border-radius: 11px; }
+.app-shell .segmented span { padding: 10px 7px; border-radius: 8px; font-size: .8rem; font-weight: 650; }
+.app-shell .form-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.app-shell .field input,
+.app-shell .field select,
+.app-shell .tool-card input,
+.app-shell .upload {
+  height: 48px;
+  min-height: 48px;
+  border-radius: 10px;
+  padding-inline: 11px;
+  font-size: 16px; /* Avoid automatic input zoom on iPhone. */
+}
+.app-shell .field .field-help { margin-top: 6px; font-size: .7rem; line-height: 1.35; }
+.app-shell #risk-mode-help { min-height: 0; }
+.app-shell .odds-estimate {
+  margin-top: 13px;
+  padding: 12px;
+  border-radius: 12px;
+}
+.app-shell .odds-estimate > div { gap: 8px; }
+.app-shell .odds-estimate span { font-size: .68rem; letter-spacing: .01em; }
+.app-shell .odds-estimate strong { font-size: .99rem; }
+.app-shell .odds-estimate p { margin-top: 5px; font-size: .71rem; line-height: 1.4; }
+.app-shell .builder-card > .field-help { margin: 10px 0 0; font-size: .71rem; }
+.app-shell .primary { height: 48px; min-height: 48px; margin-top: 13px; border-radius: 11px; font-size: .85rem; font-weight: 720; }
+.app-shell .primary b { font-size: 1.1rem; }
+.app-shell .help-panel { margin-top: 10px; padding: 0 13px; border-radius: 11px; }
+.app-shell .help-panel summary { padding: 12px 0; font-size: .78rem; }
+.app-shell .help-panel p { margin-bottom: 13px; font-size: .74rem; }
+
+/* Analysis and slip pages match the denser builder. */
+.app-shell .section-title { padding: 15px 0 17px; }
+.app-shell .tool-grid { gap: 10px; }
+.app-shell .tool-card { padding: 14px; gap: 5px 10px; }
+.app-shell .tool-icon { width: 36px; height: 36px; border-radius: 10px; font-size: 1.05rem; }
+.app-shell .tool-card h3 { font-size: .91rem; }
+.app-shell .tool-card p { font-size: .75rem; }
+.app-shell .tool-card button,
+.app-shell .empty-state button { min-height: 44px; height: 44px; border-radius: 10px; font-size: .8rem; font-weight: 680; }
+.app-shell .result-panel { padding: 16px; }
+.app-shell .empty-state { padding: 38px 17px; }
+.app-shell .empty-state > span { width: 48px; height: 48px; font-size: 1.6rem; }
+.app-shell .slip-summary div { padding: 14px 12px; }
+.app-shell .slip-summary strong { font-size: 1.5rem; }
+.app-shell .pick-row { padding: 12px 10px; border-radius: 11px; }
+.app-shell .slip-actions { margin-top: 15px; }
+.app-shell .sticky-action { margin-top: 14px; }
+.app-shell .code-block { padding: 11px; }
+.app-shell .code-block code { font-size: 1.02rem; }
+.app-shell .sportybet-open-link { min-height: 44px; border-radius: 10px; font-size: .84rem; }
+
+/* One-line navigation is lighter and leaves more screen for content. */
+.app-shell .bottom-nav {
+  width: min(430px, calc(100% - 28px));
+  height: 58px;
+  bottom: calc(9px + var(--safe));
+  padding: 4px;
+  gap: 3px;
+  border-radius: 19px;
+  box-shadow: 0 7px 22px rgba(0, 0, 0, .32);
+}
+.app-shell .bottom-nav .nav-item {
+  flex-direction: row;
+  gap: 6px;
+  min-height: 48px;
+  padding: 5px 6px;
+  border-radius: 14px;
+  font-size: .74rem;
+  font-weight: 650;
+}
+.app-shell .bottom-nav .nav-item .nav-icon {
+  width: 23px;
+  height: 24px;
+  border-radius: 7px;
+}
+.app-shell .bottom-nav .nav-item .nav-icon svg { width: 19px; height: 19px; }
+.app-shell .bottom-nav .nav-item .nav-label {
+  font-size: .74rem;
+  font-weight: 680;
+  line-height: 1.2;
+}
+.app-shell .bottom-nav .nav-item.active,
+.app-shell .bottom-nav .nav-item[aria-current='page'] {
+  border-color: rgba(199, 244, 109, .14);
+  background: #263727;
+  box-shadow: none;
+}
+.app-shell .bottom-nav .nav-item.active::before { display: none; }
+.app-shell .bottom-nav .nav-item.active .nav-icon { background: transparent; }
+.app-shell .bottom-nav #slip-count { top: -7px; right: -10px; width: auto; min-width: 18px; height: 18px; font-size: .56rem; }
+.app-shell ~ .toast { bottom: calc(81px + var(--safe)); }
+
+@media (max-width: 520px) {
+  .app-shell .quick-presets small { display: none; }
+  .app-shell .quick-presets button { min-height: 54px; }
+  .app-shell .view { padding-inline: 14px; }
+  .app-shell .hero-copy { padding-top: 10px; }
+}
+@media (max-width: 390px) {
+  .app-shell .form-row { grid-template-columns: 1fr; gap: 12px; }
+  .app-shell .hero-copy h1,
+  .app-shell .section-title h2 { font-size: clamp(1.8rem, 8vw, 2rem); }
+  .app-shell .bottom-nav { width: calc(100% - 18px); gap: 1px; }
+  .app-shell .bottom-nav .nav-item { gap: 4px; padding-inline: 3px; }
+  .app-shell .bottom-nav .nav-item .nav-label { font-size: .69rem; }
+  .app-shell .build-steps { gap: 5px; }
+  .app-shell .build-steps > div { padding: 7px 6px; gap: 4px; }
+  .app-shell .build-steps strong { font-size: .67rem; }
+}
+@media (max-width: 340px) {
+  .app-shell .build-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .app-shell .build-steps > div { flex-direction: row; }
+  .app-shell .quick-presets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app-shell .quick-presets button { padding-inline: 9px 23px; }
+  .app-shell .quick-presets span { font-size: .85rem; }
+  .app-shell .quick-presets button::after { right: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .bottom-nav .nav-item { transition: none; }
+}
