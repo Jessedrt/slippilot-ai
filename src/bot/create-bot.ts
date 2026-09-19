@@ -1,6 +1,6 @@
 import { Telegraf } from 'telegraf';
 import type { createBot as createLegacyBot } from './create-bot-legacy.js';
-import { BOT_COMMANDS, homeMenu, LAUNCH_MESSAGE } from './menu.js';
+import { homeMenu, LAUNCH_MESSAGE } from './menu.js';
 
 export { automaticLegCount as automaticGameCount } from '../slips/odds-target.js';
 
@@ -10,11 +10,9 @@ export function createBot(...args: Parameters<typeof createLegacyBot>): ReturnTy
   const [deps] = args;
   if (!deps.config.TELEGRAM_BOT_TOKEN) return null;
   const bot = new Telegraf(deps.config.TELEGRAM_BOT_TOKEN);
+  // Updating the persistent command menu is handled by webhook registration,
+  // never before sending a user's /start reply.
   bot.start(async (ctx) => {
-    // Telegram retains old command menus until setMyCommands is called again.
-    // Do this on /start, not on every Vercel serverless cold start.
-    try { await ctx.telegram.setMyCommands([...BOT_COMMANDS]); }
-    catch (error) { deps.logger.warn({ err: error }, 'Could not update Telegram launcher commands'); }
     await ctx.reply(LAUNCH_MESSAGE, homeMenu());
   });
   bot.command(['app', 'menu', 'help'], async (ctx) => {
