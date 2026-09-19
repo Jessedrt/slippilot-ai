@@ -1,16 +1,18 @@
 import type { ParsedIntent } from '../ai/intent-schema.js';
-import type { SlipDraft, Sport } from '../types/domain.js';
+import type { SlipDraft } from '../types/domain.js';
 import type { SportsResearchResult } from '../you/types.js';
 import type { SlipAnalysis } from '../ai/slip-analyzer.js';
 import type { SplitResult } from '../slips/splitter.js';
 
+/** Retained legacy-chat state only; the launcher no longer analyzes messages.
+ * New tennis and handball workflows live in signed Mini App endpoints. */
 export interface ConversationState {
   currentSlipId?: string;
   currentSlip?: SlipDraft;
   recentAnalysis?: string;
   currentSlipAnalysis?: SlipAnalysis & { slipId: string };
   splitSlips?: SplitResult[];
-  lastSport?: Sport;
+  lastSport?: 'football' | 'basketball';
   lastFixture?: string;
   lastMarketCategory?: string;
   preferences: Record<string, unknown>;

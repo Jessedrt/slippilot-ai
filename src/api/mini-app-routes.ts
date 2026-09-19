@@ -18,7 +18,7 @@ export interface MiniAppDependencies {
 }
 
 const buildSchema = z.object({
-  sport: z.enum(['football', 'basketball']),
+  sport: z.enum(['football', 'basketball', 'tennis', 'handball']),
   gameCount: z.number().int().positive().safe().optional(),
   targetOdds: z.number().finite().min(1.01).optional(),
   todayOnly: z.boolean().optional().default(true),
@@ -31,7 +31,7 @@ const selectionSchema = z.object({
   eventId: z.string().min(1).max(100), marketId: z.string().min(1).max(100),
   selectionId: z.string().min(1).max(100),
   specifier: z.string().max(200).nullable().optional(),
-  sport: z.enum(['football', 'basketball']),
+  sport: z.enum(['football', 'basketball', 'tennis', 'handball']),
   league: z.string().max(120), homeTeam: z.string().min(1).max(120),
   awayTeam: z.string().min(1).max(120), startsAt: z.string().datetime(),
   marketName: z.string().min(1).max(160), selectionName: z.string().min(1).max(160),
