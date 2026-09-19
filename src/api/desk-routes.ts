@@ -4,7 +4,7 @@ import type { SportyBetProvider, SportyBetEvent } from '../sportybet/contracts.j
 import { lagosCalendarDay } from '../sportybet/discovery.js';
 
 const sportSchema = z.object({
-  sport: z.enum(['football', 'basketball']), query: z.string().max(80).default(''),
+  sport: z.enum(['football', 'basketball', 'tennis', 'handball']), query: z.string().max(80).default(''),
   league: z.string().max(120).default(''),
   status: z.enum(['all', 'scheduled', 'live']).default('all'),
   kickoff: z.enum(['all', 'next3h', 'evening']).default('all'),
