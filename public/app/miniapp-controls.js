@@ -75,8 +75,9 @@ if (form && oddsInput && riskInput && buildError && estimate) {
   updateEstimate();
 }
 
-// The primary generator in app.js renders the result asynchronously. Only show this
-// action for a successfully generated, valid SportyBet code; keep Copy as a fallback.
+// Only link a successfully generated booking code. Use normal external-link navigation:
+// Telegram's openLink() interception was swallowing taps on some WebViews. The separate
+// Copy control remains available if SportyBet doesn't accept a deep link.
 const codePanel = document.querySelector('#code-result');
 if (codePanel) {
   const addOpenLink = () => {
@@ -87,15 +88,10 @@ if (codePanel) {
     const link = document.createElement('a');
     link.className = 'sportybet-open-link';
     link.textContent = '↗ Open in SportyBet';
-    link.href = `https://www.sportybet.com/ng/?shareCode=${encodeURIComponent(code)}`;
+    link.href = `https://www.sportybet.com/?shareCode=${encodeURIComponent(code)}`;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
-    link.addEventListener('click', (event) => {
-      const openLink = window.Telegram?.WebApp?.openLink;
-      if (!openLink) return;
-      event.preventDefault();
-      openLink.call(window.Telegram.WebApp, link.href);
-    });
+    link.title = 'Open the booking code on SportyBet. No bet is placed by AUREX.';
     block.after(link);
   };
   new MutationObserver(addOpenLink).observe(codePanel, { childList: true });
