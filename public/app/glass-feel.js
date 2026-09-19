@@ -1,3 +1,5 @@
+import './liquid-motion-v56.js?v=5.6.0';
+
 // Visual-only liquid-glass deformation. glass-drag.js remains the only gesture
 // controller and app.js remains the only view-switching implementation.
 const motionDock = document.querySelector('.bottom-nav');
