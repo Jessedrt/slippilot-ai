@@ -6,7 +6,7 @@ import type { NormalizedMarket } from '../types/domain.js';
 
 const comparisonSchema = z.object({
   eventId: z.string().min(1).max(100),
-  sport: z.enum(['football', 'basketball']),
+  sport: z.enum(['football', 'basketball', 'tennis', 'handball']),
   marketId: z.string().max(100).optional(),
   selectionId: z.string().max(100).optional(),
 });
@@ -14,7 +14,7 @@ const selectedSchema = z.object({
   eventId: z.string().min(1).max(100),
   marketId: z.string().min(1).max(100),
   selectionId: z.string().min(1).max(100),
-  sport: z.enum(['football', 'basketball']),
+  sport: z.enum(['football', 'basketball', 'tennis', 'handball']),
   odds: z.number().finite().min(1.001).max(1000),
 });
 const reliabilitySchema = z.object({
@@ -56,7 +56,6 @@ function marketTime(market: NormalizedMarket, checkedAt: Date) {
     ageSeconds <= 600 ? 'aging' as const : 'stale' as const;
   return { lastUpdated: new Date(timestamp).toISOString(), ageSeconds, freshness };
 }
-
 function compareRow(market: NormalizedMarket, checkedAt: Date) {
   return {
     marketId: market.providerMarketId, selectionId: market.providerSelectionId,
@@ -78,8 +77,6 @@ export function registerIntelligenceRoutes(
     if (!event) return reply.notFound('Fixture not returned by the provider.');
     const markets = (await deps.sportyBet.getMarkets(input.eventId))
       .filter((market) => market.eventId === input.eventId && market.sport === input.sport);
-    // Present at most two outcomes per market type, with a varied selection of types.
-    // This is a neutral catalogue, never a ranking or an automatic replacement.
     const active = markets.filter((market) => market.status === 'active' &&
       Number.isFinite(market.odds) && market.odds > 1.01 && market.odds <= 1000)
       .sort((a, b) => a.marketName.localeCompare(b.marketName) ||
@@ -121,7 +118,6 @@ export function registerIntelligenceRoutes(
       return reply.unauthorized('This analysis is expired or does not match the current slip. Build a new slip.');
     }
     const checkedAt = new Date();
-    // Do not hammer the upstream API for large slips. Each event is fetched once.
     const events = new Map<string, { event: Awaited<ReturnType<SportyBetProvider['getEvent']>>;
       markets: NormalizedMarket[]; error: boolean }>();
     for (const id of new Set(input.selections.map((item) => item.eventId))) {
