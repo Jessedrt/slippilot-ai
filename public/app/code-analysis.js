@@ -1,5 +1,6 @@
 import './code-workspace.js?v=5.4.0';
 import './schedule-hints.js?v=5.4.0';
+import './sports-extension.js?v=5.5.0';
 
 // Verified code import replaces the old count-only echo. Other forms keep their existing handlers.
 const codeForm = document.querySelector('#read-code-form');
