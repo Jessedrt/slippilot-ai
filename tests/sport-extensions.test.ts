@@ -57,6 +57,8 @@ describe('SportyBet deep links', () => {
     expect(sportyBetShareUrl('not a code')).toBeNull();
     const controls = readFileSync('public/app/miniapp-controls.js', 'utf8');
     expect(controls).toContain('https://www.sportybet.com/?shareCode=');
-    expect(controls).not.toContain('event.preventDefault()');
+    expect(controls).toContain("link.target = '_blank'");
+    expect(controls).toContain("link.rel = 'noopener noreferrer'");
+    expect(controls.split('// Only link a successfully generated booking code.')[1]).not.toContain('event.preventDefault()');
   });
 });
