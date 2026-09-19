@@ -14,15 +14,15 @@ function recordingContext() {
   return { ctx, send };
 }
 
-describe('direct SportyBet booking code links', () => {
-  it('builds a shareCode URL only for valid codes', () => {
+describe('SportyBet booking code links', () => {
+  it('builds a website shareCode URL only for valid codes', () => {
     expect(sportyBetShareUrl(' ab12cd ')).toBe('https://www.sportybet.com/?shareCode=AB12CD');
     expect(sportyBetShareUrl('')).toBeNull();
     expect(sportyBetShareUrl('A/B?C')).toBeNull();
     expect(sportyBetShareUrl('A'.repeat(21))).toBeNull();
   });
 
-  it('adds an Open in SportyBet URL and preserves existing Analyze Again button', async () => {
+  it('adds a SportyBet website URL and preserves the existing Analyze Again button', async () => {
     const { ctx, send } = recordingContext();
     await ctx.reply(readyMessage('AB12CD'), {
       parse_mode: 'HTML',
@@ -55,14 +55,17 @@ describe('direct SportyBet booking code links', () => {
     expect(send.mock.calls[3]?.[1]).toBeUndefined();
   });
 
-  it('offers a real external link only after successful generation and retains Copy', () => {
+  it('labels browser and optional app loader correctly and keeps Copy available', () => {
     const controls = readFileSync(new URL('../public/app/miniapp-controls.js', import.meta.url), 'utf8');
     const app = readFileSync(new URL('../public/app/app.js', import.meta.url), 'utf8');
     expect(controls).toContain("textContent !== 'Booking code ready'");
-    expect(controls).toContain('Open in SportyBet');
+    expect(controls).toContain('Try SportyBet app / code loader');
+    expect(controls).toContain('https://sporty.bet/Load-Booking-Code');
+    expect(controls).toContain('View this code on SportyBet website');
     expect(controls).toContain('https://www.sportybet.com/?shareCode=${encodeURIComponent(code)}');
-    expect(controls).toContain("link.target = '_blank'");
-    expect(controls).toContain("link.rel = 'noopener noreferrer'");
+    expect(controls).toContain("appLink.target = '_blank'");
+    expect(controls).toContain("webLink.rel = 'noopener noreferrer'");
+    expect(controls).toContain('If iOS opens a browser');
     expect(app).toContain('data-copy=');
   });
 });

@@ -51,14 +51,17 @@ describe('tennis and handball provider integration', () => {
   });
 });
 
-describe('SportyBet deep links', () => {
-  it('opens only valid generated codes on the canonical domain', () => {
+describe('SportyBet website and code loader links', () => {
+  it('labels website navigation accurately and offers the official loader separately', () => {
     expect(sportyBetShareUrl('a1bc9')).toBe('https://www.sportybet.com/?shareCode=A1BC9');
     expect(sportyBetShareUrl('not a code')).toBeNull();
     const controls = readFileSync('public/app/miniapp-controls.js', 'utf8');
     expect(controls).toContain('https://www.sportybet.com/?shareCode=');
-    expect(controls).toContain("link.target = '_blank'");
-    expect(controls).toContain("link.rel = 'noopener noreferrer'");
-    expect(controls.split('// Only link a successfully generated booking code.')[1]).not.toContain('event.preventDefault()');
+    expect(controls).toContain('https://sporty.bet/Load-Booking-Code');
+    expect(controls).toContain("appLink.target = '_blank'");
+    expect(controls).toContain("webLink.target = '_blank'");
+    expect(controls).toContain("webLink.rel = 'noopener noreferrer'");
+    expect(controls).toContain('If iOS opens a browser');
+    expect(controls.split('// A normal shareCode URL opens SportyBet')[1]).not.toContain('event.preventDefault()');
   });
 });
