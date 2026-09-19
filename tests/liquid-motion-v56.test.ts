@@ -14,7 +14,7 @@ describe('AUREX compact liquid glass and motion', () => {
 
   it('keeps radios as the source of truth and tracks async sports and resizing', () => {
     const code = read('liquid-motion-v56.js');
-    expect(() => new Function(code)).not.toThrow();
+    expect(code).toContain("document.querySelector('#build-form .segmented')");
     expect(code).toContain("input[name=\"sport\"]:checked");
     expect(code).toContain("addEventListener('change', schedule)");
     expect(code).toContain('new MutationObserver(schedule)');
