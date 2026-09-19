@@ -1,4 +1,4 @@
-export type Sport = 'football' | 'basketball';
+export type Sport = 'football' | 'basketball' | 'tennis' | 'handball';
 export type RiskMode = 'conservative' | 'balanced' | 'aggressive';
 export type RiskLevel = 'lower' | 'medium' | 'higher';
 export type DataQuality = 'low' | 'medium' | 'high';
