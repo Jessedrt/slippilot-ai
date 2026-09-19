@@ -15,8 +15,8 @@ function recordingContext() {
 }
 
 describe('direct SportyBet booking code links', () => {
-  it('builds a Nigerian shareCode URL only for valid codes', () => {
-    expect(sportyBetShareUrl(' ab12cd ')).toBe('https://www.sportybet.com/ng/?shareCode=AB12CD');
+  it('builds a shareCode URL only for valid codes', () => {
+    expect(sportyBetShareUrl(' ab12cd ')).toBe('https://www.sportybet.com/?shareCode=AB12CD');
     expect(sportyBetShareUrl('')).toBeNull();
     expect(sportyBetShareUrl('A/B?C')).toBeNull();
     expect(sportyBetShareUrl('A'.repeat(21))).toBeNull();
@@ -34,7 +34,7 @@ describe('direct SportyBet booking code links', () => {
     };
     expect(options.parse_mode).toBe('HTML');
     expect(options.reply_markup?.inline_keyboard[0]?.[0]?.url)
-      .toBe('https://www.sportybet.com/ng/?shareCode=AB12CD');
+      .toBe('https://www.sportybet.com/?shareCode=AB12CD');
     expect(options.reply_markup?.inline_keyboard[1]?.[0]?.callback_data)
       .toBe('sportybet:analyze-again');
   });
@@ -55,13 +55,14 @@ describe('direct SportyBet booking code links', () => {
     expect(send.mock.calls[3]?.[1]).toBeUndefined();
   });
 
-  it('offers the Mini App link only on successful code generation and retains Copy', () => {
+  it('offers a real external link only after successful generation and retains Copy', () => {
     const controls = readFileSync(new URL('../public/app/miniapp-controls.js', import.meta.url), 'utf8');
     const app = readFileSync(new URL('../public/app/app.js', import.meta.url), 'utf8');
     expect(controls).toContain("textContent !== 'Booking code ready'");
     expect(controls).toContain('Open in SportyBet');
-    expect(controls).toContain('https://www.sportybet.com/ng/?shareCode=${encodeURIComponent(code)}');
-    expect(controls).toContain('window.Telegram?.WebApp?.openLink');
+    expect(controls).toContain('https://www.sportybet.com/?shareCode=${encodeURIComponent(code)}');
+    expect(controls).toContain("link.target = '_blank'");
+    expect(controls).toContain("link.rel = 'noopener noreferrer'");
     expect(app).toContain('data-copy=');
   });
 });
