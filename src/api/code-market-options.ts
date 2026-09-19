@@ -4,7 +4,7 @@ import type { SportyBetProvider } from '../sportybet/contracts.js';
 import { isBasketballUnderPick } from '../sportybet/discovery.js';
 
 const schema = z.object({ eventId: z.string().min(1).max(100),
-  sport: z.enum(['football', 'basketball']) }).strict();
+  sport: z.enum(['football', 'basketball', 'tennis', 'handball']) }).strict();
 
 /** Exact provider selection IDs and line specifiers; an available price is NOT a recommendation. */
 export function registerCodeMarketOptions(app: FastifyInstance, provider: SportyBetProvider): void {
