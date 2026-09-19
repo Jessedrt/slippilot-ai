@@ -9,7 +9,7 @@ const createTelegram = (url = '') => ({
   setMyCommands: vi.fn().mockResolvedValue(true),
 });
 const verify = (api: ReturnType<typeof createTelegram>) =>
-  ensureProductionWebhook(api as unknown as Parameters<typeof ensureProductionWebhook>[0], SECRET);
+  ensureProductionWebhook(api, SECRET);
 
 describe('AUREX Telegram production webhook recovery', () => {
   it('registers the canonical HTTPS endpoint without dropping Telegram messages', async () => {
@@ -35,11 +35,11 @@ describe('AUREX Telegram production webhook recovery', () => {
     expect(await verify(old)).toBe(true);
     const callbacksOnly = createTelegram(TELEGRAM_WEBHOOK_URL);
     callbacksOnly.getWebhookInfo.mockResolvedValue({ url: TELEGRAM_WEBHOOK_URL,
-      allowed_updates: ['callback_query'] } as never);
+      allowed_updates: ['callback_query'] });
     expect(await verify(callbacksOnly)).toBe(true);
     const failing = createTelegram(TELEGRAM_WEBHOOK_URL);
     failing.getWebhookInfo.mockResolvedValue({ url: TELEGRAM_WEBHOOK_URL,
-      last_error_date: Math.floor(Date.now() / 1000) } as never);
+      last_error_date: Math.floor(Date.now() / 1000) });
     expect(await verify(failing)).toBe(true);
   });
 
