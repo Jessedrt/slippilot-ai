@@ -1,5 +1,6 @@
 @import url('/app/glass-depth.css?v=5.6.0');
-/* The glass-depth layer is visual-only: retain watchlist behavior and four-tab dock. */
+@import url('/app/liquid-motion-v56.css?v=5.6.0');
+/* Two additive glass layers: keep the watchlist and the four-tab dock behavior intact. */
 .watch53 { display: grid; gap: 12px; }
 .watch53 .desk-heading { margin-bottom: 0; }
 .watch53-message { color: #cbd8e1; font-size: .77rem; line-height: 1.5; margin: 0; border: 1px solid rgba(194,220,239,.13); border-radius: 12px; padding: 10px 11px; background: rgba(8,14,24,.32); }
