@@ -4,6 +4,7 @@ import { DisabledSlipAnalyzer } from './ai/slip-analyzer.js';
 import { YouSlipAnalyzer } from './ai/you-slip-analyzer.js';
 import { DisabledScreenshotAnalyzer, GeminiScreenshotAnalyzer } from './ai/screenshot-analyzer.js';
 import { createBot } from './bot/create-bot.js';
+import { ensureProductionWebhook } from './bot/ensure-webhook.js';
 import { loadConfig } from './config/env.js';
 import { PrismaConversationStore, PrismaDatabase } from './database/client.js';
 import { PrismaResearchSnapshotStore } from './research/store.js';
@@ -113,8 +114,22 @@ export function createApplication() {
     },
     { service: watch, ...(config.CRON_SECRET ? { cronSecret: config.CRON_SECRET } : {}) },
   );
-  // Telegram setup is persistent and must not run on every serverless cold start.
-  const webhookRegistrationPromise = Promise.resolve(false);
+  // A previous release disabled registration, leaving /start with no webhook.
+  // Check Telegram on each production serverless cold start and repair stale URLs.
+  // Do not attempt registration on preview or local polling servers.
+  const webhookRegistrationPromise =
+    process.env.VERCEL_ENV === 'production' && bot && config.TELEGRAM_WEBHOOK_SECRET
+      ? ensureProductionWebhook(bot.telegram, config.TELEGRAM_WEBHOOK_SECRET)
+        .then((changed) => {
+          logger.info({ changed }, 'AUREX Telegram webhook verified');
+          return true;
+        })
+        .catch((error: unknown) => {
+          logger.warn({ message: error instanceof Error ? error.message : 'Unknown setup failure' },
+            'AUREX Telegram webhook setup failed');
+          return false;
+        })
+      : Promise.resolve(false);
 
   return { appPromise, bot, cache, config, database, logger, webhookRegistrationPromise };
 }
