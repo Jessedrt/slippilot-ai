@@ -40,7 +40,7 @@ class TestProvider implements SportyBetProvider {
   createBookingCode(): Promise<string> {
     return Promise.resolve(this.code);
   }
-  health(): Promise<{ ok: boolean; detail: string }> {
+  health(): Promise<{ ok: boolean; detail: 'test' }> {
     return Promise.resolve({ ok: true, detail: 'test' });
   }
 }
@@ -98,7 +98,7 @@ describe('booking workflow', () => {
     ).prepare([candidate(1, 1.5)]);
     expect(prepared).toMatchObject({ status: 'unavailable' });
     if (prepared.status !== 'unavailable') throw new Error('Expected an unavailable selection');
-    expect(prepared.reason).toContain('#1 Home 1 FC vs Away 1');
+    expect(prepared.reason).toContain('#1 Home 1 vs Away 1');
     expect(prepared.reason).toContain('Market unavailable or suspended');
     expect(prepared.reason).toContain('tap Reanalyze');
   });
@@ -121,8 +121,8 @@ describe('booking workflow', () => {
       .prepare([candidate(1, 1.5), candidate(2, 1.6)]);
     expect(prepared.status).toBe('unavailable');
     if (prepared.status !== 'unavailable') throw new Error('Expected an unavailable slip');
-    expect(prepared.reason).toContain('#1 Home 1 FC vs Away 1');
-    expect(prepared.reason).toContain('#2 Home 2 FC vs Away 2');
+    expect(prepared.reason).toContain('#1 Home 1 vs Away 1');
+    expect(prepared.reason).toContain('#2 Home 2 vs Away 2');
     expect(prepared.reason).toContain('Remove the unavailable selections');
   });
 });
