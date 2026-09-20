@@ -5,7 +5,7 @@ import type { SlipAnalyzer } from '../ai/slip-analyzer.js';
 import type { ScreenshotAnalyzer } from '../ai/screenshot-analyzer.js';
 import { SportyBetSlipBuilder } from '../booking/workflow.js';
 import { automaticLegCount } from '../slips/odds-target.js';
-import { buildLiveSlipSnapshot } from '../sportybet/discovery.js';
+import { buildReviewedLiveSlipSnapshot } from '../sportybet/market-review.js';
 import type { SportyBetProvider } from '../sportybet/contracts.js';
 import type { CandidateSelection } from '../types/domain.js';
 import { XPostReader } from '../social/x-post-reader.js';
@@ -90,9 +90,9 @@ function toCandidate(selection: MiniSelection): CandidateSelection {
       league: selection.league, homeTeam: selection.homeTeam, awayTeam: selection.awayTeam,
       startsAt: new Date(selection.startsAt), status: 'scheduled',
     },
-    modelProbability: selection.confidence, confidenceScore: selection.confidence,
+    modelProbability: 0, confidenceScore: selection.confidence,
     dataQuality: 'medium', riskLevel: selection.risk,
-    reasoning: ['AI-reviewed in the AUREX Mini App.'],
+    reasoning: ['AI-reviewed in the AUREX Mini App. Quality scores are not outcome probabilities.'],
   };
 }
 function verifyTelegramInitData(initData: string, botToken: string): boolean {
@@ -124,10 +124,11 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
     const input = buildSchema.parse(request.body);
     const plannedGames = input.targetOdds === undefined ? input.gameCount! :
       automaticLegCount(input.targetOdds, input.riskMode);
-    const snapshot = await buildLiveSlipSnapshot(
-      deps.sportyBet, input.sport, plannedGames, input.targetOdds, input.todayOnly,
+    const snapshot = await buildReviewedLiveSlipSnapshot(
+      deps.sportyBet, deps.slipAnalyzer, input.sport, plannedGames,
+      input.targetOdds, input.riskMode,
     );
-    const analysis = await deps.slipAnalyzer.analyze(snapshot.slip.selections);
+    const analysis = snapshot.analysis;
     const selections = snapshot.slip.selections.flatMap((selection, index) => {
       const result = analysis.selections[index];
       if (!result || result.verdict === 'reject') return [];
@@ -143,7 +144,7 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
         verdict: result.verdict,
       }];
     });
-    if (!selections.length) return reply.conflict('AI rejected every available selection.');
+    if (!selections.length) return reply.conflict('AI rejected every reviewed market.');
     const initData = request.headers['x-telegram-init-data'] as string;
     const dayLabel = ['today', 'tomorrow', 'the following day'][snapshot.dayOffset];
     return {
@@ -154,7 +155,8 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
       scheduleDate: snapshot.scheduleDate, dayOffset: snapshot.dayOffset,
       selections, combinedOdds: selections.reduce((total, selection) => total * selection.odds, 1),
       averageConfidence: selections.reduce((total, selection) => total + selection.confidence, 0) / selections.length,
-      summary: analysis.summary, rejected: snapshot.slip.selections.length - selections.length,
+      summary: analysis.summary, rejected: snapshot.rejectedOptions,
+      reviewedOptions: snapshot.reviewedOptions,
       analysisToken: signAnalysisToken(selections, initData, deps.telegramBotToken!),
     };
   });
