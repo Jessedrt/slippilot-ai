@@ -1,13 +1,13 @@
 import type { SlipAnalyzer, SlipAnalysis } from '../ai/slip-analyzer.js';
 import type { CandidateSelection, NormalizedMarket, RiskMode, Sport } from '../types/domain.js';
-import type { SportyBetProvider } from './contracts.js';
+import type { ProviderSelection, SportyBetProvider } from './contracts.js';
 import { buildLiveSlipSnapshot, marketFamily, type LiveSlipSnapshot } from './discovery.js';
 
 /** A review can compare market evidence; its scores are NOT calibrated win probabilities. */
 export class MarketReviewUnavailableError extends Error {
   readonly statusCode = 424;
   constructor() {
-    super('Market alternatives could not be reviewed. No unreviewed selection or booking code was substituted. Retry later.');
+    super('Market alternatives could not be reviewed or verified with SportyBet. No unverified selection or booking code was substituted. Retry later.');
     this.name = 'MarketReviewUnavailableError';
   }
 }
@@ -20,6 +20,15 @@ export interface ReviewedSnapshot extends LiveSlipSnapshot {
 
 const identity = (market: NormalizedMarket): string =>
   [market.eventId, market.providerMarketId, market.providerSelectionId, market.specifier ?? ''].join('|');
+
+const bookingIdentity = (selection: ProviderSelection): string =>
+  [selection.eventId, selection.marketId, selection.selectionId, selection.specifier ?? ''].join('|');
+
+const toBookingSelection = (candidate: CandidateSelection): ProviderSelection => ({
+  eventId: candidate.eventId, marketId: candidate.providerMarketId,
+  selectionId: candidate.providerSelectionId, odds: candidate.odds,
+  ...(candidate.specifier != null ? { specifier: candidate.specifier } : {}),
+});
 
 export const validMarket = (market: NormalizedMarket, sport: Sport, eventId: string): boolean =>
   market.eventId === eventId && market.sport === sport && market.status === 'active' &&
@@ -66,6 +75,33 @@ function reviewScore(review: SlipAnalysis['selections'][number], odds: number,
     risk * riskWeight - pricePenalty;
 }
 
+/**
+ * Refresh exactly the selected outcome, rather than treating its presence in an
+ * event's generic market feed as proof that SportyBet can create a share code.
+ * A missing outcome can be skipped, but a provider outage cannot be passed off
+ * as a suspended selection. Material odds changes require a fresh AI review.
+ */
+async function preflightOption(provider: SportyBetProvider,
+  candidate: CandidateSelection): Promise<CandidateSelection | null> {
+  if (!provider.refreshSelections) return candidate;
+  const requested = toBookingSelection(candidate);
+  let refreshed: ProviderSelection[];
+  try {
+    refreshed = await provider.refreshSelections([requested]);
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith('SportyBet selection unavailable:'))
+      return null;
+    throw new MarketReviewUnavailableError();
+  }
+  const exact = refreshed.filter((selection) =>
+    bookingIdentity(selection) === bookingIdentity(requested) &&
+    Number.isFinite(selection.odds) && selection.odds > 1.01 && selection.odds <= 1000);
+  if (exact.length !== 1) return null;
+  const updatedOdds = exact[0]!.odds;
+  if (Math.abs(updatedOdds / candidate.odds - 1) >= 0.05) return null;
+  return { ...candidate, odds: updatedOdds };
+}
+
 /** Review distinct active market choices for each real fixture before choosing one per match. */
 export async function buildReviewedLiveSlipSnapshot(
   provider: SportyBetProvider, analyzer: SlipAnalyzer, sport: Sport,
@@ -93,7 +129,9 @@ export async function buildReviewedLiveSlipSnapshot(
     createBookingCode: (selections) => provider.createBookingCode(selections),
     health: () => provider.health(),
   };
-  const inspectCount = Math.min(60, gameCount + 3);
+  // Inspect more than the requested game count. A fixture whose displayed market
+  // is active may have no bookable outcome, and AI may reject other fixtures.
+  const inspectCount = Math.min(60, Math.max(gameCount + 8, gameCount * 2));
   const snapshot = await buildLiveSlipSnapshot(cachedProvider, sport, inspectCount, targetOdds);
   const targetPerLeg = Math.max(1.05, Math.pow(targetOdds ?? 3, 1 / Math.max(1, gameCount)));
   const options: CandidateSelection[] = [];
@@ -110,7 +148,7 @@ export async function buildReviewedLiveSlipSnapshot(
     for (const choice of choices) {
       options.push({ ...original, ...choice,
         modelProbability: 0, confidenceScore: 0,
-        reasoning: ['Provider-verified active alternative awaiting AI review.'],
+        reasoning: ['Provider-listed active alternative awaiting AI review and exact booking verification.'],
       });
     }
   }
@@ -125,17 +163,36 @@ export async function buildReviewedLiveSlipSnapshot(
   if (reviews.size !== options.length || options.some((_option, index) => !reviews.has(index + 1))) {
     throw new MarketReviewUnavailableError();
   }
-  const chosen = new Map<string, { candidate: CandidateSelection; review: SlipAnalysis['selections'][number]; score: number }>();
+  type RankedChoice = { candidate: CandidateSelection;
+    review: SlipAnalysis['selections'][number]; score: number };
+  const ranked = new Map<string, RankedChoice[]>();
   for (const [index, candidate] of options.entries()) {
     const review = reviews.get(index + 1)!;
     if (review.verdict === 'reject' || !Number.isFinite(review.confidence)) continue;
     const score = reviewScore(review, candidate.odds, targetPerLeg, riskMode);
-    const previous = chosen.get(candidate.eventId);
-    if (!previous || score > previous.score) chosen.set(candidate.eventId, { candidate, review, score });
+    const alternatives = ranked.get(candidate.eventId) ?? [];
+    alternatives.push({ candidate, review, score });
+    ranked.set(candidate.eventId, alternatives);
   }
-  const picks = [...chosen.values()].slice(0, gameCount);
+  const picks: RankedChoice[] = [];
+  // Preserve the fixture order produced by kickoff-window balancing. An outcome
+  // that cannot be booked is replaced only by another outcome already reviewed
+  // for the SAME match; never silently replace a user-selected slip at code time.
+  for (const fixture of snapshot.slip.selections) {
+    if (picks.length >= gameCount) break;
+    const alternatives = (ranked.get(fixture.eventId) ?? [])
+      .sort((a, b) => b.score - a.score);
+    for (const alternative of alternatives) {
+      const verified = await preflightOption(provider, alternative.candidate);
+      if (!verified) continue;
+      picks.push({ ...alternative, candidate: verified });
+      break;
+    }
+  }
   if (!picks.length) {
-    const error = new Error('AI rejected all reviewed active markets. No booking code was prepared.');
+    const error = new Error(ranked.size
+      ? 'None of the AI-reviewed markets could be verified for booking. Try rebuilding when SportyBet updates its outcomes; no code was created.'
+      : 'AI rejected all reviewed active markets. No booking code was prepared.');
     Object.assign(error, { statusCode: 409 });
     throw error;
   }
@@ -143,7 +200,9 @@ export async function buildReviewedLiveSlipSnapshot(
     confidenceScore: review.confidence,
     modelProbability: 0, // Evidence quality is not a calibrated winning probability.
     riskLevel: review.risk,
-    reasoning: [review.reason, 'Selected after comparing active alternatives; no win is guaranteed.'],
+    reasoning: [review.reason, provider.refreshSelections
+      ? 'Exact outcome verified by SportyBet before selection; rechecked when booking. No win is guaranteed.'
+      : 'Selected after comparing active alternatives; booking verification occurs later. No win is guaranteed.'],
   }));
   return {
     ...snapshot,
@@ -151,7 +210,7 @@ export async function buildReviewedLiveSlipSnapshot(
     combinedOdds: Number(selections.reduce((odds, selection) => odds * selection.odds, 1).toFixed(2)),
     analysis: { ...analysis,
       selections: picks.map(({ review }, index) => ({ ...review, index: index + 1 })),
-      summary: `Compared ${options.length} active alternatives across ${snapshot.slip.selections.length} fixtures. ${analysis.summary}`.slice(0, 600),
+      summary: `Compared ${options.length} active alternatives across ${snapshot.slip.selections.length} fixtures. ${provider.refreshSelections ? `Verified ${picks.length} exact booking outcomes. ` : ''}${analysis.summary}`.slice(0, 600),
     },
     rejectedOptions: analysis.selections.filter((item) => item.verdict === 'reject').length,
     reviewedOptions: options.length,
