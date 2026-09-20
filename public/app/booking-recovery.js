@@ -1,4 +1,4 @@
-// AUREX recovery for a provider-confirmed unavailable slip. Never silently
+// AUREX recovery for a provider-reported unverified slip. Never silently
 // delete a selection, substitute a market, generate a code or place a wager.
 const resultPanel = document.querySelector('#code-result');
 const pickList = document.querySelector('#pick-list');
@@ -12,7 +12,7 @@ function storedSlip() {
 
 function unavailableNumbers(message, slip) {
   if (!message.startsWith('Market unavailable: #') || !slip?.selections?.length) return [];
-  const matches = [...message.matchAll(/#(\d+) ([^;]+?): (Market unavailable or suspended|Fixture missing or already started)(?=;|\.|$)/g)];
+  const matches = [...message.matchAll(/#(\d+) ([^;]+?): (Market unavailable or suspended|Fixture missing or already started|Exact market could not be verified for booking \(not necessarily suspended\))(?=;|\.|$)/g)];
   if (!matches.length) return [];
   const numbers = [];
   for (const match of matches) {
@@ -37,13 +37,13 @@ function offerRecovery() {
 
   const explanation = document.createElement('p');
   explanation.className = 'sportybet-handoff-hint';
-  explanation.textContent = `${numbers.length} selection${numbers.length === 1 ? '' : 's'} could not be verified. You can remove only the flagged picks and reanalyze the rest. Your original odds target may no longer be met.`;
+  explanation.textContent = `${numbers.length} selection${numbers.length === 1 ? '' : 's'} could not be verified for booking. You can remove only the flagged picks and reanalyze the rest. Your original odds target may no longer be met.`;
   const repair = document.createElement('button');
   repair.type = 'button';
   repair.className = 'sportybet-open-link';
   repair.dataset.repairUnavailable = 'true';
   repair.textContent = numbers.length === slip.selections.length ? 'Build a fresh slip' :
-    `Review and repair ${numbers.length} unavailable pick${numbers.length === 1 ? '' : 's'}`;
+    `Review and repair ${numbers.length} unverified pick${numbers.length === 1 ? '' : 's'}`;
   repair.addEventListener('click', () => {
     const current = storedSlip();
     if (!current || current.slipId !== slip.slipId ||
@@ -57,7 +57,7 @@ function offerRecovery() {
       return;
     }
     const list = numbers.map((number) => `#${number} ${current.selections[number - 1].homeTeam} vs ${current.selections[number - 1].awayTeam}`).join('\n');
-    if (!window.confirm(`Remove these unavailable selections and reanalyze the remaining ${current.selections.length - numbers.length} picks?\n\n${list}\n\nCombined odds and the requested match count will change. Nothing will be booked automatically.`)) return;
+    if (!window.confirm(`Remove these unverified selections and reanalyze the remaining ${current.selections.length - numbers.length} picks?\n\n${list}\n\nCombined odds and the requested match count will change. Nothing will be booked automatically.`)) return;
     repair.disabled = true;
     // Existing click handlers own slip state, mark it pending, and update the UI.
     // Descending order avoids shifting any still-to-be-removed selection index.
@@ -69,10 +69,10 @@ function offerRecovery() {
       }
       remove.click();
     }
-    explanation.textContent = 'Unavailable picks removed. Rechecking the remaining markets and rerunning AI analysis…';
+    explanation.textContent = 'Unverified picks removed. Rechecking the remaining markets and rerunning AI analysis…';
     const reanalyze = document.querySelector('#reanalyze-slip');
     if (reanalyze && !reanalyze.disabled) reanalyze.click();
-    else explanation.textContent = 'Unavailable picks removed. Tap Reanalyze above before requesting a code.';
+    else explanation.textContent = 'Unverified picks removed. Tap Reanalyze above before requesting a code.';
   });
   resultPanel.append(explanation, repair);
 }
