@@ -2,6 +2,7 @@ import { createHash, createHmac, randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { SlipAnalyzer } from '../ai/slip-analyzer.js';
+import { MIN_AI_QUALITY_SCORE, passesAiQuality } from '../ai/quality-gate.js';
 import type { SportyBetProvider } from '../sportybet/contracts.js';
 import type { CandidateSelection, NormalizedMarket } from '../types/domain.js';
 
@@ -63,7 +64,7 @@ export async function importBookingCode(code: string, deps: Deps, initData: stri
       odds: item.odds, confidence: Math.max(0, Math.min(99, review.confidence)),
       risk: review.risk, verdict: review.verdict, reason: review.reason };
   });
-  const accepted = all.filter((item) => item.verdict !== 'reject');
+  const accepted = all.filter((item) => passesAiQuality(item));
   const editableSlip = accepted.length ? (() => {
     const payload = Buffer.from(JSON.stringify({ expiresAt: Date.now() + 30 * 60_000,
       session: createHash('sha256').update(initData).digest('base64url'),
@@ -86,7 +87,7 @@ export async function importBookingCode(code: string, deps: Deps, initData: stri
     combinedOdds: candidates.reduce((product, item) => product * item.odds, 1),
     analyzedAt: analysis.analyzedAt, summary: analysis.summary, selections: all,
     editableSlip, rejected: all.length - accepted.length,
-    disclaimer: 'Only AI-reviewed non-rejected selections may be edited. Odds are refreshed before code creation; scores are not win probabilities. No wager was placed.' };
+    disclaimer: `Only AI-reviewed selections scoring at least ${MIN_AI_QUALITY_SCORE}/100 without rejection may be edited. This is a quality threshold, not a win probability. Odds are refreshed before code creation; no wager was placed.` };
 }
 
 export function registerCodeWorkspaceRoutes(app: FastifyInstance, deps: Deps): void {
