@@ -55,17 +55,20 @@ describe('SportyBet booking code links', () => {
     expect(send.mock.calls[3]?.[1]).toBeUndefined();
   });
 
-  it('labels browser and optional app loader correctly and keeps Copy available', () => {
+  it('copies for the native app without opening a browser, labels website separately and retains original Copy', () => {
     const controls = readFileSync(new URL('../public/app/miniapp-controls.js', import.meta.url), 'utf8');
     const app = readFileSync(new URL('../public/app/app.js', import.meta.url), 'utf8');
     expect(controls).toContain("textContent !== 'Booking code ready'");
-    expect(controls).toContain('Try SportyBet app / code loader');
-    expect(controls).toContain('https://sporty.bet/Load-Booking-Code');
-    expect(controls).toContain('View this code on SportyBet website');
+    expect(controls).toContain("copyForApp.type = 'button'");
+    expect(controls).toContain('Copy code for SportyBet app');
+    expect(controls).toContain('await navigator.clipboard.writeText(code)');
+    expect(controls).toContain("document.execCommand('copy')");
+    expect(controls).toContain('Load Booking Code and paste it');
+    expect(controls).toContain('Optional: open SportyBet website (browser)');
     expect(controls).toContain('https://www.sportybet.com/?shareCode=${encodeURIComponent(code)}');
-    expect(controls).toContain("appLink.target = '_blank'");
+    expect(controls).not.toContain("appLink.target = '_blank'");
+    expect(controls).not.toContain('https://sporty.bet/Load-Booking-Code');
     expect(controls).toContain("webLink.rel = 'noopener noreferrer'");
-    expect(controls).toContain('If iOS opens a browser');
     expect(app).toContain('data-copy=');
   });
 });
