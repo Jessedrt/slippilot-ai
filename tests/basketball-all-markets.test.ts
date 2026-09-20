@@ -35,9 +35,7 @@ const categories: Array<[string, string]> = [
   ['Over/Under (incl. overtime)', 'Over 165.5'],
   ['Over/Under (incl. overtime)', 'Under 165.5'],
   ['Winner (incl. overtime)', 'Home'],
-  ['Handicap (incl. overtime)', 'Home -4.5'],
   ['1st Half - Winner', 'Away'],
-  ['1st Quarter - Handicap', 'Home -2.5'],
   ['2nd Quarter - Over/Under', 'Over 43.5'],
   ['2nd Half - Home Team Total', 'Under 42.5'],
   ['Player Total Points', 'Over 20.5'],
@@ -48,17 +46,36 @@ const categories: Array<[string, string]> = [
 
 const unused = new Map<string, number>();
 
-describe('basketball: all provider-verified markets', () => {
-  it.each(categories)('does not ban %s — %s by market category or pick direction', (name, selection) => {
+describe('basketball: user preference excludes handicap, not other markets', () => {
+  it.each(categories)('allows %s — %s', (name, selection) => {
     const outcome = market(name, selection);
     expect(isAllowedBasketballOverMarket(outcome)).toBe(true);
     expect(chooseVariedMarket([outcome], 1.55, unused, unused)).toBe(outcome);
   });
 
-  it('can select an Under, winner, spread, player prop or later-period line by target-price proximity', () => {
+  it.each([
+    ['Handicap (incl. overtime)', 'Home -4.5'],
+    ['1st Quarter - Handicap', 'Home -2.5'],
+    ['Point Spread', 'Away +7.5'],
+    ['HCP', 'Home +1.5'],
+  ])('excludes basketball %s — %s', (name, selection) => {
+    const outcome = market(name, selection);
+    expect(isAllowedBasketballOverMarket(outcome)).toBe(false);
+    expect(chooseVariedMarket([outcome], 1.55, unused, unused)).toBeNull();
+  });
+
+  it('detects category-only spreads and leaves football handicap alone', () => {
+    const categorySpread = { ...market('Alternate Line', 'Home'), category: 'Point Spread' };
+    expect(isAllowedBasketballOverMarket(categorySpread)).toBe(false);
+    expect(chooseVariedMarket([categorySpread], 1.55, unused, unused)).toBeNull();
+    const footballHandicap = market('Handicap', 'Home -1', 'football');
+    expect(chooseVariedMarket([footballHandicap], 1.55, unused, unused)).toBe(footballHandicap);
+  });
+
+  it('can select an Under, winner, player prop or later-period line by target-price proximity', () => {
     const alternatives = categories.map(([name, selection], index) =>
       market(name, selection, 'basketball', index === 1 ? 1.55 : 1.8));
-    expect(isBasketballUnderPick(alternatives[1]!)).toBe(true); // Detection is not a prohibition.
+    expect(isBasketballUnderPick(alternatives[1]!)).toBe(true);
     expect(chooseVariedMarket(alternatives, 1.55, unused, unused)).toBe(alternatives[1]);
     expect(chooseVariedMarket([market('Winner', 'Home', 'football')], 1.55, unused, unused)?.selectionName)
       .toBe('Home');
@@ -76,7 +93,7 @@ describe('basketball: all provider-verified markets', () => {
     expect(chooseVariedMarket([...invalid, valid], 1.55, unused, unused)).toBe(valid);
   });
 
-  it('builds from Under-only and other formerly excluded fixtures without inventing selections', async () => {
+  it('builds from Under and other eligible fixtures without inventing handicap selections', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-17T10:00:00Z'));
     try {
@@ -99,7 +116,7 @@ describe('basketball: all provider-verified markets', () => {
       expect(result.slip.selections).toHaveLength(4);
       expect(new Set(result.slip.selections.map((selection) => selection.eventId)).size).toBe(4);
       expect(result.slip.selections.map((selection) => selection.selectionName))
-        .toEqual(expect.arrayContaining(['Under 165.5', 'Home', 'Home -4.5']));
+        .toEqual(expect.arrayContaining(['Under 165.5', 'Home', 'Away']));
 
       const underOnly = {
         ...provider,
@@ -107,6 +124,13 @@ describe('basketball: all provider-verified markets', () => {
       } as SportyBetProvider;
       const under = await buildLiveSlipSnapshot(underOnly, 'basketball', 2, 3);
       expect(under.slip.selections.map((selection) => selection.selectionName)).toEqual(['Under 165.5']);
+
+      const handicapOnly = {
+        ...provider,
+        getMarkets: () => Promise.resolve([market('Handicap', 'Home -4.5')]),
+      } as SportyBetProvider;
+      await expect(buildLiveSlipSnapshot(handicapOnly, 'basketball', 2, 3))
+        .rejects.toBeInstanceOf(NoTodayMarketsError);
 
       const suspendedOnly = {
         ...underOnly,
