@@ -44,6 +44,9 @@ export class BrowserSportyBetProvider implements SportyBetProvider {
   getMarkets(eventId: string): Promise<NormalizedMarket[]> {
     return this.client.getMarkets(eventId);
   }
+  async refreshSelections(selections: ProviderSelection[]): Promise<ProviderSelection[]> {
+    return this.client.refreshSelections(selections);
+  }
   async resolveBookingCode(code: string): Promise<ProviderSelection[]> {
     return (await this.client.getBookingCode(code)).selections;
   }
