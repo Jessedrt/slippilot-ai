@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import type { SlipAnalyzer } from '../ai/slip-analyzer.js';
+import { MIN_AI_QUALITY_SCORE, passesAiQuality } from '../ai/quality-gate.js';
 import { chooseVariedMarket } from '../sportybet/discovery.js';
 import { isAllowedBasketballOverMarket } from '../sportybet/basketball-over-markets.js';
 import type { SportyBetProvider } from '../sportybet/contracts.js';
@@ -145,8 +146,10 @@ export function registerSlipEditorRoutes(
     if (reviews.size !== original.length || original.some((_pick, index) => !reviews.has(index + 1))) {
       throw new EditConflict('AI did not review every selection; the original slip is unchanged.');
     }
-    if (analysis.selections.some((item) => item.verdict === 'reject')) {
-      throw new EditConflict('AI rejected a selection in the edited slip. Remove it or rebuild; the original is unchanged.');
+    const failed = analysis.selections.filter((item) => !passesAiQuality(item));
+    if (failed.length) {
+      const numbers = failed.map((item) => `#${item.index}`).join(', ');
+      throw new EditConflict(`Selection(s) ${numbers} did not meet the ${MIN_AI_QUALITY_SCORE}/100 AI quality pass mark or were rejected. Remove or replace them and reanalyze. The original slip is unchanged; no code was created.`);
     }
     const selections: Selected[] = original.map((pick, index) => {
       const review = reviews.get(index + 1)!;
@@ -165,7 +168,7 @@ export function registerSlipEditorRoutes(
       schedule: 'Refreshed provider markets', selections,
       combinedOdds: selections.reduce((total, item) => total * item.odds, 1),
       averageConfidence: selections.reduce((total, item) => total + item.confidence, 0) / selections.length,
-      summary: analysis.summary, rejected: 0,
+      summary: `AI pass mark ${MIN_AI_QUALITY_SCORE}/100 (quality, not win probability). ${analysis.summary}`, rejected: 0,
       oddsChanged: selections.some((item, index) => item.odds !== input.selections[index]?.odds),
       analysisToken: signedToken(selections, initData, deps.telegramBotToken) };
   });
