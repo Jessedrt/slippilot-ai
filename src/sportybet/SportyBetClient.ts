@@ -186,6 +186,7 @@ export class SportyBetClient {
   private async validateCurrentSelections(selections: ProviderSelection[]): Promise<void> {
     this.validateSelectionInput(selections);
     const events = new Map<string, RawEvent>();
+    const absentFromEventFeed: ProviderSelection[] = [];
     for (const selection of selections) {
       let event = events.get(selection.eventId);
       if (!event) {
@@ -196,11 +197,19 @@ export class SportyBetClient {
         throw new Error(`SportyBet event unavailable or already started: ${selection.eventId}`);
       const market = event.markets.find((candidate) => candidate.id === selection.marketId &&
         (candidate.specifier ?? null) === (selection.specifier ?? null));
-      if (!market || market.status > 1 || market.banned)
-        throw new Error(`SportyBet market suspended: ${this.describe(selection)}`);
-      const outcome = market.outcomes.find((candidate) => candidate.id === selection.selectionId);
-      if (!outcome || outcome.isActive !== 1 || outcome.odds <= 1)
-        throw new Error(`SportyBet outcome suspended: ${this.describe(selection)}`);
+      const outcome = market?.outcomes.find((candidate) => candidate.id === selection.selectionId);
+      if (!market || market.status > 1 || market.banned ||
+          !outcome || outcome.isActive !== 1 || outcome.odds <= 1) {
+        // The event endpoint can omit a market or show an older suspended state.
+        // Only the exact tuple returned ACTIVE by the separate Outcomes endpoint
+        // may rescue it; do not infer bookability from a fixture being listed.
+        absentFromEventFeed.push(selection);
+      }
+    }
+    if (absentFromEventFeed.length) {
+      // refreshSelections rejects if *any* exact outcome cannot be verified.
+      // A network/provider error also aborts rather than inventing an outcome.
+      await this.refreshSelections(absentFromEventFeed);
     }
   }
   private normalizeEvent(event: RawEvent): SportyBetEvent {
