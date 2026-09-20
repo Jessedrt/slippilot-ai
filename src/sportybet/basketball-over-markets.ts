@@ -1,16 +1,24 @@
 import type { NormalizedMarket } from '../types/domain.js';
 
 /**
- * @deprecated Compatibility export for callers of the former six-category
- * basketball Over allowlist. That product restriction has been removed:
- * every basketball market category and outcome (including Under, winner,
- * handicap/spread, later periods and player props) is eligible for discovery.
- * The caller must still check the provider's active status, valid odds,
- * event timing and booking-code verification before using a selection.
+ * User-configured basketball picking preference: never auto-pick handicap or
+ * spread markets, including quarter/half spreads. Inspect both the provider's
+ * name and category since some feeds label these differently. This does not
+ * prohibit totals, winners, player props, or handicaps in other sports.
  */
-export function isAllowedBasketballOverMarket(
-  _market: Pick<NormalizedMarket, 'marketName' | 'selectionName'>,
+export function isBasketballHandicapMarket(
+  market: Pick<NormalizedMarket, 'marketName' | 'selectionName'> &
+    Partial<Pick<NormalizedMarket, 'category'>>,
 ): boolean {
-  void _market;
-  return true;
+  const label = `${market.marketName} ${market.category ?? ''}`;
+  return /\b(?:handicap|spread|hcp)\b/i.test(label) ||
+    /^(?:home|away|team\s*[12]|[12])\s*[+-]\s*\d+(?:\.\d+)?\b/i.test(market.selectionName);
+}
+
+/** @deprecated Historical export retained for existing callers. */
+export function isAllowedBasketballOverMarket(
+  market: Pick<NormalizedMarket, 'marketName' | 'selectionName'> &
+    Partial<Pick<NormalizedMarket, 'category'>>,
+): boolean {
+  return !isBasketballHandicapMarket(market);
 }
