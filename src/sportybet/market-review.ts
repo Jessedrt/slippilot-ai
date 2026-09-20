@@ -3,6 +3,7 @@ import type { CandidateSelection, NormalizedMarket, RiskMode, Sport } from '../t
 import type { ProviderSelection, SportyBetProvider } from './contracts.js';
 import { isAllowedBasketballOverMarket } from './basketball-over-markets.js';
 import { buildLiveSlipSnapshot, marketFamily, type LiveSlipSnapshot } from './discovery.js';
+import { selectTwoOddsPicks } from './two-odds-preset.js';
 
 /** A review can compare market evidence; its scores are NOT calibrated win probabilities. */
 export class MarketReviewUnavailableError extends Error {
@@ -110,6 +111,9 @@ export async function buildReviewedLiveSlipSnapshot(
   gameCount: number, targetOdds?: number, riskMode: RiskMode = 'balanced',
 ): Promise<ReviewedSnapshot> {
   if (!Number.isSafeInteger(gameCount) || gameCount < 1) throw new Error('Invalid game count.');
+  // The 2.00 shortcut sets conservative risk mode. Prioritize evidence quality
+  // and less ambitious prices; never force a caution pick to make 2.00 exactly.
+  const cautiousTwoOdds = riskMode === 'conservative' && targetOdds === 2;
   // Cache a single provider snapshot per event within the request: no doubled calls or
   // inconsistent odds between fixture discovery and the alternatives being reviewed.
   const marketCache = new Map<string, Promise<NormalizedMarket[]>>();
@@ -171,30 +175,36 @@ export async function buildReviewedLiveSlipSnapshot(
   for (const [index, candidate] of options.entries()) {
     const review = reviews.get(index + 1)!;
     if (review.verdict === 'reject' || !Number.isFinite(review.confidence)) continue;
+    if (cautiousTwoOdds && (review.verdict !== 'keep' || review.risk !== 'lower')) continue;
     const score = reviewScore(review, candidate.odds, targetPerLeg, riskMode);
     const alternatives = ranked.get(candidate.eventId) ?? [];
     alternatives.push({ candidate, review, score });
     ranked.set(candidate.eventId, alternatives);
   }
-  const picks: RankedChoice[] = [];
-  // Preserve the fixture order produced by kickoff-window balancing. An outcome
-  // that cannot be booked is replaced only by another outcome already reviewed
-  // for the SAME match; never silently replace a user-selected slip at code time.
+  const verifiedChoices: RankedChoice[] = [];
+  // Preserve the fixture order produced by kickoff-window balancing for normal
+  // builds. For the 2.00 conservative shortcut, verify ALL reviewed fixtures
+  // before comparing evidence quality and spreading picks across kickoff windows.
   for (const fixture of snapshot.slip.selections) {
-    if (picks.length >= gameCount) break;
+    if (!cautiousTwoOdds && verifiedChoices.length >= gameCount) break;
     const alternatives = (ranked.get(fixture.eventId) ?? [])
       .sort((a, b) => b.score - a.score);
     for (const alternative of alternatives) {
       const verified = await preflightOption(provider, alternative.candidate);
       if (!verified) continue;
-      picks.push({ ...alternative, candidate: verified });
+      verifiedChoices.push({ ...alternative, candidate: verified });
       break;
     }
   }
+  const picks = cautiousTwoOdds
+    ? selectTwoOddsPicks(verifiedChoices, gameCount, targetPerLeg)
+    : verifiedChoices;
   if (!picks.length) {
-    const error = new Error(ranked.size
-      ? 'None of the AI-reviewed markets could be verified for booking. Try rebuilding when SportyBet updates its outcomes; no code was created.'
-      : 'AI rejected all reviewed active markets. No booking code was prepared.');
+    const error = new Error(cautiousTwoOdds
+      ? 'No fully reviewed lower-risk, bookable selections met the 2.00 preset criteria. Try again later or choose a different risk mode; no code was prepared.'
+      : ranked.size
+        ? 'None of the AI-reviewed markets could be verified for booking. Try rebuilding when SportyBet updates its outcomes; no code was created.'
+        : 'AI rejected all reviewed active markets. No booking code was prepared.');
     Object.assign(error, { statusCode: 409 });
     throw error;
   }
@@ -206,13 +216,16 @@ export async function buildReviewedLiveSlipSnapshot(
       ? 'Exact outcome verified by SportyBet before selection; rechecked when booking. No win is guaranteed.'
       : 'Selected after comparing active alternatives; booking verification occurs later. No win is guaranteed.'],
   }));
+  const conservativeSummary = cautiousTwoOdds
+    ? `2.00 conservative preset: selected only AI-reviewed keep/lower-risk outcomes, prioritized stronger evidence and lower odds across kickoff windows. ${picks.length < gameCount ? `Only ${picks.length} of ${gameCount} requested fixtures qualified; the target was not forced. ` : ''}Scores are not win probabilities. `
+    : '';
   return {
     ...snapshot,
     slip: { ...snapshot.slip, selections, riskMode },
     combinedOdds: Number(selections.reduce((odds, selection) => odds * selection.odds, 1).toFixed(2)),
     analysis: { ...analysis,
       selections: picks.map(({ review }, index) => ({ ...review, index: index + 1 })),
-      summary: `Compared ${options.length} active alternatives across ${snapshot.slip.selections.length} fixtures. ${provider.refreshSelections ? `Verified ${picks.length} exact booking outcomes. ` : ''}${analysis.summary}`.slice(0, 600),
+      summary: `${conservativeSummary}Compared ${options.length} active alternatives across ${snapshot.slip.selections.length} fixtures. ${provider.refreshSelections ? `Verified ${picks.length} exact booking outcomes. ` : ''}${analysis.summary}`.slice(0, 600),
     },
     rejectedOptions: analysis.selections.filter((item) => item.verdict === 'reject').length,
     reviewedOptions: options.length,
