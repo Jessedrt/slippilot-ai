@@ -17,7 +17,7 @@ const market = (eventId: string, direction: string, odds = 1.6): NormalizedMarke
 const analyzer: SlipAnalyzer = { analyze: (candidates) => Promise.resolve({
   model: 'test', analyzedAt: new Date().toISOString(), summary: 'Evidence review.',
   selections: candidates.map((candidate, index) => ({ index: index + 1,
-    confidence: candidate.selectionName === 'Under' ? 90 : 60,
+    confidence: candidate.selectionName === 'Under' ? 90 : 68,
     risk: 'lower' as const, verdict: 'keep' as const, reason: 'Test review.',
   })),
 }) };
@@ -54,7 +54,7 @@ describe('booking-aware AI market selection', () => {
     const result = await buildReviewedLiveSlipSnapshot(provider, analyzer, 'football', 1, 1.6);
     expect(result.slip.selections).toHaveLength(1);
     expect(result.slip.selections[0]?.selectionName).toBe('Over');
-    expect(result.analysis.selections[0]?.confidence).toBe(60);
+    expect(result.analysis.selections[0]?.confidence).toBe(68);
     expect(result.analysis.summary).toContain('Verified 1 exact booking outcomes');
   });
 
