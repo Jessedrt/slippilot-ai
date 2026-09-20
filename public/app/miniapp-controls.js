@@ -1,3 +1,5 @@
+import './booking-recovery.js?v=5.7.0';
+
 // Odds-first Mini App enhancement. The server re-computes the authoritative count
 // with src/slips/odds-target.ts; this preview must use the same planning heuristic.
 const form = document.querySelector('#build-form');
