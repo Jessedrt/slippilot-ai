@@ -1,6 +1,7 @@
 import type { SlipAnalyzer, SlipAnalysis } from '../ai/slip-analyzer.js';
 import type { CandidateSelection, NormalizedMarket, RiskMode, Sport } from '../types/domain.js';
 import type { ProviderSelection, SportyBetProvider } from './contracts.js';
+import { isAllowedBasketballOverMarket } from './basketball-over-markets.js';
 import { buildLiveSlipSnapshot, marketFamily, type LiveSlipSnapshot } from './discovery.js';
 
 /** A review can compare market evidence; its scores are NOT calibrated win probabilities. */
@@ -32,11 +33,12 @@ const toBookingSelection = (candidate: CandidateSelection): ProviderSelection =>
 
 export const validMarket = (market: NormalizedMarket, sport: Sport, eventId: string): boolean =>
   market.eventId === eventId && market.sport === sport && market.status === 'active' &&
+  (sport !== 'basketball' || isAllowedBasketballOverMarket(market)) &&
   Number.isFinite(market.odds) && market.odds > 1.01 && market.odds <= 1000;
 
 /**
- * Consider every active supplier outcome, then select a bounded, diverse
- * shortlist for AI comparison. No market category or direction is banned.
+ * Compare active supplier outcomes, excluding basketball handicap/spread by
+ * user preference. All other categories and both Over/Under directions remain.
  */
 export function shortlistMarketOptions(
   markets: NormalizedMarket[], sport: Sport, eventId: string, targetPerLeg: number,
