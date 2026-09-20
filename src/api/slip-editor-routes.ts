@@ -3,6 +3,7 @@ import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto
 import { z } from 'zod';
 import type { SlipAnalyzer } from '../ai/slip-analyzer.js';
 import { chooseVariedMarket } from '../sportybet/discovery.js';
+import { isAllowedBasketballOverMarket } from '../sportybet/basketball-over-markets.js';
 import type { SportyBetProvider } from '../sportybet/contracts.js';
 import type { CandidateSelection, NormalizedMarket } from '../types/domain.js';
 
@@ -110,6 +111,7 @@ export function registerSlipEditorRoutes(
       const markets = await getMarkets.get(previous.eventId)!;
       const eligible = markets.filter((market: NormalizedMarket) =>
         market.sport === previous.sport && market.status === 'active' &&
+        (previous.sport !== 'basketball' || isAllowedBasketballOverMarket(market)) &&
         market.odds > 1.01 && Number.isFinite(market.odds) && market.odds <= 1000 &&
         (market.providerMarketId !== previous.providerMarketId ||
           market.providerSelectionId !== previous.providerSelectionId ||
