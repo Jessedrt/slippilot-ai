@@ -72,15 +72,36 @@ export async function buildReviewedLiveSlipSnapshot(
   gameCount: number, targetOdds?: number, riskMode: RiskMode = 'balanced',
 ): Promise<ReviewedSnapshot> {
   if (!Number.isSafeInteger(gameCount) || gameCount < 1) throw new Error('Invalid game count.');
+  // Cache a single provider snapshot per event within the request: no doubled calls or
+  // inconsistent odds between fixture discovery and the alternatives being reviewed.
+  const marketCache = new Map<string, Promise<NormalizedMarket[]>>();
+  const getCachedMarkets = (id: string): Promise<NormalizedMarket[]> => {
+    let promise = marketCache.get(id);
+    if (!promise) {
+      promise = provider.getMarkets(id);
+      marketCache.set(id, promise);
+    }
+    return promise;
+  };
+  const cachedProvider: SportyBetProvider = {
+    name: provider.name,
+    listEvents: (requestedSport) => provider.listEvents(requestedSport),
+    findEvents: (home, away) => provider.findEvents(home, away),
+    getEvent: (id) => provider.getEvent(id),
+    getMarkets: getCachedMarkets,
+    resolveBookingCode: (code) => provider.resolveBookingCode(code),
+    createBookingCode: (selections) => provider.createBookingCode(selections),
+    health: () => provider.health(),
+  };
   const inspectCount = Math.min(60, gameCount + 3);
-  const snapshot = await buildLiveSlipSnapshot(provider, sport, inspectCount, targetOdds);
+  const snapshot = await buildLiveSlipSnapshot(cachedProvider, sport, inspectCount, targetOdds);
   const targetPerLeg = Math.max(1.05, Math.pow(targetOdds ?? 3, 1 / Math.max(1, gameCount)));
   const options: CandidateSelection[] = [];
   const optionsPerFixture = Math.max(1, Math.min(5, Math.floor(60 / snapshot.slip.selections.length)));
   for (const original of snapshot.slip.selections) {
     let markets: NormalizedMarket[];
     try {
-      markets = await provider.getMarkets(original.eventId);
+      markets = await getCachedMarkets(original.eventId);
     } catch {
       throw new MarketReviewUnavailableError();
     }
