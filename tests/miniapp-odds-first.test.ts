@@ -41,7 +41,7 @@ describe('Mini App odds-first build', () => {
     registerMiniAppRoutes(app, { sportyBet, telegramBotToken: botToken,
       slipAnalyzer: { analyze: (selections) => Promise.resolve({ model: 'test-ai',
         analyzedAt: new Date().toISOString(), summary: 'Reviewed active markets.',
-        selections: selections.map((_item, index) => ({ index: index + 1, confidence: 65,
+        selections: selections.map((_item, index) => ({ index: index + 1, confidence: 68,
           risk: 'medium' as const, verdict: 'keep' as const, reason: 'Test selection.' })) }) },
       screenshotAnalyzer: { analyze: () => Promise.resolve({ items: [], bookingCodes: [] }) } });
     try {
