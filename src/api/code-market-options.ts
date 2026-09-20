@@ -23,8 +23,8 @@ export function registerCodeMarketOptions(app: FastifyInstance, provider: Sporty
         a.selectionName.localeCompare(b.selectionName) || a.odds - b.odds);
     return { fixture: `${fixture.homeTeam} vs ${fixture.awayTeam}`,
       checkedAt: checkedAt.toISOString(), source: 'SportyBet market feed',
-      totalActive: active.length, truncated: active.length > 120,
-      options: active.slice(0, 120).map((market) => ({
+      totalActive: active.length, truncated: false,
+      options: active.map((market) => ({
         marketId: market.providerMarketId, selectionId: market.providerSelectionId,
         specifier: market.specifier ?? null, marketName: market.marketName,
         selectionName: market.selectionName, odds: market.odds,
