@@ -35,7 +35,7 @@ const riskLevel = (odds: number): RiskLevel => {
   return 'higher';
 };
 
-/** Exclude Under picks in generated basketball slips, without excluding Over/Under markets as a whole. */
+/** Legacy compatibility: all active basketball markets and both directions are allowed. */
 export function isBasketballUnderPick(
   market: Pick<NormalizedMarket, 'sport' | 'selectionName'>,
 ): boolean {
@@ -123,6 +123,37 @@ export function interleaveLeagues(events: SportyBetEvent[]): SportyBetEvent[] {
   return result;
 }
 
+/**
+ * Spread the day's opportunities across four-hour Lagos kickoff windows before
+ * querying markets. A morning-heavy provider listing must not exhaust the
+ * requested count before we reach valid evening fixtures. Within each window,
+ * retain league diversity. Empty/unavailable windows never force a fake pick.
+ */
+export function interleaveKickoffWindows(events: SportyBetEvent[]): SportyBetEvent[] {
+  const clock = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Africa/Lagos', hour: '2-digit', hourCycle: 'h23',
+  });
+  const windows = new Map<number, SportyBetEvent[]>();
+  for (const event of events) {
+    const hour = Number(clock.format(event.startsAt));
+    const window = Math.floor(hour / 4);
+    const group = windows.get(window) ?? [];
+    group.push(event);
+    windows.set(window, group);
+  }
+  const ordered = [...windows.entries()].sort(([a], [b]) => a - b)
+    .map(([, group]) => interleaveLeagues(group));
+  const result: SportyBetEvent[] = [];
+  let remaining = events.length;
+  while (remaining > 0) {
+    for (const group of ordered) {
+      const next = group.shift();
+      if (next) { result.push(next); remaining -= 1; }
+    }
+  }
+  return result;
+}
+
 /** Build from one verified calendar day at a time. Never mix future dates into a partly filled current day. */
 export async function buildLiveSlipSnapshot(
   provider: SportyBetProvider,
@@ -148,7 +179,7 @@ export async function buildLiveSlipSnapshot(
     const date = lagosCalendarDay(new Date(now.getTime() + offset * 86_400_000));
     const dayEvents = events.filter((event) => lagosCalendarDay(event.startsAt) === date);
     if (!dayEvents.length) continue;
-    const diverseEvents = interleaveLeagues(dayEvents);
+    const diverseEvents = interleaveKickoffWindows(dayEvents);
     const desiredPerLeg = Math.max(1.05, Math.pow(targetOdds ?? 3, 1 / Math.max(1, Math.min(gameCount, dayEvents.length))));
     const candidates: CandidateSelection[] = [];
     const usedFamilies = new Map<string, number>();
