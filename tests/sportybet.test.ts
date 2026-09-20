@@ -92,13 +92,37 @@ describe('booking workflow', () => {
     expect(prepared).toMatchObject({ status: 'odds_changed', previousOdds: 1.5, currentOdds: 1.8 });
   });
 
-  it('rejects suspended markets', async () => {
+  it('identifies the exact suspended market instead of returning a generic error', async () => {
     const prepared = await new SportyBetSlipBuilder(
       new TestProvider(liveMarket(1.5, false)),
     ).prepare([candidate(1, 1.5)]);
-    expect(prepared).toMatchObject({
-      status: 'unavailable',
-      reason: 'Market unavailable or suspended',
-    });
+    expect(prepared).toMatchObject({ status: 'unavailable' });
+    if (prepared.status !== 'unavailable') throw new Error('Expected an unavailable selection');
+    expect(prepared.reason).toContain('#1 Home 1 FC vs Away 1');
+    expect(prepared.reason).toContain('Market unavailable or suspended');
+    expect(prepared.reason).toContain('tap Reanalyze');
+  });
+
+  it('checks the exact event directly even when the general listing omits it', async () => {
+    class DirectProvider extends TestProvider {
+      override getEvent(): Promise<SportyBetEvent> {
+        return Promise.resolve({ providerEventId: 'event-1', homeTeam: 'Home 1 FC',
+          awayTeam: 'Away 1', startsAt: new Date('2099-01-01'), status: 'scheduled' });
+      }
+      override findEvents(): Promise<SportyBetEvent[]> { throw new Error('Listing should not be queried'); }
+    }
+    const prepared = await new SportyBetSlipBuilder(new DirectProvider(liveMarket()))
+      .prepare([candidate(1, 1.5)]);
+    expect(prepared.status).toBe('ready');
+  });
+
+  it('reports every unavailable numbered selection without silently dropping picks', async () => {
+    const prepared = await new SportyBetSlipBuilder(new TestProvider(liveMarket(1.5, false)))
+      .prepare([candidate(1, 1.5), candidate(2, 1.6)]);
+    expect(prepared.status).toBe('unavailable');
+    if (prepared.status !== 'unavailable') throw new Error('Expected an unavailable slip');
+    expect(prepared.reason).toContain('#1 Home 1 FC vs Away 1');
+    expect(prepared.reason).toContain('#2 Home 2 FC vs Away 2');
+    expect(prepared.reason).toContain('Remove the unavailable selections');
   });
 });
