@@ -24,6 +24,8 @@ export interface SportyBetProvider {
   findEvents(homeTeam: string, awayTeam: string): Promise<SportyBetEvent[]>;
   getEvent(eventId: string): Promise<SportyBetEvent | null>;
   getMarkets(eventId: string): Promise<NormalizedMarket[]>;
+  /** Optional exact outcome verification for markets absent from a partial event feed. */
+  refreshSelections?(selections: ProviderSelection[]): Promise<ProviderSelection[]>;
   resolveBookingCode(code: string): Promise<ProviderSelection[]>;
   createBookingCode(selections: ProviderSelection[]): Promise<string>;
   health(): Promise<{ ok: boolean; detail: string }>;
