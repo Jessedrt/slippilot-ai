@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { SportyBetProvider } from '../sportybet/contracts.js';
+import { isAllowedBasketballOverMarket } from '../sportybet/basketball-over-markets.js';
 
 const schema = z.object({ eventId: z.string().min(1).max(100),
   sport: z.enum(['football', 'basketball', 'tennis', 'handball']) }).strict();
@@ -18,6 +19,7 @@ export function registerCodeMarketOptions(app: FastifyInstance, provider: Sporty
     const markets = await provider.getMarkets(eventId);
     const active = markets.filter((market) => market.eventId === eventId &&
       market.sport === sport && market.status === 'active' &&
+      (sport !== 'basketball' || isAllowedBasketballOverMarket(market)) &&
       Number.isFinite(market.odds) && market.odds > 1.01 && market.odds <= 1000)
       .sort((a, b) => a.marketName.localeCompare(b.marketName) ||
         a.selectionName.localeCompare(b.selectionName) || a.odds - b.odds);
@@ -29,6 +31,8 @@ export function registerCodeMarketOptions(app: FastifyInstance, provider: Sporty
         specifier: market.specifier ?? null, marketName: market.marketName,
         selectionName: market.selectionName, odds: market.odds,
       })),
-      warning: 'All current active supplier market types are eligible, including basketball Under. Choosing an option reanalyzes the slip; odds can change before booking.' };
+      warning: sport === 'basketball'
+        ? 'Basketball handicap/spread options are hidden by user preference. Other active markets, including Under, remain available. Prices can change before booking.'
+        : 'Current active supplier market types are available. Choosing an option reanalyzes the slip; odds can change before booking.' };
   });
 }
