@@ -45,17 +45,17 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('SportyBet live discovery', () => {
-  it('only allows requested basketball over-market families', () => {
+  it('does not exclude any basketball market category or Under outcome', () => {
     const allowed = (marketName: string, selectionName = 'Over 84.5') =>
       isAllowedBasketballOverMarket({ marketName, selectionName });
     expect(allowed('1st half - total')).toBe(true);
     expect(allowed('Over/Under (incl. overtime)', 'Over 169.5')).toBe(true);
     expect(allowed('Home O/U (incl. overtime)', 'Over 85.5')).toBe(true);
     expect(allowed('Away O/U (incl. overtime)', 'Over 83.5')).toBe(true);
-    expect(allowed('xth quarter - total')).toBe(false);
-    expect(allowed('2nd half - total')).toBe(false);
-    expect(allowed('Winner (incl. overtime)', 'Home')).toBe(false);
-    expect(allowed('Over/Under (incl. overtime)', 'Under 169.5')).toBe(false);
+    expect(allowed('xth quarter - total')).toBe(true);
+    expect(allowed('2nd half - total')).toBe(true);
+    expect(allowed('Winner (incl. overtime)', 'Home')).toBe(true);
+    expect(allowed('Over/Under (incl. overtime)', 'Under 169.5')).toBe(true);
   });
   it('stops fetching markets once the requested count is available', async () => {
     let calls = 0;
