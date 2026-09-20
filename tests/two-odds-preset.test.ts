@@ -38,7 +38,7 @@ describe('conservative 2.00 odds preset', () => {
     expect(picks.map((pick) => pick.candidate.eventId)).toEqual(['event-4']);
   });
 
-  it('uses only verified lower-risk outcomes and returns a shortfall rather than forcing 2.00', async () => {
+  it('uses only verified lower-risk outcomes meeting the 68 pass mark and returns a shortfall rather than forcing 2.00', async () => {
     const events = [1, 2, 3, 4].map((id) => ({
       providerEventId: `event-${id}`, homeTeam: `Home ${id}`, awayTeam: `Away ${id}`,
       league: 'Premier League', startsAt: new Date(`2026-09-20T${id === 4 ? '20' : '08'}:00:00Z`),
@@ -62,7 +62,7 @@ describe('conservative 2.00 odds preset', () => {
     const analyzer: SlipAnalyzer = { analyze: (candidates) => Promise.resolve({
       model: 'test', analyzedAt: new Date().toISOString(), summary: 'Fixture odds only, no win forecasts.',
       selections: candidates.map((item, index): SlipAnalysis['selections'][number] => ({
-        index: index + 1, confidence: item.eventId === 'event-1' ? 50 : 90,
+        index: index + 1, confidence: item.eventId === 'event-1' ? 68 : 90,
         verdict: item.eventId === 'event-3' ? 'caution' : 'keep',
         risk: item.eventId === 'event-3' ? 'medium' : 'lower',
         reason: 'Based on supplied evidence only.',
