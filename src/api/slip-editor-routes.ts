@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import type { SlipAnalyzer } from '../ai/slip-analyzer.js';
-import { chooseVariedMarket, isBasketballUnderPick } from '../sportybet/discovery.js';
+import { chooseVariedMarket } from '../sportybet/discovery.js';
 import type { SportyBetProvider } from '../sportybet/contracts.js';
 import type { CandidateSelection, NormalizedMarket } from '../types/domain.js';
 
@@ -111,7 +111,6 @@ export function registerSlipEditorRoutes(
       const eligible = markets.filter((market: NormalizedMarket) =>
         market.sport === previous.sport && market.status === 'active' &&
         market.odds > 1.01 && Number.isFinite(market.odds) && market.odds <= 1000 &&
-        !isBasketballUnderPick(market) &&
         (market.providerMarketId !== previous.providerMarketId ||
           market.providerSelectionId !== previous.providerSelectionId ||
           (market.specifier ?? null) !== (previous.specifier ?? null)),
