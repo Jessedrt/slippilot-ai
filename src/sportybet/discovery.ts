@@ -1,6 +1,7 @@
 import type { SportyBetProvider, SportyBetEvent } from './contracts.js';
 import type { CandidateSelection, NormalizedMarket, RiskLevel, SlipDraft, Sport } from '../types/domain.js';
 import { isAllowedBasketballOverMarket } from './basketball-over-markets.js';
+import { leagueExclusionReason } from './league-quality.js';
 export { isAllowedBasketballOverMarket } from './basketball-over-markets.js';
 
 export interface LiveSlipSnapshot {
@@ -13,8 +14,8 @@ export interface LiveSlipSnapshot {
 /** Backwards-compatible error class. No unavailable fixtures or markets are invented. */
 export class NoTodayMarketsError extends Error {
   readonly statusCode = 404;
-  constructor(sport: Sport) {
-    super(`No supported ${sport} matches with eligible active SportyBet markets were found today, tomorrow or the following day in Nigeria (WAT). No later dates were included. Try another sport or check later.`);
+  constructor(sport: Sport, excludedLeagues = 0) {
+    super(`No supported ${sport} matches with eligible active SportyBet markets were found today, tomorrow or the following day in Nigeria (WAT). No later dates were included. Try another sport or check later.${excludedLeagues ? ` The league filter excluded ${excludedLeagues} fixture${excludedLeagues === 1 ? '' : 's'} from youth, reserve, amateur, lower-tier, friendly or simulated competitions; see Explore for the unfiltered fixture list.` : ''}`);
     this.name = 'NoTodayMarketsError';
   }
 }
@@ -175,12 +176,21 @@ export async function buildLiveSlipSnapshot(
     return true;
   }).sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 
+  let excludedLeagues = 0;
   for (const offset of [0, 1, 2] as const) {
     const date = lagosCalendarDay(new Date(now.getTime() + offset * 86_400_000));
     const dayEvents = events.filter((event) => lagosCalendarDay(event.startsAt) === date);
     if (!dayEvents.length) continue;
-    const diverseEvents = interleaveKickoffWindows(dayEvents);
-    const desiredPerLeg = Math.max(1.05, Math.pow(targetOdds ?? 3, 1 / Math.max(1, Math.min(gameCount, dayEvents.length))));
+    // Filter competitions BEFORE filling the requested count; don't let ten
+    // early reserve/amateur fixtures crowd out later established matches.
+    const eligibleDayEvents = dayEvents.filter((event) => {
+      if (!leagueExclusionReason(sport, event.league)) return true;
+      excludedLeagues += 1;
+      return false;
+    });
+    if (!eligibleDayEvents.length) continue;
+    const diverseEvents = interleaveKickoffWindows(eligibleDayEvents);
+    const desiredPerLeg = Math.max(1.05, Math.pow(targetOdds ?? 3, 1 / Math.max(1, Math.min(gameCount, eligibleDayEvents.length))));
     const candidates: CandidateSelection[] = [];
     const usedFamilies = new Map<string, number>();
     const usedDirections = new Map<string, number>();
@@ -229,5 +239,5 @@ export async function buildLiveSlipSnapshot(
         ...(targetOdds ? { targetOdds } : {}), riskMode: 'balanced' },
     };
   }
-  throw new NoTodayMarketsError(sport);
+  throw new NoTodayMarketsError(sport, excludedLeagues);
 }
