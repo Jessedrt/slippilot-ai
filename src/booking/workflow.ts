@@ -25,9 +25,7 @@ export class SportyBetSlipBuilder {
     const resolved: ProviderSelection[] = [];
     const unavailable: Array<{ number: number; selection: CandidateSelection; reason: string }> = [];
     for (const [index, selection] of selections.entries()) {
-      // Use the exact provider event ID first. An upcoming-fixture listing may omit a
-      // perfectly valid event because of paging or feed lag. Never switch to a
-      // different fixture just because its team names look similar.
+      // Exact event IDs avoid accidentally resolving another match with similar names.
       const direct = await this.provider.getEvent(selection.eventId);
       const event = direct ?? this.events.match(selection, await this.provider.findEvents(
         selection.fixture.homeTeam, selection.fixture.awayTeam,
@@ -39,19 +37,46 @@ export class SportyBetSlipBuilder {
       }
       const market = this.markets.match(selection,
         await this.provider.getMarkets(event.providerEventId));
-      if (!market) {
-        unavailable.push({ number: index + 1, selection,
-          reason: 'Market unavailable or suspended' });
+      if (market) {
+        resolved.push(this.markets.toProviderSelection(market));
         continue;
       }
-      resolved.push(this.markets.toProviderSelection(market));
+
+      // The general event endpoint can omit a bookable market. Ask SportyBet's
+      // exact Outcomes endpoint for this tuple; never guess an outcome by name.
+      const requested: ProviderSelection = {
+        eventId: selection.eventId, marketId: selection.providerMarketId,
+        selectionId: selection.providerSelectionId, odds: selection.odds,
+        ...(selection.specifier != null ? { specifier: selection.specifier } : {}),
+      };
+      let refreshed: ProviderSelection[] = [];
+      if (this.provider.refreshSelections) {
+        try {
+          refreshed = await this.provider.refreshSelections([requested]);
+        } catch (error) {
+          // An absent exact outcome is a normal verification failure. Network,
+          // rate-limit and provider errors must not be mislabelled as suspension.
+          if (!(error instanceof Error && error.message.startsWith('SportyBet selection unavailable:')))
+            throw error;
+        }
+      }
+      const exact = refreshed.filter((item) => item.eventId === requested.eventId &&
+        item.marketId === requested.marketId && item.selectionId === requested.selectionId &&
+        (item.specifier ?? null) === (requested.specifier ?? null) &&
+        Number.isFinite(item.odds) && item.odds > 1);
+      if (exact.length === 1) {
+        resolved.push(exact[0]!);
+        continue;
+      }
+      unavailable.push({ number: index + 1, selection,
+        reason: 'Exact market could not be verified for booking (not necessarily suspended)' });
     }
     if (unavailable.length) {
       const details = unavailable.map(({ number, selection, reason }) =>
         `#${number} ${selection.fixture.homeTeam} vs ${selection.fixture.awayTeam} (${selection.selectionName}): ${reason}`);
       return {
         status: 'unavailable', selection: unavailable[0]!.selection,
-        reason: `${details.join('; ')}. Remove the unavailable selection${unavailable.length === 1 ? '' : 's'} using their numbered rows, then tap Reanalyze before generating a new code. Your slip was not changed; no wager was placed.`,
+        reason: `${details.join('; ')}. Review or replace the unverified selections using their numbered rows, then tap Reanalyze before generating a new code. Your slip was not changed; no wager was placed.`,
       };
     }
     const product = (values: number[]) => values.reduce((total, odds) => total * odds, 1);
