@@ -48,7 +48,7 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('automatic market option review', () => {
-  it('reviews both directions, chooses a better-reviewed Under and reuses each provider snapshot', async () => {
+  it('reviews both directions, chooses a better-reviewed Under, excludes handicap and reuses each provider snapshot', async () => {
     const id = 'sr:match:101';
     const markets = [
       option(id, 'total', 'Over/Under (incl. overtime)', 'Over 165.5', 1.80),
@@ -67,24 +67,28 @@ describe('automatic market option review', () => {
     expect(getMarkets).toHaveBeenCalledTimes(1);
     expect(analyze).toHaveBeenCalledTimes(1);
     expect(analyze.mock.calls[0]![0].map((item) => item.selectionName))
-      .toEqual(expect.arrayContaining(['Over 165.5', 'Under 165.5', 'Home', 'Away +2.5']));
+      .toEqual(expect.arrayContaining(['Over 165.5', 'Under 165.5', 'Home', 'Over 18.5']));
+    expect(analyze.mock.calls[0]![0].some((item) => item.marketName === 'Handicap')).toBe(false);
     expect(result.slip.selections).toHaveLength(1);
     expect(result.slip.selections[0]?.selectionName).toBe('Under 165.5');
     expect(result.slip.selections[0]?.modelProbability).toBe(0);
     expect(result.analysis.selections[0]?.confidence).toBe(88);
-    expect(result.reviewedOptions).toBe(5);
+    expect(result.reviewedOptions).toBe(4);
   });
 
-  it('does not impose market-category bans but excludes invalid or suspended prices', () => {
+  it('excludes basketball handicap without banning totals, player props or later periods', () => {
     const id = 'sr:match:102';
     const markets = [option(id, 'winner', 'Winner', 'Away', 1.85),
       option(id, 'period', '4th Quarter', 'Under 41.5', 1.81),
       option(id, 'player', 'Player Points', 'Over 18.5', 1.80),
+      option(id, 'spread', 'Point Spread', 'Home +4.5', 1.75),
       option(id, 'invalid', 'Handicap', 'Home +2', 0.8),
       option(id, 'suspended', 'Handicap', 'Away -2', 2, 'suspended')];
     expect(shortlistMarketOptions(markets, 'basketball', id, 1.8)).toHaveLength(3);
     expect(shortlistMarketOptions(markets, 'basketball', id, 1.8).map((item) => item.selectionName))
       .toEqual(expect.arrayContaining(['Away', 'Under 41.5', 'Over 18.5']));
+    expect(shortlistMarketOptions(markets, 'basketball', id, 1.8)
+      .some((item) => item.marketName === 'Point Spread')).toBe(false);
   });
 
   it('never inserts a rejected pick or substitutes an unreviewed market', async () => {
@@ -104,11 +108,14 @@ describe('automatic market option review', () => {
 });
 
 describe('booking-code editor options', () => {
-  it('offers every active market including Under beyond the old 120-option cutoff', async () => {
+  it('offers active markets including Under beyond the old 120-option cutoff but not basketball handicap', async () => {
     vi.useRealTimers();
     const id = 'sr:match:104';
-    const markets = Array.from({ length: 130 }, (_value, index) =>
-      option(id, String(index + 1), 'Basketball total', index === 129 ? 'Under 170.5' : `Over ${index + 10}.5`, 1.8));
+    const markets = [
+      ...Array.from({ length: 130 }, (_value, index) =>
+        option(id, String(index + 1), 'Basketball total', index === 129 ? 'Under 170.5' : `Over ${index + 10}.5`, 1.8)),
+      option(id, 'handicap', 'Handicap', 'Home -4.5', 1.8),
+    ];
     const app = Fastify();
     await app.register(sensible);
     registerCodeMarketOptions(app, provider(id, markets));
@@ -122,6 +129,7 @@ describe('booking-code editor options', () => {
       expect(output.truncated).toBe(false);
       expect(output.options).toHaveLength(130);
       expect(output.options.some((item) => item.selectionName === 'Under 170.5')).toBe(true);
+      expect(output.options.some((item) => item.selectionName === 'Home -4.5')).toBe(false);
     } finally { await app.close(); }
   });
 });
