@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import type { SlipAnalyzer } from '../ai/slip-analyzer.js';
+import { MIN_AI_QUALITY_SCORE, passesAiQuality } from '../ai/quality-gate.js';
 import type { ScreenshotAnalyzer } from '../ai/screenshot-analyzer.js';
 import { SportyBetSlipBuilder } from '../booking/workflow.js';
 import { automaticLegCount } from '../slips/odds-target.js';
@@ -131,7 +132,7 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
     const analysis = snapshot.analysis;
     const selections = snapshot.slip.selections.flatMap((selection, index) => {
       const result = analysis.selections[index];
-      if (!result || result.verdict === 'reject') return [];
+      if (!result || !passesAiQuality(result)) return [];
       return [{
         eventId: selection.eventId, marketId: selection.providerMarketId,
         selectionId: selection.providerSelectionId,
@@ -144,7 +145,7 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
         verdict: result.verdict,
       }];
     });
-    if (!selections.length) return reply.conflict('AI rejected every reviewed market.');
+    if (!selections.length) return reply.conflict(`No verified selection passed the ${MIN_AI_QUALITY_SCORE}/100 AI quality minimum. No booking code was prepared.`);
     const initData = request.headers['x-telegram-init-data'] as string;
     const dayLabel = ['today', 'tomorrow', 'the following day'][snapshot.dayOffset];
     return {
@@ -166,6 +167,9 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
     const initData = request.headers['x-telegram-init-data'] as string;
     if (!verifyAnalysisToken(input.analysisToken, input.selections, initData, deps.telegramBotToken!)) {
       return reply.unauthorized('Your AI analysis expired. Reanalyze the slip before creating a code.');
+    }
+    if (input.selections.some((selection) => selection.confidence < MIN_AI_QUALITY_SCORE)) {
+      return reply.conflict(`A selection is below the ${MIN_AI_QUALITY_SCORE}/100 AI quality pass mark. Remove it and reanalyze before generating a code.`);
     }
     const candidates = input.selections.map(toCandidate);
     const preparation = await new SportyBetSlipBuilder(deps.sportyBet).prepare(candidates);
