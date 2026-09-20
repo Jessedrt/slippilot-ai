@@ -60,8 +60,8 @@ describe('automatic market option review', () => {
       option(id, 'invalid', 'Total', 'Under 190.5', Number.NaN),
     ];
     const source = provider(id, markets);
-    const getMarkets = vi.fn(source.getMarkets);
-    const analyze = vi.fn(reviewer.analyze);
+    const getMarkets = vi.fn((eventId: string) => source.getMarkets(eventId));
+    const analyze = vi.fn((candidates: Parameters<SlipAnalyzer['analyze']>[0]) => reviewer.analyze(candidates));
     const result = await buildReviewedLiveSlipSnapshot({ ...source, getMarkets },
       { analyze }, 'basketball', 1, 1.8);
     expect(getMarkets).toHaveBeenCalledTimes(1);
