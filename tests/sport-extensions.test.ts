@@ -51,17 +51,19 @@ describe('tennis and handball provider integration', () => {
   });
 });
 
-describe('SportyBet website and code loader links', () => {
-  it('labels website navigation accurately and offers the official loader separately', () => {
+describe('SportyBet app handoff and website', () => {
+  it('copies for manual app switching and labels website navigation accurately', () => {
     expect(sportyBetShareUrl('a1bc9')).toBe('https://www.sportybet.com/?shareCode=A1BC9');
     expect(sportyBetShareUrl('not a code')).toBeNull();
     const controls = readFileSync('public/app/miniapp-controls.js', 'utf8');
     expect(controls).toContain('https://www.sportybet.com/?shareCode=');
-    expect(controls).toContain('https://sporty.bet/Load-Booking-Code');
-    expect(controls).toContain("appLink.target = '_blank'");
+    expect(controls).toContain('Copy code for SportyBet app');
+    expect(controls).toContain("copyForApp.type = 'button'");
+    expect(controls).toContain('await navigator.clipboard.writeText(code)');
+    expect(controls).toContain('Optional: open SportyBet website (browser)');
     expect(controls).toContain("webLink.target = '_blank'");
     expect(controls).toContain("webLink.rel = 'noopener noreferrer'");
-    expect(controls).toContain('If iOS opens a browser');
-    expect(controls.split('// A normal shareCode URL opens SportyBet')[1]).not.toContain('event.preventDefault()');
+    expect(controls).not.toContain('https://sporty.bet/Load-Booking-Code');
+    expect(controls).not.toContain("appLink.target = '_blank'");
   });
 });
