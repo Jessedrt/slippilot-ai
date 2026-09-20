@@ -92,14 +92,14 @@ describe('booking workflow', () => {
     expect(prepared).toMatchObject({ status: 'odds_changed', previousOdds: 1.5, currentOdds: 1.8 });
   });
 
-  it('identifies the exact suspended market instead of returning a generic error', async () => {
+  it('identifies the exact market when neither verification source confirms it', async () => {
     const prepared = await new SportyBetSlipBuilder(
       new TestProvider(liveMarket(1.5, false)),
     ).prepare([candidate(1, 1.5)]);
     expect(prepared).toMatchObject({ status: 'unavailable' });
     if (prepared.status !== 'unavailable') throw new Error('Expected an unavailable selection');
     expect(prepared.reason).toContain('#1 Home 1 vs Away 1');
-    expect(prepared.reason).toContain('Market unavailable or suspended');
+    expect(prepared.reason).toContain('could not be verified');
     expect(prepared.reason).toContain('tap Reanalyze');
   });
 
@@ -123,6 +123,41 @@ describe('booking workflow', () => {
     if (prepared.status !== 'unavailable') throw new Error('Expected an unavailable slip');
     expect(prepared.reason).toContain('#1 Home 1 vs Away 1');
     expect(prepared.reason).toContain('#2 Home 2 vs Away 2');
-    expect(prepared.reason).toContain('Remove the unavailable selections');
+    expect(prepared.reason).toContain('Review or replace the unverified selections');
+  });
+
+  it('accepts an exact active outcome when the event market feed omits it', async () => {
+    class PartialEventProvider extends TestProvider {
+      override getMarkets(): Promise<NormalizedMarket[]> { return Promise.resolve([]); }
+      refreshSelections(selections: ProviderSelection[]): Promise<ProviderSelection[]> {
+        return Promise.resolve(selections.map((selection) => ({ ...selection, odds: 1.5 })));
+      }
+    }
+    const prepared = await new SportyBetSlipBuilder(new PartialEventProvider(liveMarket()))
+      .prepare([candidate(1, 1.5)]);
+    expect(prepared).toMatchObject({ status: 'ready', currentOdds: 1.5 });
+  });
+
+  it('never silently substitutes a different outcome returned by the fallback', async () => {
+    class WrongOutcomeProvider extends TestProvider {
+      override getMarkets(): Promise<NormalizedMarket[]> { return Promise.resolve([]); }
+      refreshSelections(selections: ProviderSelection[]): Promise<ProviderSelection[]> {
+        return Promise.resolve(selections.map((selection) => ({ ...selection, selectionId: 'wrong' })));
+      }
+    }
+    const prepared = await new SportyBetSlipBuilder(new WrongOutcomeProvider(liveMarket()))
+      .prepare([candidate(1, 1.5)]);
+    expect(prepared.status).toBe('unavailable');
+  });
+
+  it('does not report provider outages as market suspension', async () => {
+    class OfflineRefreshProvider extends TestProvider {
+      override getMarkets(): Promise<NormalizedMarket[]> { return Promise.resolve([]); }
+      refreshSelections(): Promise<ProviderSelection[]> {
+        return Promise.reject(new Error('SportyBet HTTP 503'));
+      }
+    }
+    await expect(new SportyBetSlipBuilder(new OfflineRefreshProvider(liveMarket()))
+      .prepare([candidate(1, 1.5)])).rejects.toThrow('SportyBet HTTP 503');
   });
 });
