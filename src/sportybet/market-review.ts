@@ -1,4 +1,5 @@
 import type { SlipAnalyzer, SlipAnalysis } from '../ai/slip-analyzer.js';
+import { MIN_AI_QUALITY_SCORE, passesAiQuality } from '../ai/quality-gate.js';
 import type { CandidateSelection, NormalizedMarket, RiskMode, Sport } from '../types/domain.js';
 import type { ProviderSelection, SportyBetProvider } from './contracts.js';
 import { isAllowedBasketballOverMarket } from './basketball-over-markets.js';
@@ -174,7 +175,7 @@ export async function buildReviewedLiveSlipSnapshot(
   const ranked = new Map<string, RankedChoice[]>();
   for (const [index, candidate] of options.entries()) {
     const review = reviews.get(index + 1)!;
-    if (review.verdict === 'reject' || !Number.isFinite(review.confidence)) continue;
+    if (!passesAiQuality(review)) continue;
     if (cautiousTwoOdds && (review.verdict !== 'keep' || review.risk !== 'lower')) continue;
     const score = reviewScore(review, candidate.odds, targetPerLeg, riskMode);
     const alternatives = ranked.get(candidate.eventId) ?? [];
@@ -201,10 +202,10 @@ export async function buildReviewedLiveSlipSnapshot(
     : verifiedChoices;
   if (!picks.length) {
     const error = new Error(cautiousTwoOdds
-      ? 'No fully reviewed lower-risk, bookable selections met the 2.00 preset criteria. Try again later or choose a different risk mode; no code was prepared.'
+      ? `No fully reviewed lower-risk, bookable selections met the 2.00 preset and ${MIN_AI_QUALITY_SCORE}/100 AI quality minimum. Try again later or choose a different risk mode; no code was prepared.`
       : ranked.size
         ? 'None of the AI-reviewed markets could be verified for booking. Try rebuilding when SportyBet updates its outcomes; no code was created.'
-        : 'AI rejected all reviewed active markets. No booking code was prepared.');
+        : `No AI-reviewed market reached the ${MIN_AI_QUALITY_SCORE}/100 quality minimum without rejection. Fewer picks are returned rather than lowering the pass mark; no booking code was prepared.`);
     Object.assign(error, { statusCode: 409 });
     throw error;
   }
@@ -225,9 +226,9 @@ export async function buildReviewedLiveSlipSnapshot(
     combinedOdds: Number(selections.reduce((odds, selection) => odds * selection.odds, 1).toFixed(2)),
     analysis: { ...analysis,
       selections: picks.map(({ review }, index) => ({ ...review, index: index + 1 })),
-      summary: `${conservativeSummary}Compared ${options.length} active alternatives across ${snapshot.slip.selections.length} fixtures. ${provider.refreshSelections ? `Verified ${picks.length} exact booking outcomes. ` : ''}${analysis.summary}`.slice(0, 600),
+      summary: `${conservativeSummary}AI pass mark ${MIN_AI_QUALITY_SCORE}/100 (quality, not win probability). Compared ${options.length} active alternatives across ${snapshot.slip.selections.length} fixtures. ${provider.refreshSelections ? `Verified ${picks.length} exact booking outcomes. ` : ''}${analysis.summary}`.slice(0, 600),
     },
-    rejectedOptions: analysis.selections.filter((item) => item.verdict === 'reject').length,
+    rejectedOptions: analysis.selections.filter((item) => !passesAiQuality(item)).length,
     reviewedOptions: options.length,
   };
 }
