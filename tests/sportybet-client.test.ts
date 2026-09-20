@@ -153,6 +153,22 @@ describe('SportyBetClient', () => {
     expect(calls[2]?.init?.headers).toMatchObject({ OperId: '2' });
   });
 
+  it('creates a code only if exact Outcomes confirms a market missing from event feed', async () => {
+    const { client, calls } = mockedClient([
+      ok(event({ markets: [] })),
+      ok([event()]),
+      ok([event()]),
+      ok({ shareCode: 'VALID123' }),
+    ]);
+    const result = await client.createBookingCode([
+      { eventId: 'sr:match:12345', marketId: '18', selectionId: '12', odds: 1.91, specifier: 'total=2.5' },
+    ]);
+    expect(result.code).toBe('VALID123');
+    expect(calls).toHaveLength(4);
+    expect(calls[1]?.url).toContain('/factsCenter/Outcomes');
+    expect(calls[3]?.url).toContain('/orders/share');
+  });
+
   it('rejects an expired event before share-code creation', async () => {
     const { client, calls } = mockedClient([ok(event({ status: 3, matchStatus: 'Ended' }))]);
     await expect(
@@ -163,13 +179,15 @@ describe('SportyBetClient', () => {
     expect(calls).toHaveLength(1);
   });
 
-  it('rejects an incorrect specifier before share-code creation', async () => {
-    const { client } = mockedClient([ok(event())]);
+  it('rejects an incorrect specifier if exact Outcomes also cannot confirm it', async () => {
+    const { client, calls } = mockedClient([ok(event()), ok([])]);
     await expect(
       client.createBookingCode([
         { eventId: 'sr:match:12345', marketId: '18', selectionId: '12', odds: 1.91, specifier: 'total=3.5' },
       ]),
-    ).rejects.toThrow('market suspended');
+    ).rejects.toThrow('SportyBet selection unavailable');
+    expect(calls).toHaveLength(2);
+    expect(calls.every((call) => !call.url.includes('/orders/share'))).toBe(true);
   });
 
   it('reads and normalizes an existing booking code', async () => {
