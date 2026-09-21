@@ -8,6 +8,7 @@
 .code-workspace-row{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;padding:13px;border-radius:19px;border:1px solid rgba(216,234,249,.12);background:rgba(8,14,19,.47)}
 .code-workspace-row strong{display:block;font-size:.94rem;line-height:1.35;color:#f5f8f4}
 .code-workspace-row small{display:block;color:#b9c4c6;font-size:.8rem;line-height:1.4;margin-top:5px}
+.code-workspace-score{display:inline-flex;align-items:center;margin-top:7px;padding:4px 8px;border-radius:999px;background:rgba(180,242,93,.12);border:1px solid rgba(180,242,93,.25);color:#d2ff83;font-size:.72rem;font-weight:650;font-variant-numeric:tabular-nums}
 .code-workspace-actions,.code-workspace-toolbar{display:flex;flex-wrap:wrap;gap:8px}
 .code-workspace button{font-family:inherit;font-size:.82rem;min-height:39px;max-width:100%;border-radius:13px;border:1px solid rgba(204,226,235,.21);color:#e8f1ed;background:linear-gradient(155deg,rgba(46,58,65,.78),rgba(24,34,42,.8));padding:9px 12px;cursor:pointer;transition:transform .2s ease,border-color .2s ease,background .2s ease}
 .code-workspace button:active{transform:scale(.97)}
