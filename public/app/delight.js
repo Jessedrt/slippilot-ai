@@ -12,9 +12,13 @@ const layoutStyle = document.createElement('link');
 layoutStyle.rel = 'stylesheet';
 layoutStyle.href = '/app/redesign-layout-fixes.css?v=1.0.1';
 document.head.append(layoutStyle);
-void import('./redesign-preview.js?v=1.0.0').catch((error) => {
-  console.error('Aurex design preview failed to initialize.', error);
-});
+const fluidStyle = document.createElement('link');
+fluidStyle.rel = 'stylesheet';
+fluidStyle.href = '/app/fluid-intelligence.css?v=2.0.0';
+document.head.append(fluidStyle);
+void import('./redesign-preview.js?v=1.0.0')
+  .then(() => import('./fluid-intelligence.js?v=2.0.0'))
+  .catch((error) => { console.error('Aurex design preview failed to initialize.', error); });
 
 const shell = document.querySelector('.app-shell');
 const tabs = [...document.querySelectorAll('.bottom-nav button[data-view]')];
