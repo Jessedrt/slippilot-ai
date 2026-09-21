@@ -42,6 +42,7 @@ const codeSchema = z.object({
   selections: z.array(selectionSchema).min(1),
   analysisToken: z.string().min(20).max(131_072),
   acceptOddsChange: z.boolean().optional(),
+  maximumOdds: z.number().finite().min(1.01).max(1_000_000_000).optional(),
 });
 type MiniSelection = z.infer<typeof selectionSchema>;
 const ANALYSIS_TOKEN_TTL_MS = 30 * 60 * 1000;
@@ -182,6 +183,13 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
     const candidates = input.selections.map(toCandidate);
     const preparation = await new SportyBetSlipBuilder(deps.sportyBet).prepare(candidates);
     if (preparation.status === 'unavailable') return reply.conflict(`Market unavailable: ${preparation.reason}`);
+    // The provider's refreshed odds, not stale client odds, determine the cap.
+    // Enforce this even when the user previously accepted a different odds update.
+    if (input.maximumOdds !== undefined && preparation.currentOdds > input.maximumOdds + 0.000001) {
+      return reply.status(409).send({ status: 'target_exceeded',
+        message: `Live combined odds ${preparation.currentOdds.toFixed(2)} exceed your maximum ${input.maximumOdds.toFixed(2)}. Trim again or change the target. No code was created.`,
+        currentOdds: preparation.currentOdds, maximumOdds: input.maximumOdds });
+    }
     if (preparation.status === 'odds_changed' && !input.acceptOddsChange) {
       return reply.status(409).send({ status: 'odds_changed',
         previousOdds: preparation.previousOdds, currentOdds: preparation.currentOdds });
