@@ -2,7 +2,7 @@ import './code-workspace.js?v=5.4.0';
 import './schedule-hints.js?v=5.4.0';
 import './sports-extension.js?v=5.5.0';
 
-// Verified code import replaces the old count-only echo. Other forms keep their existing handlers.
+// This capture handler replaces the old count-only placeholder in app.js.
 const codeForm = document.querySelector('#read-code-form');
 const codeInput = document.querySelector('#read-code');
 const resultPanel = document.querySelector('#analysis-result');
@@ -10,18 +10,28 @@ const encode = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 })[char]);
 const displayOdds = (value) => Number.isFinite(Number(value)) ? Number(value).toFixed(2) : 'Unavailable';
+let analyzing = false;
 
 if (codeForm && codeInput && resultPanel) {
+  const submit = codeForm.querySelector('[type="submit"]');
+  const show = (html) => {
+    resultPanel.innerHTML = html;
+    resultPanel.classList.remove('hidden');
+    resultPanel.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
+  };
   codeForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     event.stopImmediatePropagation();
-    document.dispatchEvent(new Event('aurex:code-workspace-clear'));
+    if (analyzing) return;
     const code = codeInput.value.trim().toUpperCase();
-    const show = (html) => {
-      resultPanel.innerHTML = html;
-      resultPanel.classList.remove('hidden');
-      resultPanel.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce').matches ? 'auto' : 'smooth', block: 'nearest' });
-    };
+    if (!/^[A-Z0-9]{4,20}$/.test(code)) {
+      show('<h3>Enter a valid booking code</h3><p>Use 4–20 letters or numbers.</p>');
+      return;
+    }
+    analyzing = true;
+    if (submit) { submit.disabled = true; submit.textContent = 'Checking code…'; }
+    document.dispatchEvent(new Event('aurex:code-workspace-clear'));
+    show('<h3>Analyzing booking code…</h3><p>Verifying fixtures and live markets before reviewing any selection. Unavailable legs will be identified.</p>');
     try {
       const response = await fetch('/api/miniapp/import-code', {
         method: 'POST',
@@ -44,12 +54,18 @@ if (codeForm && codeInput && resultPanel) {
           <p class="analysis-reason">${encode(pick.reason)}</p>
         </article>`;
       }).join('');
+      const excluded = Array.isArray(data.excluded) ? data.excluded : [];
+      const excludedHtml = excluded.length ? `<section class="analysis-excluded" role="status">
+        <h4>${excluded.length} unavailable selection(s) excluded</h4>
+        <p>These matches cannot safely be included in a new code. The original code is unchanged.</p>
+        ${excluded.map((item) => `<p>${encode(item.index)}. ${encode(item.label)} — ${encode(item.reason)}</p>`).join('')}
+      </section>` : '';
       const editableCount = data.editableSlip?.selections?.length || 0;
       show(`<h3>Booking code reviewed</h3>
-        <p class="analysis-meta">${encode(data.code)} · ${data.selections.length} selections · provider odds ${displayOdds(data.combinedOdds)}</p>
-        <p class="analysis-summary">${encode(data.summary)}</p>${items}
+        <p class="analysis-meta">${encode(data.code)} · ${data.selections.length} verified of ${Number(data.count) || data.selections.length} original selections · current verified odds ${displayOdds(data.combinedOdds)}</p>
+        <p class="analysis-summary">${encode(data.summary)}</p>${excludedHtml}${items}
         <p class="analysis-disclaimer">${encode(data.disclaimer || 'AI scores are not win probabilities. No bet was placed.')}</p>
-        ${editableCount ? `<p class="analysis-summary">${editableCount} non-rejected selection(s) are available for editing below. All changes require a fresh AI review.</p>` : '<p class="analysis-warning">No non-rejected selection is available for editing.</p>'}`);
+        ${editableCount ? `<p class="analysis-summary">${editableCount} qualified selection(s) are available for editing below. All changes require a fresh AI review.</p>` : '<p class="analysis-warning">No selection qualified for editing. There is no new booking code.</p>'}`);
       document.dispatchEvent(new CustomEvent('aurex:code-analyzed', {
         detail: { code: data.code, analyzedAt: data.analyzedAt, summary: data.summary,
           combinedOdds: data.combinedOdds, selections: data.selections,
@@ -57,9 +73,12 @@ if (codeForm && codeInput && resultPanel) {
       }));
     } catch (error) {
       const message = error?.name === 'TimeoutError' || error?.name === 'AbortError'
-        ? 'Analysis timed out. Please try again; no bet was placed.'
+        ? 'Analysis timed out. The original code was not changed. Please try again.'
         : error instanceof Error ? error.message : 'Could not analyze this code.';
       show(`<h3>Could not analyze code</h3><p>${encode(message)}</p><p class="analysis-disclaimer">No analysis has been generated and no bet was placed.</p>`);
+    } finally {
+      analyzing = false;
+      if (submit) { submit.disabled = false; submit.textContent = 'Analyze & edit code'; }
     }
   }, { capture: true });
 }
