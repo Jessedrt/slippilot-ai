@@ -51,7 +51,7 @@ export async function importBookingCode(code: string, deps: Deps, initData: stri
       return { excluded: { index: index + 1, eventId: item.eventId, label,
         reason: 'No unique active matching market; excluded from editing.' } };
     }
-    const market = matching[0]!;
+    const market = matching[0];
     return { candidate: { ...market, fixture: { id: fixture.providerEventId, providerId: fixture.providerEventId,
       sport: market.sport, league: fixture.league || 'Competition not supplied',
       homeTeam: fixture.homeTeam, awayTeam: fixture.awayTeam, startsAt: fixture.startsAt,
