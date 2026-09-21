@@ -3,6 +3,7 @@ const reset=document.createElement('link');reset.rel='stylesheet';reset.href='/a
 const approved=document.createElement('link');approved.rel='stylesheet';approved.href='/app/aurex-white-green.css?v=1.0.0';document.head.append(approved);
 const maximalist=document.createElement('link');maximalist.rel='stylesheet';maximalist.href='/app/aurex-maximalist.css?v=1.0.0';document.head.append(maximalist);
 void import('./aurex-white-green.js?v=1.0.0').catch(error=>console.error('Aurex white-green preview failed to initialize',error));
+void import('./aurex-slip-export.js?v=1.0.0').catch(error=>console.error('Aurex slip sharing failed to initialize',error));
 const shell=document.querySelector('.app-shell');
 const tabs=[...document.querySelectorAll('.bottom-nav button[data-view]')];
 const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
