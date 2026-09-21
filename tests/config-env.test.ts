@@ -1,8 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { loadConfig } from '../src/config/env.js';
+
+afterEach(() => vi.unstubAllEnvs());
 
 describe('production configuration', () => {
   it('requires Telegram webhook configuration and managed data services', () => {
+    vi.stubEnv('VERCEL_ENV', 'production');
     expect(() => loadConfig({ NODE_ENV: 'production' })).toThrow(/TELEGRAM_BOT_TOKEN/);
     expect(() =>
       loadConfig({
@@ -14,6 +17,7 @@ describe('production configuration', () => {
   });
 
   it('accepts a complete production configuration with SportyBet disabled', () => {
+    vi.stubEnv('VERCEL_ENV', 'production');
     const config = loadConfig({
       NODE_ENV: 'production',
       TELEGRAM_BOT_TOKEN: '1234567890:token',
@@ -23,5 +27,11 @@ describe('production configuration', () => {
       SPORTYBET_PROVIDER_ENABLED: 'false',
     });
     expect(config.SPORTYBET_PROVIDER_ENABLED).toBe(false);
+  });
+  it('allows an unconfigured Vercel Preview to render but never weakens production', () => {
+    vi.stubEnv('VERCEL_ENV', 'preview');
+    expect(loadConfig({ NODE_ENV: 'production' }).TELEGRAM_BOT_TOKEN).toBeUndefined();
+    vi.stubEnv('VERCEL_ENV', 'production');
+    expect(() => loadConfig({ NODE_ENV: 'production' })).toThrow(/TELEGRAM_BOT_TOKEN/);
   });
 });

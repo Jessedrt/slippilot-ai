@@ -16,6 +16,8 @@ import { registerDeskRoutes } from './desk-routes.js';
 import { registerIntelligenceRoutes } from './intelligence-routes.js';
 import { registerSlipEditorRoutes } from './slip-editor-routes.js';
 import { registerWatchRoutes } from './watch-routes.js';
+import { registerNewsRoutes } from './news-routes.js';
+import type { WebResearchProvider } from '../you/provider.js';
 import type { WatchService } from '../watch/watch-service.js';
 
 interface TelegramWebhook {
@@ -29,6 +31,7 @@ export async function createServer(
   telegram?: TelegramWebhook,
   miniApp?: MiniAppDependencies,
   watch?: { service: WatchService; cronSecret?: string },
+  news?: { provider: Pick<WebResearchProvider, 'search'>; enabled: boolean },
 ) {
   const app = Fastify({ loggerInstance: logger, bodyLimit: 8_500_000, requestTimeout: 60_000 });
   await app.register(sensible);
@@ -62,6 +65,7 @@ export async function createServer(
   });
   registerAdminRoutes(app as unknown as FastifyInstance, dependencies);
   if (miniApp) {
+    // Register the signed Telegram preHandler before every /api/miniapp/* feature.
     registerMiniAppRoutes(app as unknown as FastifyInstance, miniApp);
     registerBookingCodeAnalysisRoute(app as unknown as FastifyInstance, miniApp);
     registerCodeWorkspaceRoutes(app as unknown as FastifyInstance, miniApp);
@@ -69,6 +73,7 @@ export async function createServer(
     registerDeskRoutes(app as unknown as FastifyInstance, miniApp.sportyBet);
     registerIntelligenceRoutes(app as unknown as FastifyInstance, miniApp);
     registerSlipEditorRoutes(app as unknown as FastifyInstance, miniApp);
+    if (news) registerNewsRoutes(app as unknown as FastifyInstance, news.provider, news.enabled);
     if (watch) registerWatchRoutes(app as unknown as FastifyInstance, watch.service, watch.cronSecret);
   }
   app.setErrorHandler((error, request, reply) => {
