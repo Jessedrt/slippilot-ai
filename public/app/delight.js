@@ -1,9 +1,16 @@
 // Progressive visual enhancement only. app.js owns navigation, odds and slip logic.
-// This single final stylesheet normalizes the earlier overlapping visual layers.
+// Keep production behaviour untouched: this preview branch alone loads the redesign.
 const stabilityStyle = document.createElement('link');
 stabilityStyle.rel = 'stylesheet';
 stabilityStyle.href = '/app/stability.css?v=6.0.0';
 document.head.append(stabilityStyle);
+const previewStyle = document.createElement('link');
+previewStyle.rel = 'stylesheet';
+previewStyle.href = '/app/redesign-preview.css?v=1.0.0';
+document.head.append(previewStyle);
+void import('./redesign-preview.js?v=1.0.0').catch((error) => {
+  console.error('Aurex design preview failed to initialize.', error);
+});
 
 const shell = document.querySelector('.app-shell');
 const tabs = [...document.querySelectorAll('.bottom-nav button[data-view]')];
