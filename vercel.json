@@ -16,7 +16,7 @@
     }
   ],
   "routes": [
-    { "src": "/", "dest": "/api" },
+    { "src": "/", "headers": { "Location": "/app/" }, "status": 307 },
     { "handle": "filesystem" },
     { "src": "/.*", "dest": "/api" }
   ],
