@@ -3,6 +3,7 @@ import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto
 import { z } from 'zod';
 import type { SlipAnalyzer } from '../ai/slip-analyzer.js';
 import { MIN_AI_QUALITY_SCORE, passesAiQuality } from '../ai/quality-gate.js';
+import { minimumQualityForTarget } from '../ai/quality-policy.js';
 import { chooseVariedMarket } from '../sportybet/discovery.js';
 import { isAllowedBasketballOverMarket } from '../sportybet/basketball-over-markets.js';
 import type { SportyBetProvider } from '../sportybet/contracts.js';
@@ -78,12 +79,16 @@ export function registerSlipEditorRoutes(
   app.post('/api/miniapp/edit-slip', async (request, reply) => {
     const input = editorSchema.parse(request.body);
     const initData = request.headers['x-telegram-init-data'];
-    const minimum = deps.telegramBotToken && typeof initData === 'string'
+    const signedMinimum = deps.telegramBotToken && typeof initData === 'string'
       ? verifiedMinimum(input.analysisToken, input.selections, initData, deps.telegramBotToken)
       : null;
-    if (minimum === null || !deps.telegramBotToken || typeof initData !== 'string') {
+    if (signedMinimum === null || !deps.telegramBotToken || typeof initData !== 'string') {
       return reply.unauthorized('Analysis expired or does not match this slip. Analyze the code or rebuild.');
     }
+    // A newly requested 2.00 or 5.00 target can raise a signed non-preset 55 floor
+    // to 68; subsequent edits cannot lower that signed threshold again.
+    const minimum = Math.max(signedMinimum,
+      minimumQualityForTarget(input.targetOdds, input.riskMode));
     const getEvent = new Map<string, ReturnType<SportyBetProvider['getEvent']>>();
     const getMarkets = new Map<string, ReturnType<SportyBetProvider['getMarkets']>>();
     const refresh = async (selection: Selected): Promise<CandidateSelection> => {
@@ -169,6 +174,8 @@ export function registerSlipEditorRoutes(
         marketName: pick.marketName, selectionName: pick.selectionName,
         odds: pick.odds, confidence: Math.max(0, Math.min(99, review.confidence)), risk: review.risk };
     });
+    const oddsChanged = selections.some((item, index) => item.odds !== input.selections[index]?.odds);
+    selections.sort((left, right) => right.confidence - left.confidence);
     return { slipId: randomUUID(), sport: selections[0]!.sport,
       riskMode: input.riskMode, targetOdds: input.targetOdds ?? null,
       qualityMinimum: minimum, requestedGames: selections.length,
@@ -177,7 +184,7 @@ export function registerSlipEditorRoutes(
       combinedOdds: selections.reduce((total, item) => total * item.odds, 1),
       averageConfidence: selections.reduce((total, item) => total + item.confidence, 0) / selections.length,
       summary: `AI pass mark ${minimum}/100 (quality, not win probability). ${analysis.summary}`, rejected: 0,
-      oddsChanged: selections.some((item, index) => item.odds !== input.selections[index]?.odds),
+      oddsChanged,
       analysisToken: signedToken(selections, initData, deps.telegramBotToken, minimum) };
   });
 }
