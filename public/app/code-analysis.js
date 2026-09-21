@@ -1,4 +1,4 @@
-import './code-workspace.js?v=5.4.0';
+import './code-workspace.js?v=6.1.0';
 import './schedule-hints.js?v=5.4.0';
 import './sports-extension.js?v=5.5.0';
 
@@ -65,7 +65,7 @@ if (codeForm && codeInput && resultPanel) {
         <p class="analysis-meta">${encode(data.code)} · ${data.selections.length} verified of ${Number(data.count) || data.selections.length} original selections · current verified odds ${displayOdds(data.combinedOdds)}</p>
         <p class="analysis-summary">${encode(data.summary)}</p>${excludedHtml}${items}
         <p class="analysis-disclaimer">${encode(data.disclaimer || 'AI scores are not win probabilities. No bet was placed.')}</p>
-        ${editableCount ? `<p class="analysis-summary">${editableCount} qualified selection(s) are available for editing below. All changes require a fresh AI review.</p>` : '<p class="analysis-warning">No selection qualified for editing. There is no new booking code.</p>'}`);
+        ${editableCount ? `<p class="analysis-summary">${editableCount} qualified selection(s) are available for editing below. Enter your maximum odds and tap Trim & generate NEW code; changes are rechecked automatically.</p>` : '<p class="analysis-warning">No selection qualified for editing. There is no new booking code.</p>'}`);
       document.dispatchEvent(new CustomEvent('aurex:code-analyzed', {
         detail: { code: data.code, analyzedAt: data.analyzedAt, summary: data.summary,
           combinedOdds: data.combinedOdds, selections: data.selections,
