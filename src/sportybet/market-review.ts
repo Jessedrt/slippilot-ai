@@ -1,12 +1,13 @@
 import type { SlipAnalyzer, SlipAnalysis } from '../ai/slip-analyzer.js';
-import { MIN_AI_QUALITY_SCORE, passesAiQuality } from '../ai/quality-gate.js';
+import { passesAiQuality } from '../ai/quality-gate.js';
+import { minimumQualityForTarget } from '../ai/quality-policy.js';
 import type { CandidateSelection, NormalizedMarket, RiskMode, Sport } from '../types/domain.js';
 import type { ProviderSelection, SportyBetProvider } from './contracts.js';
 import { isAllowedBasketballOverMarket } from './basketball-over-markets.js';
 import { buildLiveSlipSnapshot, marketFamily, type LiveSlipSnapshot } from './discovery.js';
 import { selectTwoOddsPicks } from './two-odds-preset.js';
 
-/** A review can compare market evidence; its scores are NOT calibrated win probabilities. */
+/** Review confidence measures evidence quality, NOT the probability of winning. */
 export class MarketReviewUnavailableError extends Error {
   readonly statusCode = 424;
   constructor() {
@@ -14,34 +15,26 @@ export class MarketReviewUnavailableError extends Error {
     this.name = 'MarketReviewUnavailableError';
   }
 }
-
 export interface ReviewedSnapshot extends LiveSlipSnapshot {
   analysis: SlipAnalysis;
   rejectedOptions: number;
   reviewedOptions: number;
 }
-
 const identity = (market: NormalizedMarket): string =>
   [market.eventId, market.providerMarketId, market.providerSelectionId, market.specifier ?? ''].join('|');
-
 const bookingIdentity = (selection: ProviderSelection): string =>
   [selection.eventId, selection.marketId, selection.selectionId, selection.specifier ?? ''].join('|');
-
 const toBookingSelection = (candidate: CandidateSelection): ProviderSelection => ({
   eventId: candidate.eventId, marketId: candidate.providerMarketId,
   selectionId: candidate.providerSelectionId, odds: candidate.odds,
   ...(candidate.specifier != null ? { specifier: candidate.specifier } : {}),
 });
-
 export const validMarket = (market: NormalizedMarket, sport: Sport, eventId: string): boolean =>
   market.eventId === eventId && market.sport === sport && market.status === 'active' &&
   (sport !== 'basketball' || isAllowedBasketballOverMarket(market)) &&
   Number.isFinite(market.odds) && market.odds > 1.01 && market.odds <= 1000;
 
-/**
- * Compare active supplier outcomes, excluding basketball handicap/spread by
- * user preference. All other categories and both Over/Under directions remain.
- */
+/** Compare several market families on each real event instead of blindly using the first pick. */
 export function shortlistMarketOptions(
   markets: NormalizedMarket[], sport: Sport, eventId: string, targetPerLeg: number,
   maxOptions = 5,
@@ -69,7 +62,6 @@ export function shortlistMarketOptions(
   }
   return result;
 }
-
 function reviewScore(review: SlipAnalysis['selections'][number], odds: number,
   target: number, riskMode: RiskMode): number {
   const risk = { lower: 0, medium: 4, higher: 9 }[review.risk];
@@ -78,13 +70,7 @@ function reviewScore(review: SlipAnalysis['selections'][number], odds: number,
   return (review.verdict === 'keep' ? 15 : 0) + review.confidence -
     risk * riskWeight - pricePenalty;
 }
-
-/**
- * Refresh exactly the selected outcome, rather than treating its presence in an
- * event's generic market feed as proof that SportyBet can create a share code.
- * A missing outcome can be skipped, but a provider outage cannot be passed off
- * as a suspended selection. Material odds changes require a fresh AI review.
- */
+/** Refresh the exact outcome. A missing outcome is skippable; outages are not. */
 async function preflightOption(provider: SportyBetProvider,
   candidate: CandidateSelection): Promise<CandidateSelection | null> {
   if (!provider.refreshSelections) return candidate;
@@ -93,8 +79,7 @@ async function preflightOption(provider: SportyBetProvider,
   try {
     refreshed = await provider.refreshSelections([requested]);
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith('SportyBet selection unavailable:'))
-      return null;
+    if (error instanceof Error && error.message.startsWith('SportyBet selection unavailable:')) return null;
     throw new MarketReviewUnavailableError();
   }
   const exact = refreshed.filter((selection) =>
@@ -106,24 +91,17 @@ async function preflightOption(provider: SportyBetProvider,
   return { ...candidate, odds: updatedOdds };
 }
 
-/** Review distinct active market choices for each real fixture before choosing one per match. */
 export async function buildReviewedLiveSlipSnapshot(
   provider: SportyBetProvider, analyzer: SlipAnalyzer, sport: Sport,
   gameCount: number, targetOdds?: number, riskMode: RiskMode = 'balanced',
 ): Promise<ReviewedSnapshot> {
   if (!Number.isSafeInteger(gameCount) || gameCount < 1) throw new Error('Invalid game count.');
-  // The 2.00 shortcut sets conservative risk mode. Prioritize evidence quality
-  // and less ambitious prices; never force a caution pick to make 2.00 exactly.
+  const minimum = minimumQualityForTarget(targetOdds, riskMode);
   const cautiousTwoOdds = riskMode === 'conservative' && targetOdds === 2;
-  // Cache a single provider snapshot per event within the request: no doubled calls or
-  // inconsistent odds between fixture discovery and the alternatives being reviewed.
   const marketCache = new Map<string, Promise<NormalizedMarket[]>>();
   const getCachedMarkets = (id: string): Promise<NormalizedMarket[]> => {
     let promise = marketCache.get(id);
-    if (!promise) {
-      promise = provider.getMarkets(id);
-      marketCache.set(id, promise);
-    }
+    if (!promise) { promise = provider.getMarkets(id); marketCache.set(id, promise); }
     return promise;
   };
   const cachedProvider: SportyBetProvider = {
@@ -136,8 +114,6 @@ export async function buildReviewedLiveSlipSnapshot(
     createBookingCode: (selections) => provider.createBookingCode(selections),
     health: () => provider.health(),
   };
-  // Inspect more than the requested game count. A fixture whose displayed market
-  // is active may have no bookable outcome, and AI may reject other fixtures.
   const inspectCount = Math.min(60, Math.max(gameCount + 8, gameCount * 2));
   const snapshot = await buildLiveSlipSnapshot(cachedProvider, sport, inspectCount, targetOdds);
   const targetPerLeg = Math.max(1.05, Math.pow(targetOdds ?? 3, 1 / Math.max(1, gameCount)));
@@ -145,27 +121,19 @@ export async function buildReviewedLiveSlipSnapshot(
   const optionsPerFixture = Math.max(1, Math.min(5, Math.floor(60 / snapshot.slip.selections.length)));
   for (const original of snapshot.slip.selections) {
     let markets: NormalizedMarket[];
-    try {
-      markets = await getCachedMarkets(original.eventId);
-    } catch {
-      throw new MarketReviewUnavailableError();
-    }
+    try { markets = await getCachedMarkets(original.eventId); }
+    catch { throw new MarketReviewUnavailableError(); }
     const choices = shortlistMarketOptions(markets, sport, original.eventId,
       targetPerLeg, optionsPerFixture);
     for (const choice of choices) {
-      options.push({ ...original, ...choice,
-        modelProbability: 0, confidenceScore: 0,
-        reasoning: ['Provider-listed active alternative awaiting AI review and exact booking verification.'],
-      });
+      options.push({ ...original, ...choice, modelProbability: 0, confidenceScore: 0,
+        reasoning: ['Provider-listed active alternative awaiting AI review and exact booking verification.'] });
     }
   }
   if (!options.length) throw new MarketReviewUnavailableError();
   let analysis: SlipAnalysis;
-  try {
-    analysis = await analyzer.analyze(options);
-  } catch {
-    throw new MarketReviewUnavailableError();
-  }
+  try { analysis = await analyzer.analyze(options); }
+  catch { throw new MarketReviewUnavailableError(); }
   const reviews = new Map(analysis.selections.map((review) => [review.index, review]));
   if (reviews.size !== options.length || options.some((_option, index) => !reviews.has(index + 1))) {
     throw new MarketReviewUnavailableError();
@@ -175,7 +143,7 @@ export async function buildReviewedLiveSlipSnapshot(
   const ranked = new Map<string, RankedChoice[]>();
   for (const [index, candidate] of options.entries()) {
     const review = reviews.get(index + 1)!;
-    if (!passesAiQuality(review)) continue;
+    if (!passesAiQuality(review, minimum)) continue;
     if (cautiousTwoOdds && (review.verdict !== 'keep' || review.risk !== 'lower')) continue;
     const score = reviewScore(review, candidate.odds, targetPerLeg, riskMode);
     const alternatives = ranked.get(candidate.eventId) ?? [];
@@ -183,9 +151,6 @@ export async function buildReviewedLiveSlipSnapshot(
     ranked.set(candidate.eventId, alternatives);
   }
   const verifiedChoices: RankedChoice[] = [];
-  // Preserve the fixture order produced by kickoff-window balancing for normal
-  // builds. For the 2.00 conservative shortcut, verify ALL reviewed fixtures
-  // before comparing evidence quality and spreading picks across kickoff windows.
   for (const fixture of snapshot.slip.selections) {
     if (!cautiousTwoOdds && verifiedChoices.length >= gameCount) break;
     const alternatives = (ranked.get(fixture.eventId) ?? [])
@@ -202,16 +167,16 @@ export async function buildReviewedLiveSlipSnapshot(
     : verifiedChoices;
   if (!picks.length) {
     const error = new Error(cautiousTwoOdds
-      ? `No fully reviewed lower-risk, bookable selections met the 2.00 preset and ${MIN_AI_QUALITY_SCORE}/100 AI quality minimum. Try again later or choose a different risk mode; no code was prepared.`
+      ? `No fully reviewed lower-risk, bookable selections met the 2.00 preset and ${minimum}/100 AI quality minimum. Try again later or choose a different risk mode; no code was prepared.`
       : ranked.size
         ? 'None of the AI-reviewed markets could be verified for booking. Try rebuilding when SportyBet updates its outcomes; no code was created.'
-        : `No AI-reviewed market reached the ${MIN_AI_QUALITY_SCORE}/100 quality minimum without rejection. Fewer picks are returned rather than lowering the pass mark; no booking code was prepared.`);
+        : `No AI-reviewed market reached the ${minimum}/100 quality minimum without rejection. Fewer picks are returned rather than lowering the pass mark; no booking code was prepared.`);
     Object.assign(error, { statusCode: 409 });
     throw error;
   }
   const selections = picks.map(({ candidate, review }) => ({ ...candidate,
     confidenceScore: review.confidence,
-    modelProbability: 0, // Evidence quality is not a calibrated winning probability.
+    modelProbability: 0,
     riskLevel: review.risk,
     reasoning: [review.reason, provider.refreshSelections
       ? 'Exact outcome verified by SportyBet before selection; rechecked when booking. No win is guaranteed.'
@@ -226,9 +191,9 @@ export async function buildReviewedLiveSlipSnapshot(
     combinedOdds: Number(selections.reduce((odds, selection) => odds * selection.odds, 1).toFixed(2)),
     analysis: { ...analysis,
       selections: picks.map(({ review }, index) => ({ ...review, index: index + 1 })),
-      summary: `${conservativeSummary}AI pass mark ${MIN_AI_QUALITY_SCORE}/100 (quality, not win probability). Compared ${options.length} active alternatives across ${snapshot.slip.selections.length} fixtures. ${provider.refreshSelections ? `Verified ${picks.length} exact booking outcomes. ` : ''}${analysis.summary}`.slice(0, 600),
+      summary: `${conservativeSummary}AI pass mark ${minimum}/100 (quality, not win probability). Compared ${options.length} active alternatives across ${snapshot.slip.selections.length} fixtures. ${provider.refreshSelections ? `Verified ${picks.length} exact booking outcomes. ` : ''}${analysis.summary}`.slice(0, 600),
     },
-    rejectedOptions: analysis.selections.filter((item) => !passesAiQuality(item)).length,
+    rejectedOptions: analysis.selections.filter((item) => !passesAiQuality(item, minimum)).length,
     reviewedOptions: options.length,
   };
 }
