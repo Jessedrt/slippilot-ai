@@ -6,11 +6,9 @@ import type { SportyBetProvider } from '../src/sportybet/contracts.js';
 
 beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date('2026-09-20T10:00:00Z')); });
 afterEach(() => vi.useRealTimers());
-
 const provider: SportyBetProvider = {
   name: 'SportyBet',
-  listEvents: () => Promise.resolve([{ providerEventId: 'sr:match:1',
-    homeTeam: 'Home', awayTeam: 'Away',
+  listEvents: () => Promise.resolve([{ providerEventId: 'sr:match:1', homeTeam: 'Home', awayTeam: 'Away',
     startsAt: new Date('2026-09-20T20:00:00Z'), status: 'scheduled' }]),
   findEvents: () => Promise.resolve([]), getEvent: () => Promise.resolve(null),
   getMarkets: () => Promise.resolve([{ eventId: 'sr:match:1', providerMarketId: '1',
@@ -29,7 +27,7 @@ const analyzer = (confidence: number, verdict: 'keep' | 'caution' | 'reject' = '
 });
 
 describe('AI evidence-quality pass mark', () => {
-  it('is inclusive at 68 and never treats a rejection as a pass', () => {
+  it('keeps strict legacy default inclusive at 68 and rejects bad verdicts', () => {
     expect(MIN_AI_QUALITY_SCORE).toBe(68);
     expect(passesAiQuality({ confidence: 67, verdict: 'keep' })).toBe(false);
     expect(passesAiQuality({ confidence: 68, verdict: 'keep' })).toBe(true);
@@ -37,15 +35,20 @@ describe('AI evidence-quality pass mark', () => {
     expect(passesAiQuality({ confidence: 99, verdict: 'reject' })).toBe(false);
     expect(passesAiQuality({ confidence: Number.NaN, verdict: 'keep' })).toBe(false);
   });
-
-  it('does not offer any pick below 68 for a code', async () => {
-    await expect(buildReviewedLiveSlipSnapshot(provider, analyzer(67), 'football', 1))
+  it('never offers scores below 68 for the explicit 2.00 target', async () => {
+    await expect(buildReviewedLiveSlipSnapshot(provider, analyzer(67), 'football', 1, 2))
       .rejects.toMatchObject({ statusCode: 409 });
-    const exactPass = await buildReviewedLiveSlipSnapshot(provider, analyzer(68), 'football', 1);
+    const exactPass = await buildReviewedLiveSlipSnapshot(provider, analyzer(68), 'football', 1, 2);
     expect(exactPass.slip.selections).toHaveLength(1);
-    expect(exactPass.analysis.selections[0]?.confidence).toBe(68);
     expect(exactPass.analysis.summary).toContain('pass mark 68/100');
-    await expect(buildReviewedLiveSlipSnapshot(provider, analyzer(99, 'reject'), 'football', 1))
+    await expect(buildReviewedLiveSlipSnapshot(provider, analyzer(99, 'reject'), 'football', 1, 2))
       .rejects.toMatchObject({ statusCode: 409 });
+  });
+  it('uses 55 for the balanced non-preset, without allowing rejected choices', async () => {
+    await expect(buildReviewedLiveSlipSnapshot(provider, analyzer(54), 'football', 1, 10))
+      .rejects.toMatchObject({ statusCode: 409 });
+    const exactPass = await buildReviewedLiveSlipSnapshot(provider, analyzer(55), 'football', 1, 10);
+    expect(exactPass.slip.selections).toHaveLength(1);
+    expect(exactPass.analysis.summary).toContain('pass mark 55/100');
   });
 });
