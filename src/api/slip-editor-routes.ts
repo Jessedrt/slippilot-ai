@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import type { SlipAnalyzer } from '../ai/slip-analyzer.js';
-import { MIN_AI_QUALITY_SCORE, passesAiQuality } from '../ai/quality-gate.js';
+import { MIN_AI_QUALITY_SCORE, minimumAiQualityScore, passesAiQuality } from '../ai/quality-gate.js';
 import { chooseVariedMarket } from '../sportybet/discovery.js';
 import { isAllowedBasketballOverMarket } from '../sportybet/basketball-over-markets.js';
 import type { SportyBetProvider } from '../sportybet/contracts.js';
@@ -41,26 +41,37 @@ const key = (item: Selected) => {
   return item.specifier == null ? base : `${base}\u0000${item.specifier}`;
 };
 const session = (initData: string) => createHash('sha256').update(initData).digest('base64url');
-function verifiedToken(token: string, selections: Selected[], initData: string, botToken: string): boolean {
+/** Validate source identities, original AI scores and the signed quality minimum. */
+function verifiedToken(token: string, selections: Selected[], initData: string,
+  botToken: string): number | null {
   const [payload, signature, extra] = token.split('.');
-  if (!payload || !signature || extra) return false;
+  if (!payload || !signature || extra) return null;
   const expected = createHmac('sha256', botToken)
     .update(`aurex-miniapp-analysis-v1.${payload}`).digest('base64url');
   const left = Buffer.from(signature);
   const right = Buffer.from(expected);
-  if (left.length !== right.length || !timingSafeEqual(left, right)) return false;
+  if (left.length !== right.length || !timingSafeEqual(left, right)) return null;
   try {
     const data: unknown = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
     const claim = z.object({ expiresAt: z.number(), session: z.string(),
-      selections: z.array(z.string()) }).parse(data);
-    const approved = new Set(claim.selections);
-    return claim.expiresAt >= Date.now() && claim.session === session(initData) &&
-      selections.every((item) => approved.has(key(item)));
-  } catch { return false; }
+      selections: z.array(z.string()), minimumScore: z.number().optional(),
+      scores: z.array(z.number()).optional() }).parse(data);
+    if (claim.expiresAt < Date.now() || claim.session !== session(initData) ||
+      (claim.scores && claim.scores.length !== claim.selections.length)) return null;
+    // Legacy tokens use 68 until expiry and cannot silently switch to 55.
+    const minimumScore = claim.minimumScore ?? MIN_AI_QUALITY_SCORE;
+    if (![50, 55, 60, 68].includes(minimumScore)) return null;
+    const approved = new Map(claim.selections.map((identity, index) => [identity, claim.scores?.[index]]));
+    const valid = selections.every((item) => approved.has(key(item)) &&
+      (claim.scores === undefined || approved.get(key(item)) === item.confidence));
+    return valid ? minimumScore : null;
+  } catch { return null; }
 }
-function signedToken(selections: Selected[], initData: string, botToken: string): string {
+function signedToken(selections: Selected[], initData: string, botToken: string,
+  minimumScore: number): string {
   const payload = Buffer.from(JSON.stringify({ expiresAt: Date.now() + 30 * 60_000,
-    session: session(initData), selections: selections.map(key) })).toString('base64url');
+    session: session(initData), selections: selections.map(key), minimumScore,
+    scores: selections.map((item) => item.confidence) })).toString('base64url');
   const signature = createHmac('sha256', botToken)
     .update(`aurex-miniapp-analysis-v1.${payload}`).digest('base64url');
   return `${payload}.${signature}`;
@@ -73,10 +84,14 @@ export function registerSlipEditorRoutes(
   app.post('/api/miniapp/edit-slip', async (request, reply) => {
     const input = editorSchema.parse(request.body);
     const initData = request.headers['x-telegram-init-data'];
-    if (!deps.telegramBotToken || typeof initData !== 'string' ||
-        !verifiedToken(input.analysisToken, input.selections, initData, deps.telegramBotToken)) {
+    if (!deps.telegramBotToken || typeof initData !== 'string') {
+      return reply.unauthorized('Open the Mini App from Telegram before editing your slip.');
+    }
+    const signedMinimum = verifiedToken(input.analysisToken, input.selections, initData, deps.telegramBotToken);
+    if (signedMinimum === null) {
       return reply.unauthorized('Analysis expired or does not match this slip. Analyze the code or rebuild.');
     }
+    const minimumScore = Math.max(signedMinimum, minimumAiQualityScore(input.targetOdds, input.riskMode));
     const getEvent = new Map<string, ReturnType<SportyBetProvider['getEvent']>>();
     const getMarkets = new Map<string, ReturnType<SportyBetProvider['getMarkets']>>();
     const refresh = async (selection: Selected): Promise<CandidateSelection> => {
@@ -146,10 +161,10 @@ export function registerSlipEditorRoutes(
     if (reviews.size !== original.length || original.some((_pick, index) => !reviews.has(index + 1))) {
       throw new EditConflict('AI did not review every selection; the original slip is unchanged.');
     }
-    const failed = analysis.selections.filter((item) => !passesAiQuality(item));
+    const failed = analysis.selections.filter((item) => !passesAiQuality(item, minimumScore));
     if (failed.length) {
       const numbers = failed.map((item) => `#${item.index}`).join(', ');
-      throw new EditConflict(`Selection(s) ${numbers} did not meet the ${MIN_AI_QUALITY_SCORE}/100 AI quality pass mark or were rejected. Remove or replace them and reanalyze. The original slip is unchanged; no code was created.`);
+      throw new EditConflict(`Selection(s) ${numbers} did not meet the ${minimumScore}/100 AI quality pass mark or were rejected. Remove or replace them and reanalyze. The original slip is unchanged; no code was created.`);
     }
     const selections: Selected[] = original.map((pick, index) => {
       const review = reviews.get(index + 1)!;
@@ -164,12 +179,13 @@ export function registerSlipEditorRoutes(
     });
     return { slipId: randomUUID(), sport: selections[0]!.sport,
       riskMode: input.riskMode, targetOdds: input.targetOdds ?? null,
+      minimumQualityScore: minimumScore,
       requestedGames: selections.length, availableGames: selections.length, shortfall: 0,
       schedule: 'Refreshed provider markets', selections,
       combinedOdds: selections.reduce((total, item) => total * item.odds, 1),
       averageConfidence: selections.reduce((total, item) => total + item.confidence, 0) / selections.length,
-      summary: `AI pass mark ${MIN_AI_QUALITY_SCORE}/100 (quality, not win probability). ${analysis.summary}`, rejected: 0,
+      summary: `AI pass mark ${minimumScore}/100 (quality, not win probability). ${analysis.summary}`, rejected: 0,
       oddsChanged: selections.some((item, index) => item.odds !== input.selections[index]?.odds),
-      analysisToken: signedToken(selections, initData, deps.telegramBotToken) };
+      analysisToken: signedToken(selections, initData, deps.telegramBotToken, minimumScore) };
   });
 }
