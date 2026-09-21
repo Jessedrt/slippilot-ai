@@ -62,7 +62,7 @@
           </form>
           <details class="help-panel">
             <summary>How is the match count estimated?</summary>
-            <p>AUREX uses your target and risk mode to estimate a count before analyzing available fixtures. It may return fewer selections or different combined odds. AI scores are not winning probabilities.</p>
+            <p>AUREX uses your target and risk mode to estimate a count before analyzing available fixtures. It may return fewer selections or different combined odds. AI scores are not win probabilities.</p>
           </details>
           <div class="loading-card hidden" id="loading"><div class="pulse"></div><div><b>Reviewing markets</b><span id="loading-label">Finding suitable fixtures…</span></div></div>
           <div class="notice hidden" id="build-error" role="alert"></div>
@@ -72,7 +72,7 @@
           <div class="tool-grid">
             <form class="tool-card" id="read-code-form"><span class="tool-icon">#</span><div><h3>Booking code · edit &amp; trim</h3><p>Verify each current selection, choose a specific alternative market or trim your code to a target.</p></div><input id="read-code" maxlength="20" placeholder="Paste code" aria-label="Booking code" required /><button type="submit">Analyze &amp; edit code</button></form>
             <form class="tool-card" id="x-form"><span class="tool-icon">𝕏</span><div><h3>X / Twitter post</h3><p>Extract public booking codes from post text.</p></div><input id="x-url" type="url" placeholder="https://x.com/…/status/…" aria-label="X post URL" required /><button type="submit">Read post</button></form>
-            <form class="tool-card" id="shot-form"><span class="tool-icon">▣</span><div><h3>Slip screenshot</h3><p>Extract teams, markets, odds and visible codes. PNG, JPG or WebP; maximum 6 MB.</p></div><label class="upload"><input id="shot-file" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Choose a slip screenshot" required /><span>Choose screenshot</span></label><button type="submit">Analyze image</button></form>
+            <form class="tool-card" id="shot-form"><span class="tool-icon">▣</span><div><h3>Slip screenshot</h3><p>Extract teams, markets, odds and visible codes. PNG, JPG or WebP; maximum 6 MB.</p></div><label class="upload"><input id="shot-file" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Choose slip screenshot" required /><span>Choose screenshot</span></label><button type="submit">Analyze image</button></form>
           </div>
           <div id="analysis-status" class="analysis-status hidden" role="status" aria-live="polite"></div>
           <div class="result-panel hidden" id="analysis-result"></div>
@@ -102,7 +102,7 @@
             <p class="desk-note">SportyBet-supplied schedule. Listings do not guarantee active odds or a bookable market.</p>
           </section>
           <section class="desk-panel" aria-labelledby="watch-heading">
-            <div class="desk-heading"><div><span class="eyebrow">TRACKED MATCHES</span><h3 id="watch-heading">Watchlist</h3></div><button type="button" id="refresh-watchlist">Refresh</button><p id="watch-status" class="desk-status" role="status" aria-live="polite"></p>
+            <div class="desk-heading"><div><span class="eyebrow">TRACKED MATCHES</span><h3>Watchlist</h3></div><button type="button" id="refresh-watchlist">Refresh</button><p id="watch-status" class="desk-status" role="status" aria-live="polite"></p></div>
             <div id="watch-items" class="desk-rows"></div>
           </section>
           <section class="desk-panel" aria-labelledby="history-heading">
@@ -128,7 +128,7 @@
     <script type="module" src="/app/delight.js?v=4.6.0"></script>
     <script type="module" src="/app/glass-drag.js?v=4.7.0"></script>
     <script type="module" src="/app/glass-feel.js?v=4.9.0"></script>
-    <script type="module" src="/app/code-analysis.js?v=6.2.0"></script>
+    <script type="module" src="/app/code-analysis.js?v=7.0.0"></script>
     <script type="module" src="/app/desk.js?v=5.0.0"></script>
     <script type="module" src="/app/intelligence.js?v=5.2.0"></script>
     <script type="module" src="/app/watch-sync.js?v=5.3.0"></script>
