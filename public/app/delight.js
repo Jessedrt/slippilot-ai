@@ -8,6 +8,10 @@ const previewStyle = document.createElement('link');
 previewStyle.rel = 'stylesheet';
 previewStyle.href = '/app/redesign-preview.css?v=1.0.0';
 document.head.append(previewStyle);
+const layoutStyle = document.createElement('link');
+layoutStyle.rel = 'stylesheet';
+layoutStyle.href = '/app/redesign-layout-fixes.css?v=1.0.1';
+document.head.append(layoutStyle);
 void import('./redesign-preview.js?v=1.0.0').catch((error) => {
   console.error('Aurex design preview failed to initialize.', error);
 });
