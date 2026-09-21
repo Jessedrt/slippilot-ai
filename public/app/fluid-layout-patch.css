@@ -1,0 +1,39 @@
+/* Layout corrections for the four-screen preview. All controls stay visible and usable. */
+@media(max-width:849px){
+ body.aurex-fluid .app-shell #build-view.active{display:flex;flex-direction:column;align-items:stretch}
+ body.aurex-fluid #build-view .hero-copy{order:0}
+ body.aurex-fluid #build-view .aurex-presets-label{order:1}
+ body.aurex-fluid #build-view .quick-presets{order:2}
+ body.aurex-fluid #build-view .fluid-extra-presets{order:3;width:100%;margin-bottom:11px}
+ body.aurex-fluid #build-view .builder-card{order:4;width:100%}
+ body.aurex-fluid #build-view .build-steps{order:5}
+ body.aurex-fluid #build-view .fluid-slip-shortcut{order:6;width:100%}
+ body.aurex-fluid #build-view .help-panel{order:7;width:100%}
+ body.aurex-fluid #build-view .loading-card{order:8;width:100%}
+ body.aurex-fluid #build-view .notice{order:9;width:100%}
+ body.aurex-fluid .app-shell #explore-view .fluid-explore-feature{width:100%}
+}
+@media(min-width:850px){
+ body.aurex-fluid .app-shell{padding-left:0;padding-bottom:125px}
+ body.aurex-fluid .aurex-brandbar{margin:0 36px;height:87px}
+ body.aurex-fluid .app-shell .view{padding:26px 35px 42px;min-height:550px}
+ body.aurex-fluid .app-shell #build-view.active{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,1fr);
+  grid-template-rows:repeat(9,auto);
+  grid-template-areas:'hero form' 'presets form' 'quick form' 'extra form' 'steps form' 'shortcut form' 'help help' 'loading loading' 'error error';
+  gap:12px 19px;align-items:start;
+ }
+ body.aurex-fluid #build-view .hero-copy{grid-area:hero;min-height:300px}
+ body.aurex-fluid #build-view .aurex-presets-label{grid-area:presets;margin:0}
+ body.aurex-fluid #build-view .quick-presets{grid-area:quick;margin:0}
+ body.aurex-fluid #build-view .fluid-extra-presets{grid-area:extra;margin:0}
+ body.aurex-fluid #build-view .builder-card{grid-area:form}
+ body.aurex-fluid #build-view .build-steps{grid-area:steps;margin:0}
+ body.aurex-fluid #build-view .fluid-slip-shortcut{grid-area:shortcut;margin:0}
+ body.aurex-fluid #build-view .help-panel{grid-area:help}
+ body.aurex-fluid #build-view .loading-card{grid-area:loading}
+ body.aurex-fluid #build-view .notice{grid-area:error}
+ body.aurex-fluid .app-shell #explore-view.active{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+ body.aurex-fluid #explore-view>.section-title,body.aurex-fluid #explore-view>.fluid-explore-tabs,body.aurex-fluid #explore-view>.fluid-explore-feature,body.aurex-fluid #explore-view>.desk-shortcuts{grid-column:1/-1}
+ body.aurex-fluid #explore-view>.desk-panel{grid-column:1/-1}
+}

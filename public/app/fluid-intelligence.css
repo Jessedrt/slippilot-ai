@@ -1,0 +1,141 @@
+/* Fluid Intelligence: faithful neon blue/green concept translated into functional Aurex UI.
+   Final, preview-only cascade. Retain real controls, evidence and reduced-motion support. */
+:root{--bg:#07101d;--panel:#101e2e;--panel2:#162738;--ink:#f6fbff;--muted:#b1bfd0;--lime:#86f7c3;--line:rgba(164,206,246,.21);--fluid-cyan:#72ddff;--fluid-blue:#6894ff;--fluid-mint:#7effaf;--fluid-panel:rgba(18,34,53,.94);color-scheme:dark}
+html{background:#06101c}
+body.aurex-redesign.aurex-fluid{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#f6fbff;background:radial-gradient(ellipse 520px 560px at -11% 14%,rgba(17,173,157,.17),transparent 70%),radial-gradient(ellipse 550px 650px at 102% 46%,rgba(38,111,239,.16),transparent 75%),#06101b}
+body.aurex-fluid .app-shell{max-width:1160px;min-height:100dvh;background:radial-gradient(ellipse 460px 370px at 88% 2%,rgba(58,133,233,.17),transparent 78%),radial-gradient(ellipse 380px 490px at -11% 67%,rgba(28,219,153,.09),transparent 78%),linear-gradient(180deg,#081320,#070f1a);padding-bottom:calc(122px + var(--safe));}
+body.aurex-fluid .aurex-brandbar{border-bottom-color:rgba(156,205,241,.13);height:78px}
+body.aurex-fluid .aurex-brand-symbol{background:linear-gradient(130deg,#b3ffa0 8%,#67f3c7 46%,#538efa 96%);filter:drop-shadow(0 0 14px rgba(87,224,202,.28));width:35px;height:39px}
+body.aurex-fluid .aurex-brand-name{font-size:29px;letter-spacing:-.065em;color:#fff}
+body.aurex-fluid .aurex-brand-name>span{background:linear-gradient(90deg,#7df5bd,#80acff);background-clip:text;-webkit-background-clip:text;color:transparent}
+body.aurex-fluid .aurex-brand-name small{color:#b6c7db;letter-spacing:.34em;font-size:7px}
+body.aurex-fluid .aurex-preview-badge{color:#9dbcd3;letter-spacing:.11em}
+body.aurex-fluid .aurex-header-action{border-color:rgba(133,199,242,.23);color:#e5f5ff;background:linear-gradient(150deg,#162c40,#122338);border-radius:999px;min-height:40px}
+body.aurex-fluid .app-shell :is(.eyebrow,.fluid-kicker){color:#81eec5;letter-spacing:.18em;font-size:10px;font-weight:750}
+body.aurex-fluid .app-shell :is(.hero-copy h1,.section-title h2){font-size:clamp(31px,5.1vw,46px);line-height:1.04;letter-spacing:-.059em;color:#fff;font-weight:780}
+body.aurex-fluid .fluid-gradient-text,body.aurex-fluid .fluid-build-hero h1 span,body.aurex-fluid .fluid-explore-feature h3 span{background:linear-gradient(100deg,#9affbc 0%,#6ff1da 43%,#7aabff 100%);background-clip:text;-webkit-background-clip:text;color:transparent}
+body.aurex-fluid .app-shell .view{padding-top:19px}
+body.aurex-fluid .app-shell :is(.builder-card,.tool-card,.result-panel,.loading-card,.slip-summary,.empty-state,.desk-panel,.code-workspace,.analysis-status,.notice,.help-panel,.aurex-conversation){background:linear-gradient(151deg,rgba(24,45,65,.97),rgba(12,25,41,.98) 85%);border:1px solid rgba(140,190,240,.22);border-radius:22px;color:#f4faff;box-shadow:inset 0 1px 0 rgba(240,255,255,.07),0 16px 35px rgba(0,0,0,.16);backdrop-filter:none;-webkit-backdrop-filter:none}
+body.aurex-fluid .app-shell :is(.build-steps>div,.quick-presets button,.odds-estimate,.pick-row,.code-block,.desk-row,.watch53-row,.code-workspace-row,.insight-cell){background:linear-gradient(145deg,#182c41,#102135);border:1px solid rgba(152,198,234,.18);border-radius:17px;color:#f6fbff;box-shadow:inset 0 1px 0 rgba(255,255,255,.045)}
+body.aurex-fluid .app-shell :is(.field input,.field select,.tool-card input,.upload,.code-workspace-trim input,.aurex-chat-form input){background:#0d1b2b;color:#f7fbff;border-color:rgba(148,204,243,.3);border-radius:13px}
+body.aurex-fluid .app-shell input::placeholder{color:#90a5b7}
+body.aurex-fluid .app-shell :is(input,select,button,a,summary):focus-visible{outline:2px solid #7ceecf;outline-offset:3px}
+body.aurex-fluid .app-shell :is(.primary,.tool-card button[type='submit'],.code-workspace-trim button,.aurex-chat-form button){background:linear-gradient(103deg,#b4ffab 0%,#73f3d4 39%,#6abdfd 72%,#8997ff 100%);color:#082033;border:1px solid rgba(225,255,255,.66);border-radius:999px;min-height:50px;font-weight:800;box-shadow:0 0 23px rgba(87,244,200,.14),inset 0 1px 0 rgba(255,255,255,.55);transition:filter .2s,box-shadow .2s,transform .2s}
+body.aurex-fluid .app-shell :is(.primary,.tool-card button[type='submit'],.code-workspace-trim button):active{transform:scale(.984)}
+body.aurex-fluid .app-shell :is(.desk-heading button,.desk-shortcuts button,.desk-filter button,.code-workspace button,.aurex-chat-action,.empty-state button,.slip-actions button,.pick-actions button){border-radius:999px;border-color:rgba(152,202,241,.27);background:linear-gradient(145deg,#1e364e,#15283d);color:#d7edff}
+body.aurex-fluid .app-shell :is(.desk-note,.field-help,.tool-card p,.help-panel p,.empty-state p,.pick-row p,.aurex-chat-note,.code-workspace .desk-note){color:#aebfd0}
+/* Build: concept's hero and illuminated target card without inventing selections. */
+body.aurex-fluid .app-shell .fluid-build-hero{min-height:206px;padding:23px 23px 25px!important;background:radial-gradient(ellipse 270px 210px at 84% 28%,rgba(60,141,233,.17),transparent 78%),linear-gradient(145deg,rgba(20,42,61,.96),rgba(9,26,43,.97));border:1px solid rgba(111,213,230,.31);border-radius:25px;box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 20px 50px rgba(0,0,0,.17)}
+body.aurex-fluid .app-shell .fluid-build-hero .aurex-feature-kicker{display:block;margin:0 0 12px;color:#a6c3d7;letter-spacing:.16em;font-size:9px}
+body.aurex-fluid .app-shell .fluid-build-hero h1{max-width:460px;font-size:clamp(32px,6vw,50px);letter-spacing:-.058em;line-height:1.05;position:relative;z-index:1}
+body.aurex-fluid .app-shell .fluid-build-hero>p:last-of-type{color:#b8cad9;font-size:12px;margin-top:12px;max-width:305px;position:relative;z-index:1}
+body.aurex-fluid .app-shell .fluid-build-hero .aurex-hero-actions{margin-top:14px}
+body.aurex-fluid .app-shell .aurex-secondary-cta{background:rgba(47,110,133,.19);border-color:rgba(111,225,205,.38);border-radius:999px;color:#dcfff6;font-size:11px;min-height:39px}
+body.aurex-fluid .app-shell .aurex-hero-visual{width:205px;height:205px;right:0;bottom:-53px;opacity:.94;z-index:0;filter:drop-shadow(0 0 25px rgba(70,181,244,.15))}
+body.aurex-fluid .app-shell .aurex-orbit{border-color:rgba(74,208,244,.49);box-shadow:0 0 9px rgba(63,166,247,.1)}
+body.aurex-fluid .app-shell .aurex-orbit-two{border-color:rgba(113,255,189,.43)}
+body.aurex-fluid .app-shell .aurex-orbit-core{background:radial-gradient(circle at 32% 22%,#befff3 0%,#5deec5 10%,#14537b 37%,#153e93 62%,#07172b 78%);border:1px solid rgba(163,246,255,.5);box-shadow:0 0 22px rgba(73,178,247,.31),inset -9px -11px 25px #051426}
+body.aurex-fluid .app-shell .aurex-orbit-core span{font-size:0}
+body.aurex-fluid .app-shell .aurex-orbit-line{border-color:rgba(101,183,255,.34)}
+body.aurex-fluid .app-shell .fluid-build-form{position:relative;background:radial-gradient(ellipse 250px 170px at 100% 0%,rgba(49,179,209,.12),transparent 84%),linear-gradient(141deg,#183348,#0d1b2d);border:1px solid rgba(101,239,205,.43);padding:20px;gap:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 0 27px rgba(35,163,165,.08)}
+body.aurex-fluid .app-shell .aurex-card-heading{padding-bottom:13px;border-color:rgba(160,206,241,.15)}
+body.aurex-fluid .app-shell .aurex-card-heading h2{font-size:23px;color:#fff}
+body.aurex-fluid .app-shell .aurex-card-heading p{color:#abc5d6}
+body.aurex-fluid .app-shell .segmented{background:#0d2031;border-color:rgba(131,203,246,.2);border-radius:999px}
+body.aurex-fluid .app-shell .segmented span{border-radius:999px;color:#c3d4e2}
+body.aurex-fluid .app-shell .segmented input:checked+span{background:linear-gradient(100deg,#75efc3,#6cbfe9);color:#062033}
+body.aurex-fluid .app-shell .odds-estimate{background:linear-gradient(112deg,rgba(29,83,84,.52),rgba(21,42,71,.67));border-color:rgba(101,226,190,.3)}
+body.aurex-fluid .app-shell .odds-estimate strong{color:#afffd4;font-size:21px}
+body.aurex-fluid .app-shell .quick-presets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+body.aurex-fluid .app-shell .quick-presets button{background:linear-gradient(130deg,#193146,#102438);text-align:center;border-radius:15px;padding:12px 8px}
+body.aurex-fluid .app-shell .quick-presets button[aria-pressed='true'],body.aurex-fluid .app-shell .fluid-extra-presets button[aria-pressed='true']{background:linear-gradient(126deg,rgba(53,192,134,.34),rgba(34,125,196,.33));border-color:#79e8d7;box-shadow:0 0 15px rgba(76,211,195,.15)}
+body.aurex-fluid .app-shell .quick-presets span{font-size:15px;color:#fff}
+body.aurex-fluid .app-shell .quick-presets small{color:#a7c3d7}
+body.aurex-fluid .fluid-extra-presets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:-9px}
+body.aurex-fluid .fluid-extra-presets button{min-height:41px;background:linear-gradient(130deg,#193146,#102438);border:1px solid rgba(151,198,238,.24);border-radius:14px;color:#e6f7ff;font:inherit;font-weight:740}
+body.aurex-fluid .app-shell .build-steps{margin:13px 0 12px}
+body.aurex-fluid .app-shell .build-steps>div{background:#112438;border-color:rgba(131,185,226,.18)}
+body.aurex-fluid .app-shell .build-steps span{color:#81f8d2}
+body.aurex-fluid .fluid-slip-shortcut{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 0 14px;padding:17px;border-radius:19px;border:1px solid rgba(125,213,241,.26);background:linear-gradient(110deg,#173847,#13243e);box-shadow:inset 0 1px 0 rgba(255,255,255,.045)}
+body.aurex-fluid .fluid-slip-shortcut>div{display:grid;gap:5px;min-width:0}
+body.aurex-fluid .fluid-slip-shortcut strong{font-size:15px;color:#f1faff}
+body.aurex-fluid .fluid-slip-shortcut small{font-size:11px;color:#adc4d8;line-height:1.45}
+body.aurex-fluid .fluid-slip-shortcut button{flex:none;min-height:40px;padding:0 13px;border-radius:999px;border:1px solid rgba(114,219,227,.37);background:#173d4e;color:#e1fff8;font:inherit;font-weight:700;font-size:11px}
+/* Analyze: concept's luminous orb, but never fake analysis progress. */
+body.aurex-fluid .app-shell #analyze-view .section-title{text-align:center;padding-top:0;padding-bottom:22px}
+body.aurex-fluid .app-shell #analyze-view .section-title .eyebrow{margin-bottom:15px}
+body.aurex-fluid .app-shell #analyze-view .section-title h2{font-size:clamp(31px,6vw,43px)}
+body.aurex-fluid .app-shell #analyze-view .section-title>p:last-child{margin:10px auto 0;max-width:510px;color:#afc4d8}
+body.aurex-fluid .fluid-analyze-orb{width:160px;height:160px;position:relative;margin:4px auto 19px;filter:drop-shadow(0 0 19px rgba(54,174,236,.19));pointer-events:none}
+body.aurex-fluid .fluid-orb-core{position:absolute;inset:27px;border-radius:50%;border:1px solid rgba(150,244,255,.66);background:radial-gradient(circle at 32% 23%,#c5ffed 0%,#55edb9 8%,#236d8e 29%,#143e99 55%,#0c244b 76%);box-shadow:inset -9px -13px 28px rgba(2,14,36,.8),inset 1px 1px 7px rgba(255,255,255,.45),0 0 29px rgba(64,163,244,.24)}
+body.aurex-fluid .fluid-orb-core::after{content:'';position:absolute;left:27%;top:23%;width:18px;height:18px;background:#c0fff8;border-radius:50%;filter:blur(11px)}
+body.aurex-fluid .fluid-orb-ring{position:absolute;inset:39px 1px;border:1px solid rgba(90,203,255,.72);border-radius:50%;transform:rotate(-33deg) scaleY(.62);box-shadow:0 0 13px rgba(69,162,239,.17)}
+body.aurex-fluid .fluid-orb-ring-two{border-color:rgba(125,252,186,.61);transform:rotate(43deg) scaleY(.67)}
+body.aurex-fluid #analyze-view.fluid-analyzing .fluid-orb-ring{animation:fluid-orbit 3s linear infinite}
+body.aurex-fluid #analyze-view.fluid-analyzing .fluid-orb-ring-two{animation:fluid-orbit-reverse 4s linear infinite}
+@keyframes fluid-orbit{to{transform:rotate(327deg) scaleY(.62)}}
+@keyframes fluid-orbit-reverse{to{transform:rotate(-317deg) scaleY(.67)}}
+body.aurex-fluid .app-shell #read-code-form{background:radial-gradient(ellipse 200px 190px at 100% 0%,rgba(62,163,231,.16),transparent 82%),linear-gradient(146deg,#193247,#102137);border-color:rgba(111,215,224,.44);border-radius:22px}
+body.aurex-fluid .app-shell #read-code-form::after{border-color:rgba(88,209,239,.2);box-shadow:0 0 0 28px rgba(88,209,239,.025),0 0 0 55px rgba(88,209,239,.02)}
+body.aurex-fluid .app-shell .aurex-tool-badge{border-color:rgba(108,222,222,.3);color:#99fadc;border-radius:999px}
+body.aurex-fluid .app-shell #read-code-form .tool-icon{background:linear-gradient(143deg,#174c4a,#153c68);color:#85ffee;border-color:rgba(135,241,230,.3)}
+body.aurex-fluid .app-shell #read-code-form h3{color:#fff}
+body.aurex-fluid .app-shell .tool-card:not(#read-code-form) .tool-icon{background:#183b4a;color:#8eeede;border-color:rgba(133,206,232,.32)}
+body.aurex-fluid .app-shell .tool-card:not(#read-code-form) button{background:#1c364a;border-color:rgba(124,192,234,.3);color:#e0f5ff}
+body.aurex-fluid .app-shell #analysis-result{background:#112237;border-color:rgba(141,215,229,.26)}
+body.aurex-fluid .app-shell :is(.aurex-conversation,.code-workspace){background:linear-gradient(150deg,#162b41,#0d1c2f);border-color:rgba(117,202,236,.25)}
+body.aurex-fluid .app-shell :is(.aurex-chat-bubble,.code-workspace-row,.code-workspace-trim,.code-workspace-code){background:linear-gradient(145deg,#1a3047,#12253a);border-color:rgba(127,194,229,.2)}
+body.aurex-fluid .app-shell .code-workspace-score{color:#9fffcf;background:rgba(67,192,148,.13);border-color:rgba(111,234,179,.26)}
+body.aurex-fluid .app-shell .code-workspace-trim{background:linear-gradient(140deg,#163c41,#112a46);border-color:rgba(99,230,202,.3)}
+body.aurex-fluid .app-shell .code-workspace-code{background:#153b41;border-color:rgba(100,231,204,.4)}
+body.aurex-fluid .app-shell .code-workspace-code code{color:#aaffd2}
+/* My Slip: real data and actions, no invented probability or qualitative wins. */
+body.aurex-fluid .app-shell #slip-view .section-title{padding-bottom:18px}
+body.aurex-fluid .fluid-section-caption{color:#b2c7d8;font-size:12px;line-height:1.6;margin:9px 0 0}
+body.aurex-fluid .app-shell .slip-summary{position:relative;overflow:hidden;background:radial-gradient(ellipse 200px 140px at 96% 100%,rgba(44,206,160,.2),transparent 90%),linear-gradient(135deg,#19394a,#0e2036);border-color:rgba(98,237,209,.44);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 0 24px rgba(50,180,183,.09)}
+body.aurex-fluid .app-shell .slip-summary div{position:relative;z-index:1}
+body.aurex-fluid .app-shell .slip-summary span{color:#b1ccdc}
+body.aurex-fluid .app-shell .slip-summary strong{color:#a6ffdd;font-size:clamp(26px,6vw,36px)}
+body.aurex-fluid .fluid-wave{position:absolute!important;bottom:-51px;right:7px;z-index:0!important;width:170px;height:105px;padding:0!important;border:1px solid rgba(74,236,193,.42);border-radius:50%;transform:rotate(-17deg);box-shadow:0 -12px 27px rgba(60,212,173,.08);pointer-events:none}
+body.aurex-fluid .app-shell #slip-insights{background:linear-gradient(125deg,#153144,#112239);border-color:rgba(96,211,222,.25)}
+body.aurex-fluid .app-shell .insight-cell{background:#12273b}
+body.aurex-fluid .app-shell .insight-cell strong{color:#a9ffd6}
+body.aurex-fluid .app-shell .desk-edit-bar{background:#142a3d;border-color:rgba(137,195,237,.21)}
+body.aurex-fluid .app-shell .desk-edit-bar button{background:#1b4851;color:#a9ffda}
+body.aurex-fluid .app-shell .pick-list{gap:9px}
+body.aurex-fluid .app-shell .pick-row{background:linear-gradient(124deg,#183048,#10243a);border-color:rgba(141,196,234,.2);border-radius:18px;padding:14px 12px}
+body.aurex-fluid .app-shell .pick-row h3{color:#f7fcff}
+body.aurex-fluid .app-shell .pick-score{color:#aaffd0}
+body.aurex-fluid .app-shell .sticky-action{border-radius:22px;background:linear-gradient(115deg,#11363b,#13273f);border-color:rgba(100,235,208,.33)}
+/* Explore: stadium-like graphic using CSS, actual fixtures/watchlist/history underneath. */
+body.aurex-fluid .app-shell #explore-view .section-title{padding-bottom:12px}
+body.aurex-fluid .fluid-explore-tabs{display:flex;gap:4px;padding:5px;margin-bottom:15px;border:1px solid rgba(127,193,239,.24);border-radius:999px;background:#101e31}
+body.aurex-fluid .fluid-explore-tabs button{flex:1;min-width:0;min-height:39px;border:0;border-radius:999px;background:transparent;color:#c5d7e5;font:inherit;font-size:12px;cursor:pointer}
+body.aurex-fluid .fluid-explore-tabs button:first-child{background:linear-gradient(105deg,rgba(76,208,149,.3),rgba(55,151,211,.29));border:1px solid rgba(110,243,203,.52);color:#e5fff6;box-shadow:0 0 15px rgba(68,216,176,.17)}
+body.aurex-fluid .fluid-explore-feature{position:relative;overflow:hidden;isolation:isolate;min-height:195px;padding:22px;border:1px solid rgba(98,202,245,.48);border-radius:22px;margin:0 0 23px;background:radial-gradient(ellipse 280px 170px at 85% 85%,rgba(39,211,149,.22),transparent 78%),linear-gradient(132deg,#133a5d,#11263c 68%,#0e2e40);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 15px 34px rgba(0,0,0,.16)}
+body.aurex-fluid .fluid-explore-feature::before{content:'';position:absolute;right:-30px;top:17px;width:250px;height:152px;border-top:2px solid rgba(133,213,255,.53);border-bottom:2px solid rgba(86,243,166,.46);transform:perspective(180px) rotateX(54deg) rotate(-8deg);background:repeating-linear-gradient(90deg,rgba(99,200,242,.12) 0 1px,transparent 1px 24px),repeating-linear-gradient(0deg,rgba(82,213,181,.09) 0 1px,transparent 1px 23px);opacity:.8;pointer-events:none;z-index:-1}
+body.aurex-fluid .fluid-explore-feature::after{content:'';position:absolute;width:260px;height:135px;right:-28px;bottom:-74px;border:1px solid rgba(113,252,177,.53);border-radius:50%;box-shadow:0 0 32px rgba(66,242,163,.15);transform:rotate(-23deg);pointer-events:none}
+body.aurex-fluid .fluid-explore-feature h3{margin:16px 0 8px;font-size:clamp(24px,5vw,35px);line-height:1.13;letter-spacing:-.055em;color:#fff}
+body.aurex-fluid .fluid-explore-feature p{max-width:285px;color:#b9d3e5;font-size:12px;line-height:1.55;margin:0 0 17px}
+body.aurex-fluid .fluid-explore-feature button{position:relative;z-index:1;min-height:39px;padding:0 15px;border:1px solid rgba(146,224,240,.47);border-radius:999px;background:rgba(15,44,63,.8);color:#d9ffff;font:inherit;font-size:11px;font-weight:720}
+body.aurex-fluid .app-shell #explore-view .desk-panel{background:linear-gradient(138deg,#15283c,#0e1e30);border-color:rgba(128,189,233,.22);border-radius:20px}
+body.aurex-fluid .app-shell .desk-heading h3{color:#f9fcff;font-size:16px}
+body.aurex-fluid .app-shell .desk-filter button[aria-pressed='true']{background:rgba(71,217,173,.16);color:#a8ffdf;border-color:rgba(111,240,198,.51)}
+body.aurex-fluid .app-shell .desk-row{background:linear-gradient(136deg,#192e45,#102238);border-color:rgba(140,195,237,.17)}
+body.aurex-fluid .app-shell .desk-row strong{color:#f4faff}
+body.aurex-fluid .app-shell .desk-row small{color:#b7c8db}
+/* iPhone liquid glass dock: one surface, four equal real tap targets, no oversized lens drift. */
+body.aurex-fluid .app-shell .bottom-nav{position:fixed;top:auto;bottom:calc(11px + var(--safe));left:50%;right:auto;float:none;transform:translateX(-50%);margin:0;width:min(454px,calc(100% - 24px));max-width:calc(100% - 24px);height:70px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding:5px;border:1px solid rgba(148,198,246,.46);border-radius:999px;background:linear-gradient(139deg,rgba(27,59,76,.91),rgba(19,36,61,.94));box-shadow:inset 0 1px 0 rgba(236,255,255,.18),0 10px 32px rgba(0,0,0,.42),0 0 18px rgba(66,146,231,.08);-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);z-index:50}
+body.aurex-fluid .app-shell .bottom-nav .nav-item{display:flex;flex-direction:column;gap:2px;width:100%;min-width:0;height:58px;padding:4px 2px;justify-content:center;align-items:center;border-radius:999px;color:#bdd3ef;white-space:nowrap;transform:none}
+body.aurex-fluid .app-shell .bottom-nav .nav-item.active{background:linear-gradient(125deg,rgba(42,192,138,.45),rgba(28,102,161,.5));color:#f5fffb;box-shadow:inset 0 1px 0 rgba(228,255,255,.34),0 0 0 1px rgba(122,250,216,.76),0 0 18px rgba(57,227,171,.2)}
+body.aurex-fluid .app-shell .bottom-nav .glass-indicator{opacity:0!important;pointer-events:none!important}
+body.aurex-fluid .app-shell .bottom-nav .nav-item .nav-icon{display:grid;place-items:center;flex:0 0 24px;width:25px;height:25px}
+body.aurex-fluid .app-shell .bottom-nav .nav-item .nav-icon svg{width:22px;height:22px;stroke:currentColor}
+body.aurex-fluid .app-shell .bottom-nav .nav-label{font-size:10px;letter-spacing:-.01em;line-height:1.15;overflow:visible}
+body.aurex-fluid .app-shell .bottom-nav #slip-count{background:#8affba;color:#0a2b30;border:1px solid #b7ffd4;top:-7px;right:-9px}
+body.aurex-fluid .app-shell .bottom-nav .nav-item:active .nav-icon svg{transform:scale(.92)}
+@media(min-width:850px){body.aurex-fluid .app-shell{padding-bottom:125px}body.aurex-fluid .app-shell .bottom-nav{position:fixed;top:auto;left:50%;bottom:17px;transform:translateX(-50%);width:min(454px,calc(100% - 24px));max-width:calc(100% - 24px);height:70px}body.aurex-fluid .app-shell #build-view.active{grid-template-columns:minmax(0,1.02fr) minmax(320px,.98fr);align-items:start;gap:18px}body.aurex-fluid .app-shell .fluid-build-hero{min-height:258px}}
+@media(max-width:849px){body.aurex-fluid .app-shell{width:100%;padding-bottom:calc(122px + var(--safe))}body.aurex-fluid .app-shell .view{padding:17px 15px 38px}body.aurex-fluid .aurex-brandbar{margin:0 16px;height:69px}body.aurex-fluid .aurex-brand-name{font-size:25px}body.aurex-fluid .aurex-brand-symbol{width:32px;height:34px}body.aurex-fluid .aurex-preview-badge{font-size:8px}body.aurex-fluid .aurex-header-action{display:none}body.aurex-fluid .app-shell .fluid-build-hero{padding:20px!important;min-height:195px}body.aurex-fluid .app-shell .fluid-build-hero h1{font-size:clamp(30px,7vw,40px);max-width:265px}body.aurex-fluid .app-shell .aurex-hero-visual{right:-19px;bottom:-48px;opacity:.65}body.aurex-fluid .app-shell .fluid-build-form{padding:18px}body.aurex-fluid .app-shell .form-row{grid-template-columns:repeat(2,minmax(0,1fr))}body.aurex-fluid .app-shell #analyze-view .section-title{padding-top:5px}body.aurex-fluid .fluid-analyze-orb{height:125px;width:125px;margin:0 auto 17px}body.aurex-fluid .fluid-orb-core{inset:21px}body.aurex-fluid .fluid-orb-ring{inset:30px 0}body.aurex-fluid .fluid-explore-feature{min-height:188px}}
+@media(max-width:380px){body.aurex-fluid .app-shell .form-row{grid-template-columns:1fr}body.aurex-fluid .app-shell .fluid-slip-shortcut{padding:13px}body.aurex-fluid .fluid-slip-shortcut button{padding:0 9px}body.aurex-fluid .app-shell .bottom-nav{width:calc(100% - 18px);height:67px;gap:1px;padding:4px}body.aurex-fluid .app-shell .bottom-nav .nav-item{height:57px}body.aurex-fluid .app-shell .bottom-nav .nav-label{font-size:9px}}
+@media(prefers-reduced-motion:reduce){body.aurex-fluid .app-shell .view.active{animation:none!important}body.aurex-fluid .fluid-orb-ring{animation:none!important}body.aurex-fluid .app-shell :is(button,.primary){transition:none!important}html{scroll-behavior:auto}}
+@media(prefers-reduced-transparency:reduce){body.aurex-fluid .app-shell .bottom-nav{background:#14283c;backdrop-filter:none;-webkit-backdrop-filter:none}}

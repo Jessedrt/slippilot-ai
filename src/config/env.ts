@@ -23,7 +23,6 @@ export const envSchema = z
       .url()
       .default('postgresql://slippilot:slippilot@localhost:5432/slippilot'),
     REDIS_URL: z.string().url().default('redis://localhost:6379'),
-    // Legacy AI_PROVIDER/AI_MODEL are retained for backwards compatibility; text analysis uses YDC.
     AI_PROVIDER: z.string().default('disabled'),
     AI_API_KEY: z.preprocess(blankToUndefined, z.string().optional()),
     GEMINI_API_KEY: z.preprocess(blankToUndefined, z.string().optional()),
@@ -91,7 +90,10 @@ export const envSchema = z
         message: 'GEMINI_API_KEY or AI_API_KEY is required when AI_PROVIDER=gemini',
       });
     }
-    if (config.NODE_ENV === 'production') {
+    // NODE_ENV is production in Vercel Preview, too. A preview without secrets
+    // must render the UI but all signed Mini App routes remain locked (503).
+    // Never relax these requirements for production or self-hosted production.
+    if (config.NODE_ENV === 'production' && process.env.VERCEL_ENV !== 'preview') {
       for (const key of ['TELEGRAM_BOT_TOKEN', 'TELEGRAM_WEBHOOK_SECRET'] as const) {
         if (!config[key]) {
           context.addIssue({

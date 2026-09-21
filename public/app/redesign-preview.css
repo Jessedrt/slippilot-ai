@@ -1,0 +1,283 @@
+/* AUREX 2026 DESIGN PREVIEW — a single intentional visual system, no new betting logic. */
+:root {
+  color-scheme: dark;
+  --bg: #080c0e;
+  --panel: #121a1c;
+  --panel2: #192225;
+  --ink: #f4f7f1;
+  --muted: #a1aaa8;
+  --lime: #c7fa80;
+  --line: rgba(222,242,226,.12);
+  --aurex-accent: #baf477;
+  --aurex-deep: #080d10;
+  --aurex-surface: #101719;
+  --aurex-elevated: #172023;
+  --aurex-outline: rgba(201,225,214,.13);
+  --aurex-soft: #9aa9a8;
+  --aurex-radius: 21px;
+}
+html { background: #080c0e; scroll-behavior: smooth; }
+body.aurex-redesign {
+  background: radial-gradient(ellipse 720px 480px at 6% 0%,rgba(116,194,93,.105),transparent 75%), radial-gradient(ellipse 670px 460px at 100% 15%,rgba(51,124,114,.065),transparent 78%),#080c0e;
+  color: #f4f7f1; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px; letter-spacing: -.012em; -webkit-font-smoothing: antialiased;
+}
+body.aurex-redesign .app-shell {
+  position: relative; width: min(1160px, 100%); max-width: 1160px; min-height: 100dvh;
+  padding-bottom: calc(106px + var(--safe)); background: transparent; isolation: isolate;
+}
+body.aurex-redesign .app-shell::before { opacity: 0 !important; pointer-events: none; }
+body.aurex-redesign .app-shell main { position: relative; z-index: 1; padding-top: 0 !important; }
+body.aurex-redesign .app-shell .view { padding: 24px clamp(18px, 4.1vw, 48px) 38px; }
+body.aurex-redesign .app-shell .view.active { animation: aurex-view-appear .32s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes aurex-view-appear { from {opacity:.48; transform:translateY(8px)} to {opacity:1; transform:translateY(0)} }
+/* A real top-level product identity, not an oversized repeating section heading. */
+body.aurex-redesign .aurex-brandbar {
+  position: relative; z-index: 8; display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; height: 82px; margin: 0 clamp(18px,4.1vw,48px);
+  border-bottom: 1px solid rgba(226,244,234,.09);
+}
+body.aurex-redesign .aurex-brand { display: inline-flex; gap: 11px; align-items: center; text-decoration: none; color: #f4f8f2; min-width: 0; }
+body.aurex-redesign .aurex-brand-symbol {
+  display: inline-grid; place-items: center; flex: none; width: 38px; height: 38px;
+  clip-path: polygon(48% 0, 100% 100%, 65% 100%, 47% 57%, 28% 100%, 0 100%);
+  background: linear-gradient(145deg,#e0ffae 4%,#93e5a8 55%,#9bb7f7 100%);
+  color: transparent; font-size: 0;
+}
+body.aurex-redesign .aurex-brand-name { display: inline-block; font-size: 27px; font-weight: 790; letter-spacing: -.085em; line-height: .92; }
+body.aurex-redesign .aurex-brand-name > span { color: var(--lime); }
+body.aurex-redesign .aurex-brand-name small { display: block; margin-top: 5px; color: #8a9c96; font-size: 7px; font-weight: 770; letter-spacing: .29em; line-height: 1.2; }
+body.aurex-redesign .aurex-brandbar-right { display: flex; align-items: center; gap: 20px; }
+body.aurex-redesign .aurex-preview-badge { display: inline-flex; gap: 8px; align-items: center; white-space: nowrap; color: #afc2ad; font-size: 9px; font-weight: 770; letter-spacing: .17em; }
+body.aurex-redesign .aurex-preview-badge i,.aurex-status-dot { display: inline-block; flex: none; width: 6px; height: 6px; border-radius: 50%; background: #a4ef9b; box-shadow: 0 0 13px rgba(160,246,148,.6); }
+body.aurex-redesign .aurex-header-action { display: flex; gap: 18px; align-items: center; min-height: 38px; padding: 0 15px; background: #1d2726; border: 1px solid rgba(211,244,211,.13); border-radius: 11px; color: #eaf3e5; font: inherit; font-weight: 670; font-size: 11px; cursor: pointer; }
+body.aurex-redesign .aurex-header-action span { color: var(--lime); font-size: 16px; }
+body.aurex-redesign .aurex-header-action:hover { border-color: rgba(190,248,148,.46); background: #27342e; }
+/* Core typography: no forced uppercase giant labels or inflated spacing. */
+body.aurex-redesign .app-shell .eyebrow { color: #b4eb97; font-size: 10px; font-weight: 750; letter-spacing: .19em; line-height: 1.4; }
+body.aurex-redesign .app-shell :is(.section-title h2,.hero-copy h1) { text-transform: none; font-size: clamp(31px,5vw,47px); letter-spacing: -.064em; line-height: 1.08; font-weight: 740; }
+body.aurex-redesign .app-shell .section-title { padding: 10px 0 24px; }
+body.aurex-redesign .app-shell .section-title > p:last-child { max-width: 570px; font-size: 13px; color: #a5b3ae; line-height: 1.7; margin-top: 12px; }
+body.aurex-redesign .app-shell :is(.desk-note,.field-help,.tool-card p,.help-panel p,.empty-state p) { color: #9caba6; font-size: 12px; line-height: 1.65; letter-spacing: 0; }
+body.aurex-redesign .app-shell .hero-copy > p:last-of-type { color: #bac7be; max-width: 415px; line-height: 1.65; font-size: 14px; margin-top: 19px; }
+/* Editorial hero with ornamental artwork that does not claim any statistical outcome. */
+body.aurex-redesign .aurex-feature-hero {
+  position: relative; min-height: 334px; padding: 36px 28px 32px !important; overflow: hidden;
+  isolation: isolate; border: 1px solid rgba(174,221,176,.18); border-radius: 24px;
+  background: radial-gradient(ellipse 330px 260px at 104% 28%,rgba(122,207,124,.2),transparent 78%), linear-gradient(132deg,#192621 0%,#121b1a 47%,#0e1719 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.085),0 24px 65px rgba(0,0,0,.19);
+}
+body.aurex-redesign .aurex-feature-hero::before { content: ''; position:absolute; inset:0; pointer-events:none; background: linear-gradient(114deg,transparent 55%,rgba(195,255,170,.035)), repeating-linear-gradient(126deg,transparent 0 47px,rgba(191,240,201,.012) 48px 49px); z-index:-1; }
+body.aurex-redesign .aurex-feature-hero .eyebrow { display: none; }
+body.aurex-redesign .aurex-feature-kicker { display:flex; align-items:center; gap:9px; color:#c1d4c0; font-size:9px; font-weight:800; letter-spacing:.14em; margin-bottom:20px; }
+body.aurex-redesign .app-shell .aurex-feature-hero h1 { max-width: 510px; position: relative; z-index:1; font-size: clamp(41px,6.5vw,67px); letter-spacing:-.075em; line-height:1.02; font-weight: 760; }
+body.aurex-redesign .aurex-feature-hero h1 em { color: #bbf887; font-style: normal; }
+body.aurex-redesign .aurex-period { color: #bbf887; }
+body.aurex-redesign .aurex-hero-actions { position:relative; z-index:1; display:flex; flex-wrap:wrap; gap:12px; margin-top:24px; }
+body.aurex-redesign .aurex-secondary-cta { display:flex; align-items:center; justify-content:space-between; gap:17px; padding:0 16px; min-height:43px; background:rgba(196,255,171,.11); border:1px solid rgba(201,255,179,.33); color:#f0ffe8; border-radius:12px; font-weight:720; font-size:12px; cursor:pointer; transition:background .2s,transform .2s; }
+body.aurex-redesign .aurex-secondary-cta:hover { background:rgba(196,255,171,.2); }
+body.aurex-redesign .aurex-secondary-cta:active { transform:scale(.98); }
+body.aurex-redesign .aurex-hero-visual { position:absolute; right:-17px; bottom:-74px; width:285px; height:285px; opacity:.72; pointer-events:none; z-index:-1; }
+body.aurex-redesign .aurex-orbit { position:absolute; inset:13px; border:1px solid rgba(169,244,153,.28); border-radius:50%; transform:rotate(-25deg) scaleY(.64); }
+body.aurex-redesign .aurex-orbit-two { inset:49px -5px; border-color:rgba(170,232,230,.28); transform:rotate(43deg) scaleY(.72); }
+body.aurex-redesign .aurex-orbit-core { position:absolute; display:grid; place-items:center; inset:67px; border-radius:50%; background:radial-gradient(circle at 35% 25%,#b9fbb8 0%,#429b7c 18%,#1e4343 45%,#0e1c22 74%); box-shadow:0 0 34px rgba(122,229,180,.27),inset -12px -15px 32px #0a1519; border:1px solid rgba(220,255,208,.21); }
+body.aurex-redesign .aurex-orbit-core span { color:rgba(245,255,235,.46); font-size:19px; letter-spacing:-.08em; font-weight:860; }
+body.aurex-redesign .aurex-orbit-line { position:absolute; width:330px; height:130px; bottom:44px; right:-24px; border-top:1px solid rgba(146,245,130,.27); border-radius:50%; transform:rotate(-28deg); }
+/* One coherent card system across Build, Analyze, My Slip and Explore. */
+body.aurex-redesign .app-shell :is(.builder-card,.tool-card,.result-panel,.loading-card,.slip-summary,.empty-state,.desk-panel,.code-workspace,.analysis-status,.notice,.help-panel) {
+  background:#12191b; border:1px solid var(--aurex-outline); border-radius:var(--aurex-radius); color:#f3f7f2;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.038),0 12px 32px rgba(0,0,0,.095); -webkit-backdrop-filter:none;backdrop-filter:none;
+}
+body.aurex-redesign .app-shell :is(.build-steps > div,.quick-presets button,.odds-estimate,.pick-row,.code-block,.desk-row,.watch53-row,.code-workspace-row) { background:#172023; border:1px solid rgba(221,242,229,.095); border-radius:14px; box-shadow:none; backdrop-filter:none; }
+body.aurex-redesign .app-shell :is(.builder-card,.tool-card,.desk-panel,.result-panel) { min-width:0; overflow-wrap:break-word; }
+body.aurex-redesign .app-shell :is(.builder-card,.tool-card) { padding:23px; }
+body.aurex-redesign .app-shell .builder-card { display:grid; gap:17px; align-content:start; }
+body.aurex-redesign .aurex-card-heading { padding-bottom:16px; border-bottom:1px solid rgba(217,237,220,.1); }
+body.aurex-redesign .aurex-card-number,.aurex-presets-label { color:#a8c5a3; font-size:9px; font-weight:780; letter-spacing:.17em; }
+body.aurex-redesign .aurex-card-heading h2 { margin:9px 0 5px; font-size:25px; line-height:1.12; letter-spacing:-.055em; }
+body.aurex-redesign .aurex-card-heading h2 span { color:var(--lime); }
+body.aurex-redesign .aurex-card-heading p { color:#a7b4ae; margin:0; font-size:12px; line-height:1.6; }
+body.aurex-redesign .app-shell fieldset { margin:0; }
+body.aurex-redesign .app-shell :is(legend,.field > span) { color:#cfdbd2; font-weight:680; font-size:11px; letter-spacing:.035em; text-transform:none; margin-bottom:9px; }
+body.aurex-redesign .app-shell .segmented { border-radius:12px; background:#090f10; border-color:rgba(218,240,225,.12); gap:4px; padding:4px; }
+body.aurex-redesign .app-shell .segmented span { border-radius:9px; font-size:12px; padding:11px 8px; font-weight:670; }
+body.aurex-redesign .app-shell .segmented input:checked + span { background:#c7fa80; color:#14200d; box-shadow:0 2px 12px rgba(183,244,110,.13); }
+body.aurex-redesign .app-shell :is(.field input,.field select,.tool-card input,.upload,.code-workspace-trim input) { width:100%; min-width:0; height:48px; background:#0b1114; border:1px solid rgba(207,229,221,.19); border-radius:11px; color:#edf5ec; font:inherit; font-size:13px; box-shadow:none; }
+body.aurex-redesign .app-shell :is(.field input,.field select,.tool-card input,.code-workspace-trim input) { padding:0 13px; }
+body.aurex-redesign .app-shell input::placeholder { color:#6e807a; }
+body.aurex-redesign .app-shell :is(input,select,button,a,summary):focus-visible { outline:2px solid #cbf88a; outline-offset:3px; }
+body.aurex-redesign .app-shell .form-row { gap:13px; }
+body.aurex-redesign .app-shell #risk-mode-help { min-height:0; }
+body.aurex-redesign .app-shell .field-help { margin:7px 0 0; }
+body.aurex-redesign .app-shell .odds-estimate { padding:15px 16px; background:linear-gradient(130deg,#192822,#162021); border-color:rgba(187,247,151,.12); }
+body.aurex-redesign .app-shell .odds-estimate strong { color:#dafdb0; font-size:20px; letter-spacing:-.04em; }
+body.aurex-redesign .app-shell .odds-estimate p { color:#a6b9ad; font-size:11px; }
+body.aurex-redesign .app-shell :is(.primary,.tool-card button[type='submit'],.code-workspace-trim button) { min-height:48px; border-radius:12px; background:linear-gradient(117deg,#daff9f 0%,#b7f679 100%); color:#13200f; border:0; font-weight:780; box-shadow:0 5px 22px rgba(163,242,110,.09); letter-spacing:-.015em; transition:filter .2s,transform .2s; }
+body.aurex-redesign .app-shell .primary { margin-top:2px; padding:0 16px; font-size:13px; }
+body.aurex-redesign .app-shell :is(.primary,.tool-card button[type='submit'],.code-workspace-trim button):hover { filter:brightness(1.04); }
+body.aurex-redesign .app-shell :is(.primary,.tool-card button[type='submit'],.code-workspace-trim button):active { transform:scale(.988); }
+body.aurex-redesign .app-shell button:disabled { filter:none; cursor:not-allowed; }
+body.aurex-redesign .aurex-presets-label { margin:20px 2px 8px; }
+body.aurex-redesign .app-shell .quick-presets { gap:9px; margin-bottom:12px; }
+body.aurex-redesign .app-shell .quick-presets button { position:relative; min-width:0; background:#121b1c; border:1px solid rgba(213,239,214,.16); border-radius:13px; padding:12px 15px; text-align:left; transition:border-color .2s,background .2s; }
+body.aurex-redesign .app-shell .quick-presets button[aria-pressed='true'] { background:#213523; border-color:rgba(189,251,139,.65); }
+body.aurex-redesign .app-shell .quick-presets span { color:#f2f8f0; font-size:16px; font-weight:750; }
+body.aurex-redesign .app-shell .quick-presets small { color:#8d9e94; font-size:10px; }
+body.aurex-redesign .app-shell .build-steps { gap:9px; margin:18px 0 0; }
+body.aurex-redesign .app-shell .build-steps > div { padding:13px; flex-direction:column; align-items:flex-start; background:#121a1b; }
+body.aurex-redesign .app-shell .build-steps span { font-size:10px; color:var(--lime); }
+body.aurex-redesign .app-shell .build-steps strong { font-size:11px; font-weight:650; color:#c2cfc6; }
+body.aurex-redesign .app-shell .help-panel { padding:0 16px; }
+body.aurex-redesign .app-shell .help-panel summary { font-size:12px; font-weight:640; }
+/* Analyze: one unmistakable primary action, two quiet supporting utilities. */
+body.aurex-redesign .app-shell .tool-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px; }
+body.aurex-redesign .app-shell #read-code-form { position:relative; grid-column:1/-1; display:grid; grid-template-columns:46px minmax(0,1fr); align-items:start; gap:9px 16px; padding:26px; overflow:hidden; background:radial-gradient(ellipse 400px 270px at 110% -10%,rgba(143,233,125,.11),transparent 70%),#14201f; border-color:rgba(184,238,158,.22); }
+body.aurex-redesign .app-shell #read-code-form::after { content:''; position:absolute; right:-26px; top:-50px; width:175px; height:175px; border:1px solid rgba(183,245,162,.12); border-radius:50%; box-shadow:0 0 0 28px rgba(167,241,142,.017),0 0 0 57px rgba(167,241,142,.018); pointer-events:none; }
+body.aurex-redesign .app-shell .aurex-tool-badge { grid-column:1/-1; justify-self:start; color:#c1f7a4; border:1px solid rgba(196,251,160,.24); border-radius:6px; padding:5px 8px; font-size:9px; letter-spacing:.12em; font-weight:790; }
+body.aurex-redesign .app-shell #read-code-form .tool-icon { width:46px; height:46px; font-size:19px; border-radius:12px; background:#233b2b; color:var(--lime); }
+body.aurex-redesign .app-shell #read-code-form h3 { font-size:22px; letter-spacing:-.045em; line-height:1.15; font-weight:770; }
+body.aurex-redesign .app-shell #read-code-form p { max-width:460px; font-size:12px; line-height:1.6; }
+body.aurex-redesign .app-shell #read-code-form :is(input,button) { grid-column:1/-1; margin:5px 0 0; z-index:1; }
+body.aurex-redesign .app-shell #read-code-form input { min-height:52px; font-size:14px; letter-spacing:.045em; text-transform:uppercase; }
+body.aurex-redesign .app-shell #read-code-form button { min-height:49px; }
+body.aurex-redesign .app-shell .tool-card:not(#read-code-form) { display:grid; grid-template-columns:42px 1fr; align-content:start; gap:8px 11px; padding:19px; }
+body.aurex-redesign .app-shell .tool-card:not(#read-code-form) .tool-icon { grid-row:span 2; background:#1d2d29; border-color:rgba(193,244,181,.16); color:#c8fa90; width:39px; height:39px; font-size:18px; border-radius:11px; }
+body.aurex-redesign .app-shell .tool-card:not(#read-code-form) h3 { font-size:14px; letter-spacing:-.03em; margin:0 0 4px; }
+body.aurex-redesign .app-shell .tool-card:not(#read-code-form) :is(input,.upload,button) { grid-column:1/-1; margin-top:5px; }
+body.aurex-redesign .app-shell .tool-card:not(#read-code-form) button { background:#22302b; border:1px solid rgba(196,246,165,.16); border-radius:10px; color:#d8eccd; font-weight:650; }
+body.aurex-redesign .app-shell .tool-card:not(#read-code-form) button:hover { border-color:rgba(198,248,164,.49); }
+body.aurex-redesign .app-shell .upload { display:grid; place-items:center; border-style:dashed; }
+body.aurex-redesign .app-shell :is(.analysis-pick,.analysis-excluded) { border-radius:13px; overflow-wrap:anywhere; }
+body.aurex-redesign .app-shell #analysis-result { margin-top:17px; padding:22px; }
+body.aurex-redesign .app-shell #analysis-result h3 { font-size:19px; letter-spacing:-.035em; }
+body.aurex-redesign .app-shell #analysis-result .analysis-meta { font-size:11px; color:#b9cca9; }
+/* The existing functional conversation editor and manual workspace adopt the same materials. */
+body.aurex-redesign .app-shell :is(.aurex-conversation,.code-workspace) { background:#121a1b; border:1px solid rgba(205,239,211,.15); border-radius:21px; box-shadow:0 16px 40px rgba(0,0,0,.11); }
+body.aurex-redesign .app-shell :is(.aurex-chat-bubble,.code-workspace-row,.code-workspace-trim,.code-workspace-code) { border-radius:13px; }
+body.aurex-redesign .app-shell .code-workspace .code-workspace-row { padding:13px 15px; }
+body.aurex-redesign .app-shell .code-workspace button { border-radius:10px; font-size:12px; }
+body.aurex-redesign .app-shell .code-workspace-trim { background:#1a2921; border-color:rgba(201,243,167,.23); }
+body.aurex-redesign .app-shell .code-workspace-trim button { color:#15210f; }
+body.aurex-redesign .app-shell .code-workspace-code { background:#1b3024; border-color:rgba(182,247,133,.43); }
+/* My Slip: put genuine returned odds/AI scores in a legible two-metric summary. */
+body.aurex-redesign .app-shell .slip-summary { background:linear-gradient(130deg,#1b2a21,#132021); border-color:rgba(190,243,157,.23); border-radius:19px; overflow:hidden; }
+body.aurex-redesign .app-shell .slip-summary div { padding:20px 18px; }
+body.aurex-redesign .app-shell .slip-summary span { font-size:9px; color:#b4c7b5; letter-spacing:.125em; }
+body.aurex-redesign .app-shell .slip-summary strong { font-size:clamp(26px,6vw,35px); font-weight:750; letter-spacing:-.055em; color:#d9ffa8; }
+body.aurex-redesign .app-shell .slip-summary + .field-help { margin:11px 2px 17px; }
+body.aurex-redesign .app-shell .empty-state { padding:57px 24px; border-style:solid; background:radial-gradient(circle at 50% 0%,rgba(161,240,130,.09),transparent 47%),#121a1b; }
+body.aurex-redesign .app-shell .empty-state > span { display:inline-grid; place-items:center; width:62px; height:62px; border-radius:17px; background:#1e3226; font-size:26px; }
+body.aurex-redesign .app-shell .empty-state h3 { font-size:20px; letter-spacing:-.04em; }
+body.aurex-redesign .app-shell .empty-state button { border-radius:10px; background:#d2ff9c; color:#152313; border:0; font-weight:750; }
+body.aurex-redesign .app-shell .desk-edit-bar { background:#171f20; border-color:var(--aurex-outline); border-radius:14px; padding:13px 15px; }
+body.aurex-redesign .app-shell .desk-edit-bar button { border-radius:9px; background:#23372a; color:#dcffbd; }
+body.aurex-redesign .app-shell .pick-list { border:0; display:grid; gap:8px; }
+body.aurex-redesign .app-shell .pick-row { border:1px solid rgba(218,240,225,.13); padding:14px; border-radius:13px; align-items:center; background:#151e20; }
+body.aurex-redesign .app-shell .pick-row h3 { font-size:13px; letter-spacing:-.02em; line-height:1.45; }
+body.aurex-redesign .app-shell .pick-row p { color:#9fafaa; font-size:11px; }
+body.aurex-redesign .app-shell .pick-score { color:#d4ff9f; font-size:13px; }
+body.aurex-redesign .app-shell .pick-actions button { border-radius:9px; }
+body.aurex-redesign .app-shell .sticky-action { margin-top:18px; padding:14px; background:#18251e; border:1px solid rgba(189,237,158,.19); border-radius:17px; }
+body.aurex-redesign .app-shell .sticky-action p { margin:0 0 11px; }
+body.aurex-redesign .app-shell .sticky-action .primary { margin:0; }
+/* Explore: meaningful provider data, not fabricated win-rate widgets. */
+body.aurex-redesign .app-shell .desk-panel { padding:20px; margin:0 0 14px; }
+body.aurex-redesign .app-shell .desk-heading { align-items:center; gap:12px; }
+body.aurex-redesign .app-shell .desk-heading h3 { font-size:16px; font-weight:730; letter-spacing:-.037em; }
+body.aurex-redesign .app-shell :is(.desk-heading button,.desk-shortcuts button,.desk-row button,.desk-filter button) { border-radius:9px; padding:8px 11px; min-height:36px; border-color:rgba(196,231,202,.15); background:#1b2928; color:#d5e8d7; font-size:11px; }
+body.aurex-redesign .app-shell .desk-filter button[aria-pressed='true'] { background:#c6fb8b; border-color:transparent; color:#15210f; }
+body.aurex-redesign .app-shell .desk-rows { gap:8px; }
+body.aurex-redesign .app-shell .desk-row { padding:12px; background:#171f21; border-radius:11px; }
+body.aurex-redesign .app-shell .desk-row strong { color:#eef5f0; font-size:12px; }
+body.aurex-redesign .app-shell .desk-row small { color:#93a49e; font-size:11px; }
+body.aurex-redesign .app-shell .desk-shortcuts { margin:8px 0; }
+body.aurex-redesign .app-shell .desk-shortcuts button { min-height:45px; color:#daf6c5; background:#1c2922; }
+/* Navigation: one orderly four-part dock, anchored below every content panel. */
+body.aurex-redesign .app-shell .bottom-nav {
+  z-index:12; position:fixed; left:50%; right:auto; bottom:calc(13px + var(--safe)); transform:translateX(-50%);
+  display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); align-items:stretch; gap:3px;
+  width:min(450px,calc(100% - 32px)); max-width:calc(100% - 32px); height:67px; padding:6px;
+  border:1px solid rgba(223,247,231,.17); border-radius:19px;
+  background:rgba(17,25,28,.96); -webkit-backdrop-filter:blur(24px) saturate(115%);backdrop-filter:blur(24px) saturate(115%);
+  box-shadow:0 16px 49px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.065);
+}
+body.aurex-redesign .app-shell .bottom-nav .nav-item { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-width:0; max-width:100%; width:100%; height:53px; padding:5px 2px; border-radius:12px; color:#899e97; background:transparent; font-weight:700; transform:none; }
+body.aurex-redesign .app-shell .bottom-nav .nav-item.active { color:#d8ffab; background:rgba(177,248,129,.09); }
+body.aurex-redesign .app-shell .bottom-nav .nav-item .nav-icon { display:grid; place-items:center; position:relative; flex:0 0 23px; width:23px; height:23px; margin:0; }
+body.aurex-redesign .app-shell .bottom-nav .nav-item .nav-icon svg { width:19px;height:19px; }
+body.aurex-redesign .app-shell .bottom-nav .nav-item .nav-label { display:block; font-size:10px; font-weight:650; line-height:1.2; text-overflow:clip; letter-spacing:0; }
+body.aurex-redesign .app-shell .bottom-nav .glass-indicator { opacity:.14; border:0; border-radius:12px; box-shadow:none; pointer-events:none; }
+body.aurex-redesign .app-shell .bottom-nav #slip-count { background:#c8fd89; color:#192313; font-weight:790; }
+body.aurex-redesign .app-shell .toast { bottom:calc(89px + var(--safe)); border-radius:12px; }
+/* Responsive information architecture: mobile-first, desktop uses a controlled grid. */
+@media(min-width: 850px) {
+  body.aurex-redesign .app-shell { padding:0 0 55px 196px; width:min(1160px,100%); }
+  body.aurex-redesign .aurex-brandbar { margin:0 40px 0 -156px; height:90px; }
+  body.aurex-redesign .app-shell .bottom-nav { position:sticky; bottom:auto; left:auto; top:20px; transform:none; margin:18px 0 0 -175px; width:154px; max-width:154px; height:auto; padding:8px; display:flex; flex-direction:column; gap:6px; float:left; border-radius:18px; }
+  body.aurex-redesign .app-shell .bottom-nav .nav-item { flex-direction:row; justify-content:flex-start; width:100%; height:47px; padding:8px 12px; gap:12px; border-radius:11px; }
+  body.aurex-redesign .app-shell .bottom-nav .nav-item .nav-label { font-size:12px; }
+  body.aurex-redesign .app-shell .bottom-nav .glass-indicator { display:none; }
+  body.aurex-redesign .app-shell .view { padding:36px 35px 34px 12px; min-height:620px; }
+  body.aurex-redesign .app-shell #build-view.active { display:grid; grid-template-columns:minmax(0,1.02fr) minmax(315px,.98fr); grid-template-rows:auto auto 1fr auto auto auto; column-gap:19px; align-items:start; }
+  body.aurex-redesign #build-view .hero-copy { grid-column:1; grid-row:1/4; min-height:535px; }
+  body.aurex-redesign #build-view .aurex-presets-label { grid-column:2; grid-row:1; align-self:end; margin:0 2px 9px; }
+  body.aurex-redesign #build-view .quick-presets { grid-column:2; grid-row:2; margin:0 0 12px; }
+  body.aurex-redesign #build-view .builder-card { grid-column:2; grid-row:3/5; }
+  body.aurex-redesign #build-view .build-steps { grid-column:1; grid-row:4; margin:14px 0 0; }
+  body.aurex-redesign #build-view .help-panel { grid-column:2; grid-row:5; }
+  body.aurex-redesign #build-view :is(.loading-card,.notice) { grid-column:2; }
+  body.aurex-redesign .app-shell #explore-view.active { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(280px,.9fr); column-gap:16px; align-items:start; }
+  body.aurex-redesign #explore-view > .section-title { grid-column:1/-1; }
+  body.aurex-redesign #explore-view > .desk-panel:nth-of-type(1) { grid-column:1; }
+  body.aurex-redesign #explore-view > .desk-panel:nth-of-type(2) { grid-column:2; }
+  body.aurex-redesign #explore-view > .desk-panel:nth-of-type(3),body.aurex-redesign #explore-view > .desk-shortcuts { grid-column:1/-1; }
+  body.aurex-redesign #analyze-view .tool-grid { gap:15px; }
+}
+@media(max-width:849px) {
+  body.aurex-redesign .app-shell .view { padding-top:18px; }
+  body.aurex-redesign .app-shell #build-view.active { display:flex; flex-direction:column; align-items:stretch; }
+  body.aurex-redesign #build-view .hero-copy { order:0; }
+  body.aurex-redesign #build-view .aurex-presets-label { order:1; }
+  body.aurex-redesign #build-view .quick-presets { order:2; }
+  body.aurex-redesign #build-view .builder-card { order:3; }
+  body.aurex-redesign #build-view .build-steps { order:4; width:100%; }
+  body.aurex-redesign #build-view .help-panel { order:5; }
+  body.aurex-redesign #build-view :is(.loading-card,.notice) { order:6; }
+  body.aurex-redesign .aurex-hero-visual { width:240px;height:240px;right:-32px;bottom:-86px;opacity:.46; }
+}
+@media(max-width:560px) {
+  body.aurex-redesign .aurex-brandbar { height:69px; margin:0 18px; }
+  body.aurex-redesign .aurex-brand-symbol { width:30px;height:30px; }
+  body.aurex-redesign .aurex-brand-name { font-size:22px; }
+  body.aurex-redesign .aurex-brand-name small { font-size:6px; }
+  body.aurex-redesign .aurex-brandbar-right { gap:8px; }
+  body.aurex-redesign .aurex-header-action { display:none; }
+  body.aurex-redesign .aurex-preview-badge { font-size:8px;letter-spacing:.09em; }
+  body.aurex-redesign .aurex-feature-hero { min-height:322px; padding:28px 22px !important; }
+  body.aurex-redesign .app-shell .aurex-feature-hero h1 { font-size:clamp(38px,11vw,52px); }
+  body.aurex-redesign .aurex-feature-hero > p:last-of-type { max-width:310px; }
+  body.aurex-redesign .app-shell :is(.builder-card,.tool-card) { padding:19px; }
+  body.aurex-redesign .app-shell .form-row { grid-template-columns:1fr; }
+  body.aurex-redesign .app-shell .tool-grid { grid-template-columns:1fr; }
+  body.aurex-redesign .app-shell #read-code-form { padding:21px; }
+  body.aurex-redesign .app-shell .tool-card:not(#read-code-form) { grid-column:1/-1; }
+  body.aurex-redesign .app-shell .slip-summary div { padding:15px 12px; }
+  body.aurex-redesign .app-shell .slip-summary strong { font-size:27px; }
+  body.aurex-redesign .app-shell .desk-panel { padding:16px; }
+}
+@media(max-width:340px) {
+  body.aurex-redesign .aurex-feature-hero { min-height:335px; }
+  body.aurex-redesign .aurex-feature-kicker { font-size:8px; }
+  body.aurex-redesign .app-shell .build-steps { grid-template-columns:1fr 1fr 1fr; }
+  body.aurex-redesign .app-shell .build-steps > div { padding:9px 7px; }
+  body.aurex-redesign .app-shell .bottom-nav { width:calc(100% - 20px); }
+  body.aurex-redesign .app-shell .bottom-nav .nav-label { font-size:9px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  html { scroll-behavior:auto; }
+  body.aurex-redesign .app-shell .view.active { animation:none; }
+  body.aurex-redesign .app-shell :is(.aurex-secondary-cta,.primary,.tool-card button) { transition:none; }
+}
+@media(prefers-reduced-transparency:reduce) {
+  body.aurex-redesign .app-shell .bottom-nav { background:#11191b;backdrop-filter:none;-webkit-backdrop-filter:none; }
+}

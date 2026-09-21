@@ -38,7 +38,6 @@ export function createApplication() {
       ? new YouClient({
           apiKey: youApiKeys[0],
           apiKeys: youApiKeys.slice(1),
-          // Standard structured Research can take longer than an ordinary web search.
           timeoutMs: Math.max(config.YOU_TIMEOUT_MS, 45_000),
           maxResults: config.YOU_MAX_RESULTS,
           cacheTtlMs: config.YOU_CACHE_TTL_MS,
@@ -63,12 +62,10 @@ export function createApplication() {
     : new UnsupportedSportyBetProvider();
   const aiKeys = [...new Set([config.GEMINI_API_KEY, config.AI_API_KEY].filter(Boolean))] as string[];
   const aiKey = aiKeys[0];
-  // YDC is the only provider for text/slip analysis. Never silently fall back to Gemini text.
   const slipAnalyzer =
     youClient && config.YOU_RESEARCH_ENABLED
       ? new YouSlipAnalyzer(youClient)
       : new DisabledSlipAnalyzer();
-  // Gemini is only used for image/screenshot understanding, not textual slip decisions.
   const screenshotAnalyzer = aiKey
     ? new GeminiScreenshotAnalyzer({
         apiKey: aiKey,
@@ -93,8 +90,6 @@ export function createApplication() {
     slipAnalyzer,
     screenshotAnalyzer,
   });
-  // A preview never dispatches Telegram messages. Production requires CRON_SECRET,
-  // configured provider, bot token and a real scheduled request before alerts work.
   const alertReady = Boolean(config.CRON_SECRET && config.TELEGRAM_BOT_TOKEN &&
     config.SPORTYBET_PROVIDER_ENABLED && process.env.VERCEL_ENV === 'production');
   const watch = new WatchService(new PrismaWatchStore(database.client), sportyBet,
@@ -113,10 +108,8 @@ export function createApplication() {
       ...(config.TELEGRAM_BOT_TOKEN ? { telegramBotToken: config.TELEGRAM_BOT_TOKEN } : {}),
     },
     { service: watch, ...(config.CRON_SECRET ? { cronSecret: config.CRON_SECRET } : {}) },
+    { provider: webResearch, enabled: Boolean(youClient && config.YOU_SEARCH_ENABLED) },
   );
-  // A previous release disabled registration, leaving /start with no webhook.
-  // Check Telegram on each production serverless cold start and repair stale URLs.
-  // Do not attempt registration on preview or local polling servers.
   const webhookRegistrationPromise =
     process.env.VERCEL_ENV === 'production' && bot && config.TELEGRAM_WEBHOOK_SECRET
       ? ensureProductionWebhook(bot.telegram, config.TELEGRAM_WEBHOOK_SECRET)

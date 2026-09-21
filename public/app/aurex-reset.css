@@ -1,0 +1,52 @@
+/* Aurex reset: one coherent preview layer, no fabricated data or replacement controls. */
+:root{--ax-bg:#080e18;--ax-card:#101b2b;--ax-line:#24394a;--ax-text:#eff9fc;--ax-muted:#a5b9c5;--ax-accent:#86f2d0}
+html,body{background:var(--ax-bg)!important;color:var(--ax-text)!important}
+body{background:radial-gradient(ellipse 75% 420px at 85% -90px,#123d49 0%,transparent 80%),#080e18!important}
+.app-shell{width:min(100%,1060px)!important;max-width:1060px!important;margin:0 auto!important;padding:0 0 calc(105px + env(safe-area-inset-bottom,0px))!important;background:transparent!important;box-shadow:none!important;border:0!important;min-height:100dvh!important;overflow:visible!important}
+.app-shell main{width:100%!important;max-width:none!important;margin:0!important;padding:0!important;background:none!important;overflow:visible!important}
+.app-shell .view{width:100%!important;max-width:none!important;margin:0!important;padding:22px 18px 28px!important;min-width:0!important;background:transparent!important;box-shadow:none!important;transform:none!important;animation:none!important}
+.app-shell .view:not(.active){display:none!important}
+.app-shell :is(.hero-copy,.builder-card,.tool-card,.slip-summary,.desk-panel,.empty-state,.result-panel,.help-panel,.odds-estimate,.sticky-action,.desk-edit-bar,.pick-row,.loading-card){background:#101b2b!important;border:1px solid #263c4b!important;border-radius:20px!important;box-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;color:#eff9fc!important;transform:none!important}
+.app-shell .hero-copy{padding:27px 23px!important;min-height:0!important;overflow:hidden!important;position:relative!important;background:radial-gradient(circle at 95% 0%,#155063 0%,transparent 53%),linear-gradient(145deg,#142637,#101b2b)!important}
+.app-shell .hero-copy:after{content:'';position:absolute;right:-44px;top:-64px;width:175px;height:175px;border:1px solid #54e7d04a;border-radius:50%;box-shadow:0 0 0 22px #45b9c20c,0 0 0 45px #45b9c208;pointer-events:none}
+.app-shell .hero-copy h1{font-size:clamp(34px,7vw,51px)!important;line-height:1.08!important;letter-spacing:-.055em!important;max-width:450px!important;margin:11px 0!important;color:#f1fbff!important}
+.app-shell .hero-copy h1 span{color:#8cf3d4!important;-webkit-text-fill-color:#8cf3d4!important}
+.app-shell :is(.hero-copy p,.section-title p,.tool-card p,.desk-note,.field-help,.odds-estimate p,.pick-row p){color:#abc0cc!important;line-height:1.5!important}
+.app-shell .eyebrow{color:#86f2d0!important;font-size:10px!important;letter-spacing:.14em!important}
+.app-shell .section-title{margin:0 0 19px!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;min-height:0!important}
+.app-shell .section-title h2{font-size:clamp(29px,6vw,39px)!important;line-height:1.12!important;letter-spacing:-.045em!important;margin:7px 0 8px!important;color:#f2fbff!important}
+.app-shell .build-steps{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important;margin:13px 0!important;padding:0!important;background:none!important;border:0!important}
+.app-shell .build-steps>div{min-width:0!important;display:flex!important;flex-direction:column!important;gap:4px!important;padding:12px 9px!important;border:1px solid #263c4b!important;border-radius:13px!important;background:#101b2b!important}
+.app-shell .build-steps strong{font-size:11px!important;white-space:normal!important}.app-shell .build-steps span{font-size:10px!important;color:#8cf3d4!important}
+.app-shell .quick-presets{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;margin:0 0 13px!important;padding:0!important;background:none!important;border:0!important}
+.app-shell .quick-presets button{width:100%!important;min-width:0!important;min-height:64px!important;border-radius:14px!important;background:#132333!important;border:1px solid #2b4854!important;padding:12px!important;text-align:left!important;box-shadow:none!important;transform:none!important}
+.app-shell .quick-presets button[aria-pressed=true]{border-color:#86f2d0!important;background:#153c43!important}
+.app-shell .builder-card{padding:20px!important;margin:0 0 14px!important;display:block!important;min-width:0!important}
+.app-shell .builder-card fieldset{margin:0 0 16px!important;padding:0!important;min-width:0!important}
+.app-shell .form-row{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}
+.app-shell :is(input:not([type=radio]):not([type=checkbox]):not([type=file]),select,textarea){width:100%!important;max-width:100%!important;min-width:0!important;border:1px solid #385364!important;border-radius:12px!important;background:#0b1726!important;color:#f2fbff!important;box-shadow:none!important;font-size:16px!important;min-height:47px!important}
+.app-shell :is(.field,.segmented,.tool-grid,.desk-heading,.pick-row){min-width:0!important}
+.app-shell .odds-estimate{margin:14px 0!important;padding:14px!important;border-radius:13px!important}
+.app-shell :is(.primary,button[type=submit],#generate-code){border-radius:13px!important;min-height:47px!important;background:linear-gradient(105deg,#8af2c8,#75cde9)!important;color:#07202b!important;font-weight:750!important;box-shadow:none!important;text-shadow:none!important;transform:none!important}
+.app-shell :is(.primary,button[type=submit],#generate-code):disabled{opacity:.55!important}
+.app-shell .tool-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;align-items:stretch!important}
+.app-shell #read-code-form{grid-column:1/-1!important}
+.app-shell .tool-card{padding:19px!important;margin:0!important;min-width:0!important;display:flex!important;flex-direction:column!important;gap:12px!important}
+.app-shell .tool-card :is(h3,p){margin:0!important}
+.app-shell .tool-card h3{font-size:17px!important;color:#f1fbff!important}
+.app-shell .tool-card .tool-icon{width:38px!important;height:38px!important;border-radius:12px!important;background:#183847!important;color:#8cf3d4!important;box-shadow:none!important}
+.app-shell :is(.analysis-status,.result-panel,.empty-state,.desk-panel){padding:18px!important;margin:0 0 13px!important}
+.app-shell .slip-summary{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:0!important;overflow:hidden!important;margin:0 0 13px!important}
+.app-shell .slip-summary>div{padding:19px 14px!important;min-width:0!important;background:transparent!important;border:0!important}
+.app-shell .slip-summary strong{font-size:clamp(23px,6vw,35px)!important;color:#9af5dc!important}
+.app-shell .pick-list{display:grid!important;gap:9px!important;margin:10px 0!important;background:transparent!important;border:0!important}
+.app-shell .pick-row{padding:14px!important;margin:0!important;gap:10px!important}
+.app-shell .desk-panel{overflow:hidden!important}.app-shell .desk-heading{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:10px!important}
+.app-shell .desk-rows{display:grid!important;gap:9px!important}.app-shell .desk-row{background:#0c1725!important;border:1px solid #253b4b!important;border-radius:12px!important;padding:12px!important}
+.app-shell .bottom-nav{position:fixed!important;z-index:100!important;left:50%!important;right:auto!important;bottom:calc(12px + env(safe-area-inset-bottom,0px))!important;top:auto!important;transform:translateX(-50%)!important;float:none!important;margin:0!important;width:min(430px,calc(100% - 24px))!important;max-width:calc(100% - 24px)!important;height:68px!important;padding:5px!important;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:3px!important;background:#142435f2!important;border:1px solid #345263!important;border-radius:21px!important;box-shadow:0 12px 35px #0009!important;backdrop-filter:blur(18px)!important;-webkit-backdrop-filter:blur(18px)!important}
+.app-shell .bottom-nav .nav-item{position:relative!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:3px!important;min-width:0!important;width:100%!important;height:56px!important;margin:0!important;padding:5px 2px!important;border-radius:16px!important;background:transparent!important;border:0!important;transform:none!important;color:#9cb6c5!important}
+.app-shell .bottom-nav .nav-item.active{background:#254a52!important;color:#a0f5d7!important}.app-shell .bottom-nav .nav-icon{width:23px!important;height:23px!important;display:grid!important;place-items:center!important;margin:0!important}.app-shell .bottom-nav .nav-icon svg{width:19px!important;height:19px!important}.app-shell .bottom-nav .nav-label{display:block!important;font-size:10px!important;line-height:1.2!important;white-space:nowrap!important;letter-spacing:0!important}.app-shell .bottom-nav .glass-indicator{display:none!important}
+.app-shell .toast{bottom:calc(94px + env(safe-area-inset-bottom,0px))!important}
+@media(max-width:560px){.app-shell .view{padding:18px 15px 25px!important}.app-shell .form-row,.app-shell .tool-grid{grid-template-columns:1fr!important}.app-shell #read-code-form{grid-column:auto!important}.app-shell .hero-copy{padding:25px 20px!important}.app-shell .builder-card{padding:18px!important}.app-shell .tool-card{padding:17px!important}}
+@media(min-width:800px){.app-shell .view{padding:32px 36px 45px!important}.app-shell #build-view.active{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:13px 20px!important;align-items:start!important}.app-shell #build-view .hero-copy{grid-column:1!important;grid-row:1/3!important}.app-shell #build-view .build-steps{grid-column:1!important;grid-row:3!important}.app-shell #build-view .quick-presets{grid-column:1!important;grid-row:4!important}.app-shell #build-view .builder-card{grid-column:2!important;grid-row:1/5!important}.app-shell #build-view .help-panel{grid-column:1/-1!important}.app-shell #build-view .loading-card,.app-shell #build-view .notice{grid-column:1/-1!important}}
+@media(prefers-reduced-motion:reduce){.app-shell *, .app-shell *:before,.app-shell *:after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
