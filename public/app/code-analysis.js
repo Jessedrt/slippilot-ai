@@ -1,5 +1,7 @@
 import './score-trim.js?v=6.2.0';
 import './code-workspace.js?v=6.2.0';
+import './chat-edit-commands.js?v=7.0.0';
+import './conversation-editor.js?v=7.0.0';
 import './schedule-hints.js?v=5.4.0';
 import './sports-extension.js?v=5.5.0';
 
@@ -66,7 +68,7 @@ if (codeForm && codeInput && resultPanel) {
         <p class="analysis-meta">${encode(data.code)} · ${data.selections.length} verified of ${Number(data.count) || data.selections.length} original selections · current verified odds ${displayOdds(data.combinedOdds)}</p>
         <p class="analysis-summary">${encode(data.summary)}</p>${excludedHtml}${items}
         <p class="analysis-disclaimer">${encode(data.disclaimer || 'AI scores are not win probabilities. No bet was placed.')}</p>
-        ${editableCount ? `<p class="analysis-summary">${editableCount} qualified selection(s) are ranked below. Enter any valid odds target and tap Rank, trim & generate code; higher-scored picks are considered first and live markets are rechecked.</p>` : '<p class="analysis-warning">No selection qualified for editing. There is no new booking code.</p>'}`);
+        ${editableCount ? `<p class="analysis-summary">${editableCount} qualified picks are ready in the chat editor below. Ask Aurex to remove a game, change a market, trim to any valid odds, split the ticket, or generate a new verified code.</p>` : '<p class="analysis-warning">No selection qualified for editing. There is no new booking code.</p>'}`);
       document.dispatchEvent(new CustomEvent('aurex:code-analyzed', {
         detail: { code: data.code, analyzedAt: data.analyzedAt, summary: data.summary,
           combinedOdds: data.combinedOdds, selections: data.selections,
