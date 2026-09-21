@@ -25,7 +25,7 @@ describe('source-linked sports news integration', () => {
     const app = Fastify(); await app.register(sensible);
     registerMiniAppRoutes(app, { sportyBet: {} as never, slipAnalyzer: {} as never,
       screenshotAnalyzer: {} as never });
-    const search = vi.fn(async () => ({ results: { web: [], news: [] } }));
+    const search = vi.fn(() => Promise.resolve({ results: { web: [], news: [] } }));
     registerNewsRoutes(app, { search }, true);
     const result = await app.inject({ method: 'POST', url: '/api/miniapp/news', payload: { sport: 'football' } });
     expect(result.statusCode).toBe(503);
@@ -37,7 +37,7 @@ describe('source-linked sports news integration', () => {
     const app = Fastify(); await app.register(sensible);
     registerMiniAppRoutes(app, { telegramBotToken: botToken, sportyBet: {} as never,
       slipAnalyzer: {} as never, screenshotAnalyzer: {} as never });
-    const search = vi.fn(async () => ({ results: { web: [
+    const search = vi.fn(() => Promise.resolve({ results: { web: [
       { url: 'https://website.example/general', title: 'A web page', snippets: [] }], news: [
       { url: 'https://publisher.example/story?campaign=1', title: 'A real publisher headline',
         description: 'This is a publisher summary.', snippets: [], page_age: new Date().toISOString() },
