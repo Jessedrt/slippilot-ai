@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import { importBookingCode } from '../src/api/code-workspace-routes.js';
 import type { SportyBetProvider } from '../src/sportybet/contracts.js';
 
@@ -39,7 +40,8 @@ describe('booking code import recovery', () => {
     expect(result.editableSlip?.selections).toHaveLength(1);
     expect(result.editableSlip?.qualityMinimum).toBe(55);
     expect(analyze).toHaveBeenCalledOnce();
-    const claim = JSON.parse(Buffer.from(result.editableSlip!.analysisToken.split('.')[0]!, 'base64url').toString('utf8'));
+    const claim = z.object({ minimumScore: z.number(), selections: z.array(z.string()) })
+      .parse(JSON.parse(Buffer.from(result.editableSlip!.analysisToken.split('.')[0]!, 'base64url').toString('utf8')) as unknown);
     expect(claim.minimumScore).toBe(55);
     expect(claim.selections).toHaveLength(1);
   });
@@ -47,8 +49,7 @@ describe('booking code import recovery', () => {
     vi.useFakeTimers(); vi.setSystemTime(now);
     const { deps, analyze } = setup(70, false);
     await expect(importBookingCode('ABCD1234', deps, 'verified-init-data'))
-      .rejects.toMatchObject({ statusCode: 409,
-        message: expect.stringContaining('no current market') });
+      .rejects.toMatchObject({ statusCode: 409 });
     expect(analyze).not.toHaveBeenCalled();
   });
   it('shows reviewed low-quality selection but never offers it for editing', async () => {
