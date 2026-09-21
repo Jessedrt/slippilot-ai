@@ -1,6 +1,7 @@
 // Preview-only skin. Production app.js and existing integrations retain ownership of functionality.
 const reset=document.createElement('link');reset.rel='stylesheet';reset.href='/app/aurex-reset.css?v=3.0.0';document.head.append(reset);
 const approved=document.createElement('link');approved.rel='stylesheet';approved.href='/app/aurex-white-green.css?v=1.0.0';document.head.append(approved);
+const maximalist=document.createElement('link');maximalist.rel='stylesheet';maximalist.href='/app/aurex-maximalist.css?v=1.0.0';document.head.append(maximalist);
 void import('./aurex-white-green.js?v=1.0.0').catch(error=>console.error('Aurex white-green preview failed to initialize',error));
 const shell=document.querySelector('.app-shell');
 const tabs=[...document.querySelectorAll('.bottom-nav button[data-view]')];
