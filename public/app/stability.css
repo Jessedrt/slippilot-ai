@@ -1,0 +1,90 @@
+/* AUREX stabilization: one final surface and sizing authority, not another animation stack.
+   Keep the glass dock; use opaque reading surfaces so cards don't turn milky white. */
+:root {
+  --bg: #0b1018;
+  --panel: #151d28;
+  --panel2: #1b2632;
+  --ink: #f1f5f8;
+  --muted: #a9b8c4;
+  --lime: #c7f47c;
+  --line: rgba(196, 218, 235, .14);
+  color-scheme: dark;
+}
+html, body { background-color: var(--bg); }
+.app-shell { background: radial-gradient(ellipse 75% 270px at 95% 0, rgba(75,132,178,.11), transparent 75%), #0b1018; }
+.app-shell::before { opacity: .2; }
+/* Opaque, consistent material for dense information. Glass is an accent, not a white overlay. */
+.app-shell :is(.builder-card, .tool-card, .result-panel, .loading-card, .slip-summary, .empty-state, .desk-panel, .code-workspace, .analysis-status, .notice) {
+  background: linear-gradient(165deg, #1a2531, #111923 85%);
+  color: #f1f5f8;
+  border: 1px solid rgba(201,221,235,.16);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.055), 0 10px 25px rgba(0,0,0,.16);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.app-shell :is(.build-steps > div, .quick-presets button, .odds-estimate, .help-panel, .pick-row, .code-block, .desk-row, .watch53-row) {
+  background: #17212c;
+  border: 1px solid rgba(201,221,235,.14);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.035);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.app-shell :is(.field input, .field select, .tool-card input, .upload, .watch53-times input) {
+  background: #0c141d;
+  color: #f3f7fa;
+  border-color: rgba(190,218,238,.23);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.app-shell :is(.field input, .field select, .tool-card input):focus-visible,
+.app-shell button:focus-visible { outline: 2px solid #c7f47c; outline-offset: 2px; }
+.app-shell :is(.hero-copy > p, .section-title > p, .desk-note, .field-help) { color: #a9b8c4; }
+.app-shell :is(.builder-card, .tool-card, .desk-panel, .result-panel) { min-width: 0; overflow-wrap: break-word; }
+.app-shell :is(.tool-grid, .form-row, .desk-heading, .code-workspace-row) > * { min-width: 0; }
+.app-shell :is(.builder-card, .tool-card, .desk-panel) { border-radius: 20px; }
+.app-shell .tool-card { gap: 10px; }
+.app-shell .tool-card :is(input, button) { max-width: 100%; box-sizing: border-box; }
+.app-shell :is(.tool-card button, .code-workspace button, .desk-panel button) { min-height: 42px; }
+.app-shell .primary { color: #12200e; background: #c7f47c; box-shadow: 0 5px 17px rgba(147,215,82,.12); }
+/* Four equally sized targets. Do not animate/scale the entire dock button: it moves the lens. */
+.app-shell .bottom-nav {
+  left: 50%; right: auto; transform: translateX(-50%);
+  width: min(430px, calc(100% - 28px));
+  display: grid; grid-template-columns: repeat(4,minmax(0,1fr));
+  align-items: stretch; justify-items: stretch; gap: 2px; padding: 4px;
+  border-radius: 999px;
+  background: linear-gradient(165deg, rgba(72,99,124,.47), rgba(20,31,44,.88) 72%);
+  border: 1px solid rgba(201,222,239,.28);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 10px 30px rgba(0,0,0,.35);
+  -webkit-backdrop-filter: blur(22px) saturate(135%);
+  backdrop-filter: blur(22px) saturate(135%);
+}
+.app-shell .bottom-nav .nav-item {
+  box-sizing: border-box; display: flex; flex-direction: row;
+  align-items: center; justify-content: center; width: 100%; min-width: 0;
+  padding: 3px 2px; gap: 3px; transform: none; white-space: nowrap;
+}
+.app-shell .bottom-nav .nav-label { overflow: hidden; text-overflow: clip; font-size: .65rem; line-height: 1.1; }
+.app-shell .bottom-nav .glass-indicator {
+  background: linear-gradient(140deg, rgba(203,235,255,.23), rgba(119,161,204,.14)), rgba(54,79,100,.46);
+  border-color: rgba(215,235,247,.38);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.29), 0 3px 10px rgba(0,0,0,.2);
+}
+.app-shell #analysis-result .analysis-excluded {
+  padding: 13px 14px; margin: 12px 0; border-radius: 14px;
+  border: 1px solid rgba(243,193,117,.36); background: #30271c;
+  color: #ffe1ae; overflow-wrap: anywhere;
+}
+.app-shell #analysis-result .analysis-excluded h4 { margin: 0 0 7px; color: #ffe3b6; font-size: .95rem; }
+.app-shell #analysis-result .analysis-excluded p { margin: 6px 0; font-size: .82rem; line-height: 1.5; color: #f1d5ad; }
+@media (max-width: 360px) {
+  .app-shell .bottom-nav .nav-item { gap: 2px; }
+  .app-shell .bottom-nav .nav-label { font-size: .59rem; }
+  .app-shell .tool-card { padding: 15px; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .app-shell .bottom-nav { background: #202d3c; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .bottom-nav .glass-indicator { transition: none; }
+}
