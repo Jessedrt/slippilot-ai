@@ -1,9 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
 import { describe, expect, it } from 'vitest';
-
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
-
 describe('isolated Aurex redesign', () => {
   it('loads one coherent skin and does not load rejected preview modules', () => {
     const enhancement = read('../public/app/delight.js');
@@ -11,13 +9,12 @@ describe('isolated Aurex redesign', () => {
     expect(enhancement).toContain('/app/aurex-reset.css?v=3.0.0');
     for (const rejected of ['redesign-preview.css', 'redesign-layout-fixes.css', 'fluid-intelligence.css', 'fluid-layout-patch.css', "import('./redesign-preview.js", "import('./fluid-intelligence.js"])
       expect(enhancement).not.toContain(rejected);
-    for (const view of ['#build-view', '#analyze-view', '#slip-view', '#explore-view'])
-      expect(skin).toContain(view);
+    for (const component of ['#build-view', '.tool-grid', '.slip-summary', '.desk-panel', '.bottom-nav'])
+      expect(skin).toContain(component);
     expect(skin).toContain('prefers-reduced-motion');
     expect(enhancement).not.toContain('fetch(');
     expect(() => new Script(enhancement, { filename: 'delight.js' })).not.toThrow();
   });
-
   it('preserves build, analyze, editing and navigation entrypoints', () => {
     const html = read('../public/app/index.html');
     const code = read('../public/app/code-analysis.js');
