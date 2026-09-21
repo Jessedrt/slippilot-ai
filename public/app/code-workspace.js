@@ -144,9 +144,9 @@ async function loadOptions(index) {
     const pick = slip.selections[index];
     const data = await api('/api/miniapp/code-options', { eventId: pick.eventId, sport: pick.sport });
     optionsIndex = index; options = data.options || [];
-    render(); message(`${options.length} current outcomes · checked ${data.checkedAt}. ${data.truncated ? 'More markets exist beyond this list.' : ''}`);
+    message(`${options.length} current outcomes · checked ${data.checkedAt}. ${data.truncated ? 'More markets exist beyond this list.' : ''}`);
   } catch (error) { message(error instanceof Error ? error.message : 'Market search failed.', true); }
-  finally { busy = false; }
+  finally { busy = false; render(); }
 }
 async function edit(action, extra = {}) {
   if (busy || !slip?.selections?.length) return false;
@@ -158,13 +158,13 @@ async function edit(action, extra = {}) {
     });
     slip = { ...updated, sourceCode: slip.sourceCode };
     pending = false; optionsIndex = -1; options = [];
-    clearCode(); render();
+    clearCode();
     message(`${updated.selections.length} picks verified and reanalyzed. Combined odds: ${fmt(updated.combinedOdds)}. No bet placed.`);
     return true;
   } catch (error) {
     message(error instanceof Error ? error.message : 'Reanalysis failed; no new code was created.', true);
     return false;
-  } finally { busy = false; }
+  } finally { busy = false; render(); }
 }
 async function reanalyze() { await edit('reanalyze'); }
 async function choose(index, option) {
