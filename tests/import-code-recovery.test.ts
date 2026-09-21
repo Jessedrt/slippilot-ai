@@ -45,6 +45,26 @@ describe('booking code import recovery', () => {
     expect(claim.minimumScore).toBe(55);
     expect(claim.selections).toHaveLength(1);
   });
+  it('returns higher-scored verified legs first, including in the signed editable slip', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(now);
+    const { deps, analyze } = setup();
+    vi.spyOn(deps.sportyBet, 'resolveBookingCode')
+      .mockResolvedValue([pick('lower-score'), pick('higher-score')]);
+    analyze.mockImplementation((items) => Promise.resolve({
+      model: 'test', analyzedAt: now.toISOString(), summary: 'Ranked.',
+      selections: items.map((_item, index) => ({ index: index + 1,
+        confidence: index === 0 ? 60 : 92,
+        verdict: 'keep' as const, risk: 'lower' as const, reason: 'Reviewed.' })),
+    }));
+    const result = await importBookingCode('ABCD1234', deps, 'verified-init-data');
+    expect(result.selections.map((item) => item.eventId))
+      .toEqual(['higher-score', 'lower-score']);
+    expect(result.editableSlip?.selections.map((item) => item.eventId))
+      .toEqual(['higher-score', 'lower-score']);
+    const tokenPayload = JSON.parse(Buffer.from(result.editableSlip!.analysisToken.split('.')[0]!,
+      'base64url').toString('utf8')) as { selections: string[] };
+    expect(tokenPayload.selections[0]).toContain('higher-score');
+  });
   it('returns actionable conflict rather than HTTP 500 when all legs have started', async () => {
     vi.useFakeTimers(); vi.setSystemTime(now);
     const { deps, analyze } = setup(70, false);
