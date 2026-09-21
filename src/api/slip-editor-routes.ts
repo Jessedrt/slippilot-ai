@@ -34,33 +34,38 @@ const editorSchema = z.object({
     (value.action !== 'choose' || Boolean(value.marketId && value.selectionId))), {
   path: ['index'], message: 'Select a valid selection and active replacement market.',
 });
-
 class EditConflict extends Error { readonly statusCode = 409; }
 const key = (item: Selected) => {
   const base = `${item.eventId}\u0000${item.marketId}\u0000${item.selectionId}`;
   return item.specifier == null ? base : `${base}\u0000${item.specifier}`;
 };
 const session = (initData: string) => createHash('sha256').update(initData).digest('base64url');
-function verifiedToken(token: string, selections: Selected[], initData: string, botToken: string): boolean {
+/** Signed threshold is authoritative. An edited request cannot lower a strict preset
+ * by changing client-supplied targetOdds or riskMode. Older tokens stay at 68. */
+function verifiedMinimum(token: string, selections: Selected[], initData: string,
+  botToken: string): number | null {
   const [payload, signature, extra] = token.split('.');
-  if (!payload || !signature || extra) return false;
+  if (!payload || !signature || extra) return null;
   const expected = createHmac('sha256', botToken)
     .update(`aurex-miniapp-analysis-v1.${payload}`).digest('base64url');
   const left = Buffer.from(signature);
   const right = Buffer.from(expected);
-  if (left.length !== right.length || !timingSafeEqual(left, right)) return false;
+  if (left.length !== right.length || !timingSafeEqual(left, right)) return null;
   try {
     const data: unknown = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
     const claim = z.object({ expiresAt: z.number(), session: z.string(),
-      selections: z.array(z.string()) }).parse(data);
+      selections: z.array(z.string()), minimumScore: z.number().optional() }).parse(data);
+    const minimum = claim.minimumScore ?? MIN_AI_QUALITY_SCORE;
+    if (![50, 55, 60, 68].includes(minimum)) return null;
     const approved = new Set(claim.selections);
     return claim.expiresAt >= Date.now() && claim.session === session(initData) &&
-      selections.every((item) => approved.has(key(item)));
-  } catch { return false; }
+      selections.every((item) => approved.has(key(item))) ? minimum : null;
+  } catch { return null; }
 }
-function signedToken(selections: Selected[], initData: string, botToken: string): string {
+function signedToken(selections: Selected[], initData: string,
+  botToken: string, minimumScore: number): string {
   const payload = Buffer.from(JSON.stringify({ expiresAt: Date.now() + 30 * 60_000,
-    session: session(initData), selections: selections.map(key) })).toString('base64url');
+    session: session(initData), selections: selections.map(key), minimumScore })).toString('base64url');
   const signature = createHmac('sha256', botToken)
     .update(`aurex-miniapp-analysis-v1.${payload}`).digest('base64url');
   return `${payload}.${signature}`;
@@ -73,8 +78,10 @@ export function registerSlipEditorRoutes(
   app.post('/api/miniapp/edit-slip', async (request, reply) => {
     const input = editorSchema.parse(request.body);
     const initData = request.headers['x-telegram-init-data'];
-    if (!deps.telegramBotToken || typeof initData !== 'string' ||
-        !verifiedToken(input.analysisToken, input.selections, initData, deps.telegramBotToken)) {
+    const minimum = deps.telegramBotToken && typeof initData === 'string'
+      ? verifiedMinimum(input.analysisToken, input.selections, initData, deps.telegramBotToken)
+      : null;
+    if (minimum === null || !deps.telegramBotToken || typeof initData !== 'string') {
       return reply.unauthorized('Analysis expired or does not match this slip. Analyze the code or rebuild.');
     }
     const getEvent = new Map<string, ReturnType<SportyBetProvider['getEvent']>>();
@@ -146,10 +153,10 @@ export function registerSlipEditorRoutes(
     if (reviews.size !== original.length || original.some((_pick, index) => !reviews.has(index + 1))) {
       throw new EditConflict('AI did not review every selection; the original slip is unchanged.');
     }
-    const failed = analysis.selections.filter((item) => !passesAiQuality(item));
+    const failed = analysis.selections.filter((item) => !passesAiQuality(item, minimum));
     if (failed.length) {
       const numbers = failed.map((item) => `#${item.index}`).join(', ');
-      throw new EditConflict(`Selection(s) ${numbers} did not meet the ${MIN_AI_QUALITY_SCORE}/100 AI quality pass mark or were rejected. Remove or replace them and reanalyze. The original slip is unchanged; no code was created.`);
+      throw new EditConflict(`Selection(s) ${numbers} did not meet the ${minimum}/100 AI quality pass mark or were rejected. Remove or replace them and reanalyze. The original slip is unchanged; no code was created.`);
     }
     const selections: Selected[] = original.map((pick, index) => {
       const review = reviews.get(index + 1)!;
@@ -164,12 +171,13 @@ export function registerSlipEditorRoutes(
     });
     return { slipId: randomUUID(), sport: selections[0]!.sport,
       riskMode: input.riskMode, targetOdds: input.targetOdds ?? null,
-      requestedGames: selections.length, availableGames: selections.length, shortfall: 0,
+      qualityMinimum: minimum, requestedGames: selections.length,
+      availableGames: selections.length, shortfall: 0,
       schedule: 'Refreshed provider markets', selections,
       combinedOdds: selections.reduce((total, item) => total * item.odds, 1),
       averageConfidence: selections.reduce((total, item) => total + item.confidence, 0) / selections.length,
-      summary: `AI pass mark ${MIN_AI_QUALITY_SCORE}/100 (quality, not win probability). ${analysis.summary}`, rejected: 0,
+      summary: `AI pass mark ${minimum}/100 (quality, not win probability). ${analysis.summary}`, rejected: 0,
       oddsChanged: selections.some((item, index) => item.odds !== input.selections[index]?.odds),
-      analysisToken: signedToken(selections, initData, deps.telegramBotToken) };
+      analysisToken: signedToken(selections, initData, deps.telegramBotToken, minimum) };
   });
 }
