@@ -152,7 +152,7 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
         odds: selection.odds, confidence: result.confidence, risk: result.risk,
         verdict: result.verdict,
       }];
-    });
+    }).sort((left, right) => right.confidence - left.confidence);
     if (!selections.length) return reply.conflict(`No verified selection passed the ${minimum}/100 AI quality minimum. No booking code was prepared.`);
     const initData = request.headers['x-telegram-init-data'] as string;
     const dayLabel = ['today', 'tomorrow', 'the following day'][snapshot.dayOffset];
@@ -180,7 +180,9 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
     if (input.selections.some((selection) => selection.confidence < minimum)) {
       return reply.conflict(`A selection is below the ${minimum}/100 AI quality pass mark. Remove it and reanalyze before generating a code.`);
     }
-    const candidates = input.selections.map(toCandidate);
+    // The booking provider receives the analyzed games in descending evidence-quality order.
+    const candidates = [...input.selections].sort((left, right) =>
+      right.confidence - left.confidence).map(toCandidate);
     const preparation = await new SportyBetSlipBuilder(deps.sportyBet).prepare(candidates);
     if (preparation.status === 'unavailable') return reply.conflict(`Market unavailable: ${preparation.reason}`);
     // The provider's refreshed odds, not stale client odds, determine the cap.
