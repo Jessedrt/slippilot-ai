@@ -8,9 +8,9 @@ type TelegramApi = Pick<Telegraf['telegram'],
   'getMe' | 'getWebhookInfo' | 'setWebhook' | 'setMyCommands'>;
 
 /**
- * Repair missing, stale or failing Telegram delivery when a production Vercel
- * function starts. No polling, token in URL, dropped updates or per-message
- * webhook mutations. Safe to repeat across independent serverless instances.
+ * Restore delivery for the two specifically known AUREX identities. The original
+ * production token belongs to @slippilotbot; refusing it silently broke /start.
+ * Do not accept arbitrary token identities: a different bot could lose its webhook.
  */
 export async function ensureProductionWebhook(
   api: TelegramApi,
@@ -18,7 +18,11 @@ export async function ensureProductionWebhook(
   expectedUsername = 'AurexIQBot',
 ): Promise<boolean> {
   const identity = await api.getMe();
-  if (identity.username.toLowerCase() !== expectedUsername.toLowerCase()) {
+  const username = identity.username.toLowerCase();
+  const accepted = expectedUsername === 'AurexIQBot'
+    ? ['aurexiqbot', 'slippilotbot']
+    : [expectedUsername.toLowerCase()];
+  if (!accepted.includes(username)) {
     throw new Error(`Configured Telegram bot is @${identity.username}, expected @${expectedUsername}. Check TELEGRAM_BOT_TOKEN in Vercel Production.`);
   }
 
