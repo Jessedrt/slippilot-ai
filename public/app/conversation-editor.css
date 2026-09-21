@@ -1,0 +1,30 @@
+/* Scoped chat editor: accessible, mobile-first and independent of global nav styles. */
+.aurex-conversation{margin:18px 0;min-width:0;padding:17px;border-radius:24px;border:1px solid rgba(194,248,136,.25);background:linear-gradient(145deg,rgba(28,40,44,.98),rgba(11,19,26,.99));box-shadow:0 22px 45px rgba(0,0,0,.23);display:grid;gap:13px}
+.aurex-conversation.hidden{display:none!important}
+.aurex-conversation-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.aurex-conversation-heading h3{font-size:1.19rem;letter-spacing:-.035em;margin:3px 0 0;color:#f2f7f3}
+.aurex-conversation-heading .eyebrow{color:#c5ef9b;margin:0;font-size:.66rem;letter-spacing:.12em}
+.aurex-chat-note{font-size:.76rem;line-height:1.55;color:#b0bdc3;margin:0}
+.aurex-conversation button{font:inherit;border-radius:13px;cursor:pointer;transition:transform .18s ease,border-color .18s ease}
+.aurex-conversation button:active{transform:scale(.98)}
+.aurex-conversation button:focus-visible,.aurex-conversation input:focus-visible{outline:2px solid #caff89;outline-offset:2px}
+.aurex-conversation button:disabled{opacity:.48;cursor:wait}
+.aurex-manual-toggle{font-size:.7rem!important;min-width:83px;padding:8px 9px;background:rgba(178,232,154,.08);border:1px solid rgba(178,232,154,.28);color:#d4e7d0}
+.aurex-chat-transcript{display:flex;flex-direction:column;gap:11px;max-height:475px;overflow-y:auto;overscroll-behavior:contain;padding:7px 3px 7px 1px;scrollbar-width:thin}
+.aurex-chat-bubble{max-width:95%;display:grid;gap:7px;padding:12px 14px;border-radius:17px;background:rgba(48,64,69,.72);border:1px solid rgba(208,231,229,.13);color:#ecf4f0;overflow-wrap:anywhere}
+.aurex-chat-you{align-self:flex-end;max-width:89%;background:rgba(160,233,96,.17);border-color:rgba(193,255,120,.24)}
+.aurex-chat-bot{align-self:flex-start}
+.aurex-chat-speaker{font-size:.63rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#cfff87}
+.aurex-chat-bubble p{font-size:.83rem;line-height:1.5;white-space:pre-line;margin:0;color:#e5eeeb}
+.aurex-chat-options,.aurex-chat-examples{display:flex;gap:7px;flex-wrap:wrap}
+.aurex-chat-action{border:1px solid rgba(191,232,165,.25);color:#e0f5cb;background:rgba(17,30,34,.9);font-size:.75rem!important;padding:8px 11px;line-height:1.35;white-space:normal;text-align:left}
+.aurex-chat-options{display:grid;grid-template-columns:minmax(0,1fr);margin-top:4px}
+.aurex-chat-options .aurex-chat-action{width:100%}
+.aurex-chat-save{border-color:rgba(197,255,128,.47);color:#ccff93}
+.aurex-chat-code{display:block;font-size:1.3rem;letter-spacing:.08em;font-weight:800;color:#cbff82;word-break:break-all;padding:10px 0}
+.aurex-chat-form{display:flex;align-items:stretch;gap:8px}
+.aurex-chat-form input{min-width:0;flex:1;padding:12px 11px;border-radius:14px;background:#111b23;border:1px solid rgba(217,238,228,.23);color:#f5fbef;font:inherit;font-size:.86rem}
+.aurex-chat-form input::placeholder{color:#9babb1}
+.aurex-chat-form button{flex:none;padding:9px 13px;background:linear-gradient(125deg,#d2ff85,#afe95c);border:none;color:#192c17;font-size:.81rem;font-weight:800}
+@media(max-width:365px){.aurex-conversation{padding:12px}.aurex-manual-toggle{min-width:0}.aurex-chat-form button{padding:9px 10px}}
+@media(prefers-reduced-motion:reduce){.aurex-conversation button{transition:none!important}}
