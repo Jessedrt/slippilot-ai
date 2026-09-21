@@ -3,6 +3,7 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import type { SlipAnalyzer } from '../ai/slip-analyzer.js';
 import { MIN_AI_QUALITY_SCORE, passesAiQuality } from '../ai/quality-gate.js';
+import { minimumQualityForTarget } from '../ai/quality-policy.js';
 import type { ScreenshotAnalyzer } from '../ai/screenshot-analyzer.js';
 import { SportyBetSlipBuilder } from '../booking/workflow.js';
 import { automaticLegCount } from '../slips/odds-target.js';
@@ -17,7 +18,6 @@ export interface MiniAppDependencies {
   screenshotAnalyzer: ScreenshotAnalyzer;
   telegramBotToken?: string;
 }
-
 const buildSchema = z.object({
   sport: z.enum(['football', 'basketball', 'tennis', 'handball']),
   gameCount: z.number().int().positive().safe().optional(),
@@ -27,7 +27,6 @@ const buildSchema = z.object({
 }).refine((input) => input.targetOdds !== undefined || input.gameCount !== undefined, {
   message: 'Enter target odds of at least 1.01.', path: ['targetOdds'],
 });
-
 const selectionSchema = z.object({
   eventId: z.string().min(1).max(100), marketId: z.string().min(1).max(100),
   selectionId: z.string().min(1).max(100),
@@ -46,8 +45,9 @@ const codeSchema = z.object({
 });
 type MiniSelection = z.infer<typeof selectionSchema>;
 const ANALYSIS_TOKEN_TTL_MS = 30 * 60 * 1000;
-interface AnalysisTokenPayload { expiresAt: number; session: string; selections: string[] }
-
+interface AnalysisTokenPayload {
+  expiresAt: number; session: string; selections: string[]; minimumScore?: number;
+}
 function selectionKey(selection: MiniSelection): string {
   const identity = `${selection.eventId}\u0000${selection.marketId}\u0000${selection.selectionId}`;
   return selection.specifier == null ? identity : `${identity}\u0000${selection.specifier}`;
@@ -55,29 +55,35 @@ function selectionKey(selection: MiniSelection): string {
 function sessionKey(initData: string): string {
   return createHash('sha256').update(initData).digest('base64url');
 }
-function signAnalysisToken(selections: MiniSelection[], initData: string, botToken: string): string {
+function signAnalysisToken(selections: MiniSelection[], initData: string, botToken: string,
+  minimumScore: number): string {
   const payload = Buffer.from(JSON.stringify({
     expiresAt: Date.now() + ANALYSIS_TOKEN_TTL_MS,
-    session: sessionKey(initData), selections: selections.map(selectionKey),
+    session: sessionKey(initData), selections: selections.map(selectionKey), minimumScore,
   } satisfies AnalysisTokenPayload)).toString('base64url');
   const signature = createHmac('sha256', botToken)
     .update(`aurex-miniapp-analysis-v1.${payload}`).digest('base64url');
   return `${payload}.${signature}`;
 }
-function verifyAnalysisToken(token: string, selections: MiniSelection[], initData: string, botToken: string): boolean {
+/** Return the signed minimum, never a client-supplied target; old tokens stay strict. */
+function verifyAnalysisToken(token: string, selections: MiniSelection[], initData: string,
+  botToken: string): number | null {
   const [payload, suppliedSignature, extra] = token.split('.');
-  if (!payload || !suppliedSignature || extra) return false;
+  if (!payload || !suppliedSignature || extra) return null;
   const expectedSignature = createHmac('sha256', botToken)
     .update(`aurex-miniapp-analysis-v1.${payload}`).digest('base64url');
   const supplied = Buffer.from(suppliedSignature);
   const expected = Buffer.from(expectedSignature);
-  if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return false;
+  if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return null;
   try {
     const claim = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as AnalysisTokenPayload;
-    if (claim.expiresAt < Date.now() || claim.session !== sessionKey(initData)) return false;
+    if (claim.expiresAt < Date.now() || claim.session !== sessionKey(initData) ||
+      !Array.isArray(claim.selections)) return null;
+    const minimum = claim.minimumScore ?? MIN_AI_QUALITY_SCORE;
+    if (![50, 55, 60, 68].includes(minimum)) return null;
     const approved = new Set(claim.selections);
-    return selections.every((selection) => approved.has(selectionKey(selection)));
-  } catch { return false; }
+    return selections.every((selection) => approved.has(selectionKey(selection))) ? minimum : null;
+  } catch { return null; }
 }
 function toCandidate(selection: MiniSelection): CandidateSelection {
   return {
@@ -123,6 +129,7 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
   });
   app.post('/api/miniapp/build', async (request, reply) => {
     const input = buildSchema.parse(request.body);
+    const minimum = minimumQualityForTarget(input.targetOdds, input.riskMode);
     const plannedGames = input.targetOdds === undefined ? input.gameCount! :
       automaticLegCount(input.targetOdds, input.riskMode);
     const snapshot = await buildReviewedLiveSlipSnapshot(
@@ -132,7 +139,7 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
     const analysis = snapshot.analysis;
     const selections = snapshot.slip.selections.flatMap((selection, index) => {
       const result = analysis.selections[index];
-      if (!result || !passesAiQuality(result)) return [];
+      if (!result || !passesAiQuality(result, minimum)) return [];
       return [{
         eventId: selection.eventId, marketId: selection.providerMarketId,
         selectionId: selection.providerSelectionId,
@@ -145,12 +152,12 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
         verdict: result.verdict,
       }];
     });
-    if (!selections.length) return reply.conflict(`No verified selection passed the ${MIN_AI_QUALITY_SCORE}/100 AI quality minimum. No booking code was prepared.`);
+    if (!selections.length) return reply.conflict(`No verified selection passed the ${minimum}/100 AI quality minimum. No booking code was prepared.`);
     const initData = request.headers['x-telegram-init-data'] as string;
     const dayLabel = ['today', 'tomorrow', 'the following day'][snapshot.dayOffset];
     return {
       slipId: snapshot.slip.id, sport: input.sport, riskMode: input.riskMode,
-      targetOdds: input.targetOdds ?? null, requestedGames: plannedGames,
+      targetOdds: input.targetOdds ?? null, qualityMinimum: minimum, requestedGames: plannedGames,
       availableGames: selections.length, shortfall: Math.max(0, plannedGames - selections.length),
       schedule: `${dayLabel} (${snapshot.scheduleDate}, Africa/Lagos)`,
       scheduleDate: snapshot.scheduleDate, dayOffset: snapshot.dayOffset,
@@ -158,18 +165,19 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
       averageConfidence: selections.reduce((total, selection) => total + selection.confidence, 0) / selections.length,
       summary: analysis.summary, rejected: snapshot.rejectedOptions,
       reviewedOptions: snapshot.reviewedOptions,
-      analysisToken: signAnalysisToken(selections, initData, deps.telegramBotToken!),
+      analysisToken: signAnalysisToken(selections, initData, deps.telegramBotToken!, minimum),
     };
   });
 
   app.post('/api/miniapp/code', async (request, reply) => {
     const input = codeSchema.parse(request.body);
     const initData = request.headers['x-telegram-init-data'] as string;
-    if (!verifyAnalysisToken(input.analysisToken, input.selections, initData, deps.telegramBotToken!)) {
+    const minimum = verifyAnalysisToken(input.analysisToken, input.selections, initData, deps.telegramBotToken!);
+    if (minimum === null) {
       return reply.unauthorized('Your AI analysis expired. Reanalyze the slip before creating a code.');
     }
-    if (input.selections.some((selection) => selection.confidence < MIN_AI_QUALITY_SCORE)) {
-      return reply.conflict(`A selection is below the ${MIN_AI_QUALITY_SCORE}/100 AI quality pass mark. Remove it and reanalyze before generating a code.`);
+    if (input.selections.some((selection) => selection.confidence < minimum)) {
+      return reply.conflict(`A selection is below the ${minimum}/100 AI quality pass mark. Remove it and reanalyze before generating a code.`);
     }
     const candidates = input.selections.map(toCandidate);
     const preparation = await new SportyBetSlipBuilder(deps.sportyBet).prepare(candidates);
