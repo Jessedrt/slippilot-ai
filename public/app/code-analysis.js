@@ -1,4 +1,5 @@
-import './code-workspace.js?v=6.1.0';
+import './score-trim.js?v=6.2.0';
+import './code-workspace.js?v=6.2.0';
 import './schedule-hints.js?v=5.4.0';
 import './sports-extension.js?v=5.5.0';
 
@@ -44,13 +45,13 @@ if (codeForm && codeInput && resultPanel) {
       if (!Array.isArray(data.selections) || !data.selections.length || !data.summary) {
         throw new Error('A complete provider-backed analysis was not returned. Please try again.');
       }
-      const items = data.selections.map((pick, index) => {
+      const items = [...data.selections].sort((a, b) => b.confidence - a.confidence).map((pick, index) => {
         const verdict = ['keep', 'caution', 'reject'].includes(pick.verdict) ? pick.verdict : 'caution';
         return `<article class="analysis-pick">
           <span class="analysis-verdict ${verdict}">${encode(verdict)}</span>
           <h4>${index + 1}. ${encode(pick.homeTeam)} vs ${encode(pick.awayTeam)}</h4>
           <p class="analysis-market">${encode(pick.marketName)} — ${encode(pick.selectionName)} @ ${displayOdds(pick.odds)}</p>
-          <p>${encode(pick.risk)} risk · AI evidence-quality score: ${Math.round(Number(pick.confidence) || 0)}/100</p>
+          <p>${encode(pick.risk)} risk · AI evidence-quality score: ${Math.round(Number(pick.confidence) || 0)}/100 · Rank #${index + 1}</p>
           <p class="analysis-reason">${encode(pick.reason)}</p>
         </article>`;
       }).join('');
@@ -61,11 +62,11 @@ if (codeForm && codeInput && resultPanel) {
         ${excluded.map((item) => `<p>${encode(item.index)}. ${encode(item.label)} — ${encode(item.reason)}</p>`).join('')}
       </section>` : '';
       const editableCount = data.editableSlip?.selections?.length || 0;
-      show(`<h3>Booking code reviewed</h3>
+      show(`<h3>Booking code reviewed · highest score first</h3>
         <p class="analysis-meta">${encode(data.code)} · ${data.selections.length} verified of ${Number(data.count) || data.selections.length} original selections · current verified odds ${displayOdds(data.combinedOdds)}</p>
         <p class="analysis-summary">${encode(data.summary)}</p>${excludedHtml}${items}
         <p class="analysis-disclaimer">${encode(data.disclaimer || 'AI scores are not win probabilities. No bet was placed.')}</p>
-        ${editableCount ? `<p class="analysis-summary">${editableCount} qualified selection(s) are available for editing below. Enter your maximum odds and tap Trim & generate NEW code; changes are rechecked automatically.</p>` : '<p class="analysis-warning">No selection qualified for editing. There is no new booking code.</p>'}`);
+        ${editableCount ? `<p class="analysis-summary">${editableCount} qualified selection(s) are ranked below. Enter any valid odds target and tap Rank, trim & generate code; higher-scored picks are considered first and live markets are rechecked.</p>` : '<p class="analysis-warning">No selection qualified for editing. There is no new booking code.</p>'}`);
       document.dispatchEvent(new CustomEvent('aurex:code-analyzed', {
         detail: { code: data.code, analyzedAt: data.analyzedAt, summary: data.summary,
           combinedOdds: data.combinedOdds, selections: data.selections,
