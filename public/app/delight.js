@@ -1,10 +1,15 @@
-// Progressive visual enhancement only. app.js owns navigation, odds, and slip logic.
+// Progressive visual enhancement only. app.js owns navigation, odds and slip logic.
+// This single final stylesheet normalizes the earlier overlapping visual layers.
+const stabilityStyle = document.createElement('link');
+stabilityStyle.rel = 'stylesheet';
+stabilityStyle.href = '/app/stability.css?v=6.0.0';
+document.head.append(stabilityStyle);
+
 const shell = document.querySelector('.app-shell');
 const tabs = [...document.querySelectorAll('.bottom-nav button[data-view]')];
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-// Set direction before app.js handles the click, so the incoming view animates
-// from the correct side. Also support the empty-slip "Build a slip" shortcut.
+// Set direction before app.js handles the click. Include the empty-slip shortcut.
 if (shell && tabs.length) {
   document.addEventListener('click', (event) => {
     const destination = event.target.closest?.('[data-view], [data-go]');
@@ -17,8 +22,7 @@ if (shell && tabs.length) {
   }, { capture: true });
 }
 
-// A single expanding light ripple appears exactly where a finger touches.
-// It does not prevent, delay, or repeat the underlying button's click.
+// One ripple per tap; never intercept, delay or repeat the underlying click.
 document.addEventListener('pointerdown', (event) => {
   if (prefersReducedMotion.matches || (event.pointerType === 'mouse' && event.button !== 0)) return;
   const button = event.target.closest?.('.primary, .quick-presets button, .tool-card button, .empty-state button');
@@ -37,7 +41,7 @@ document.addEventListener('pointerdown', (event) => {
   ripple.addEventListener('animationend', () => ripple.remove(), { once: true });
 }, { passive: true });
 
-// Animate only genuinely changed match-count estimates, not every keystroke.
+// Animate genuinely changed estimates only, not every keystroke.
 const estimate = document.querySelector('#estimated-games');
 if (estimate) {
   let previousValue = estimate.textContent;
@@ -47,7 +51,6 @@ if (estimate) {
     previousValue = nextValue;
     if (prefersReducedMotion.matches) return;
     estimate.classList.remove('aurex-number-pop');
-    // Reading this one element restarts the animation without changing its content.
     void estimate.offsetWidth;
     estimate.classList.add('aurex-number-pop');
   }).observe(estimate, { childList: true, characterData: true, subtree: true });
