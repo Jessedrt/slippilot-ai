@@ -96,9 +96,11 @@ describe('Mini App analyzed booking flow', () => {
     expect(build.statusCode).toBe(200);
     const built = build.json<{
       analysisToken: string;
+      minimumQualityScore: number;
       selections: Array<Record<string, unknown>>;
     }>();
     expect(built.analysisToken).toEqual(expect.any(String));
+    expect(built.minimumQualityScore).toBe(55);
     expect(analysisCalls).toBe(1);
 
     const code = await app.inject({
@@ -111,7 +113,7 @@ describe('Mini App analyzed booking flow', () => {
     expect(code.json()).toMatchObject({ status: 'ready', code: 'AUREX123', selections: 1 });
     expect(analysisCalls).toBe(1);
 
-    const tampered = await app.inject({
+    const tamperedIdentity = await app.inject({
       method: 'POST',
       url: '/api/miniapp/code',
       headers: { 'x-telegram-init-data': initData },
@@ -120,7 +122,14 @@ describe('Mini App analyzed booking flow', () => {
         analysisToken: built.analysisToken,
       },
     });
-    expect(tampered.statusCode).toBe(401);
+    expect(tamperedIdentity.statusCode).toBe(401);
+    const tamperedScore = await app.inject({
+      method: 'POST', url: '/api/miniapp/code',
+      headers: { 'x-telegram-init-data': initData },
+      payload: { selections: [{ ...built.selections[0], confidence: 99 }],
+        analysisToken: built.analysisToken },
+    });
+    expect(tamperedScore.statusCode).toBe(401);
     await app.close();
   });
 });
