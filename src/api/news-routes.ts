@@ -73,7 +73,9 @@ export function registerNewsRoutes(
   const cache = new Map<string, { expires: number; articles: SportsNewsItem[]; fetchedAt: string }>();
   const inflight = new Map<string, Promise<{ articles: SportsNewsItem[]; fetchedAt: string }>>();
   app.post('/api/miniapp/news', async (request, reply) => {
-    const { sport } = newsSchema.parse(request.body);
+    const parsed = newsSchema.safeParse(request.body);
+    if (!parsed.success) return reply.badRequest('Select a supported sport category.');
+    const { sport } = parsed.data;
     if (!enabled) return reply.serviceUnavailable('Sports news requires configured You.com Search access.');
     const now = Date.now();
     const cached = cache.get(sport);
