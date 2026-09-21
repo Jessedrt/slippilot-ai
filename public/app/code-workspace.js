@@ -43,18 +43,23 @@ function button(text, handler, disabled = false) {
   el.addEventListener('click', handler); return el;
 }
 function clearCode() { panel.querySelector('.code-workspace-code')?.remove(); }
-// Select approved whole legs in descending reviewed evidence score, skipping any that
-// cannot fit the requested target. This cannot add fixtures or guarantee exact odds.
+// Preserve the higher signed minimum if an earlier edit used the strict 2/5 preset.
+const scoreMinimum = (target) => Math.max(Number(slip.qualityMinimum) || 55,
+  target === 2 || target === 5 ? 68 : 55);
+// Choose only provider-backed whole legs in descending evidence-quality order.
 function trimTo(target) {
-  const result = selectForTarget(slip.selections, target);
-  if (!result.ok) return result;
+  const minimum = scoreMinimum(target);
+  const eligible = slip.selections.filter((pick) => pick.confidence >= minimum);
+  const result = selectForTarget(eligible, target);
+  if (!result.ok) return { ...result, minimum };
+  const removed = slip.selections.length - result.selections.length;
   slip.selections = result.selections;
-  if (result.removed) {
+  if (removed) {
     pending = true; optionsIndex = -1; options = [];
     clearCode();
   }
   render();
-  return result;
+  return { ...result, removed, minimum };
 }
 function render() {
   if (!analysisResult || !slip?.selections?.length) { panel.classList.add('hidden'); return; }
@@ -94,7 +99,7 @@ function render() {
   target.setAttribute('aria-label', 'Your target combined odds'); label.append(target);
   const trim = node('button', '', 'Rank, trim & generate code'); trim.type = 'submit'; trim.disabled = busy;
   form.append(label, trim, node('p', 'desk-note',
-    'Keeps eligible higher-scored games first and skips picks that would exceed your target. Only games from the imported code are used. Exact odds are not guaranteed; no bet is placed.'));
+    'Keeps eligible higher-scored games first and skips picks that exceed your target. The 2.00/5.00 presets require a 68/100 AI quality score. Only imported games are used; exact odds are not guaranteed.'));
   form.addEventListener('submit', (event) => {
     event.preventDefault(); if (busy) return;
     const targetOdds = Number(target.value);
@@ -105,12 +110,12 @@ function render() {
     maximumOdds = targetOdds;
     const result = trimTo(targetOdds);
     if (!result.ok) {
-      message(`None of the eligible games fit ${fmt(targetOdds)} odds individually. Choose a higher target or edit an active market. No code was created.`, true);
+      message(`No eligible game with a score of at least ${result.minimum}/100 fits ${fmt(targetOdds)} odds. Choose another target or edit an active market. No code was created.`, true);
       return;
     }
     message(result.removed
       ? `Kept ${result.selections.length} higher-scored picks; removed ${result.removed}. Verifying live odds and creating your code…`
-      : `All ${result.selections.length} picks already fit ${fmt(targetOdds)} odds. Checking live markets and creating your code…`);
+      : `All ${result.selections.length} picks fit ${fmt(targetOdds)} odds. Checking live markets and creating your code…`);
     void generate(true);
   });
   const alternativePanel = node('div', 'code-workspace-options');
@@ -152,11 +157,12 @@ async function edit(action, extra = {}) {
     const updated = await api('/api/miniapp/edit-slip', {
       action, ...extra, selections: slip.selections,
       analysisToken: slip.analysisToken, riskMode: slip.riskMode || 'balanced',
+      ...(maximumOdds === null ? {} : { targetOdds: maximumOdds }),
     });
     slip = { ...updated, selections: rankByScore(updated.selections), sourceCode: slip.sourceCode };
     pending = false; optionsIndex = -1; options = [];
     clearCode();
-    message(`${updated.selections.length} games reanalyzed and ranked by quality. Combined odds: ${fmt(updated.combinedOdds)}. No bet placed.`);
+    message(`${updated.selections.length} games reanalyzed and ranked by quality. Combined odds: ${fmt(updated.combinedOdds)}. AI quality minimum: ${updated.qualityMinimum}/100.`);
     return true;
   } catch (error) {
     message(error instanceof Error ? error.message : 'Reanalysis failed; no new code was created.', true);
