@@ -4,34 +4,41 @@ import { describe, expect, it } from 'vitest';
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
 describe('Mini App imported-code workspace and fixture fallback assets', () => {
-  it('loads the refreshed editor, schedules, and four navigation tabs', () => {
+  it('loads the score-ranked code editor, schedules, and four navigation tabs', () => {
     const html = read('../public/app/index.html');
     const code = read('../public/app/code-analysis.js');
     const editor = read('../public/app/code-workspace.js');
+    const ranker = read('../public/app/score-trim.js');
     const schedule = read('../public/app/schedule-hints.js');
     const css = read('../public/app/code-workspace.css');
-    expect(html).toContain('/app/code-analysis.js?v=6.1.0');
+    expect(html).toContain('/app/code-analysis.js?v=6.2.0');
     expect(html).toContain('/app/watch-sync.js?v=5.3.0');
-    expect(code).toContain("import './code-workspace.js?v=6.1.0'");
+    expect(code).toContain("import './score-trim.js?v=6.2.0'");
+    expect(code).toContain("import './code-workspace.js?v=6.2.0'");
     expect(code).toContain("import './schedule-hints.js?v=5.4.0'");
     expect(code).toContain('/api/miniapp/import-code');
+    expect(code).toContain('highest score first');
     expect(editor).toContain('/api/miniapp/code-options');
     expect(editor).toContain('action, ...extra');
-    expect(editor).toContain('Trim & generate NEW code');
+    expect(editor).toContain('Rank, trim & generate code');
     expect(editor).toContain('void generate(true)');
     expect(editor).toContain("await edit('reanalyze')");
     expect(editor).toContain("api('/api/miniapp/code', data)");
+    expect(editor).toContain('selectForTarget');
     expect(editor).toContain('maximumOdds');
+    expect(editor).not.toContain('Enter target odds, e.g. 40');
+    expect(ranker).toContain('rankByScore');
     expect(schedule).toContain('scheduleDay');
     expect(css).toContain('prefers-reduced-motion');
     for (const tab of ['build', 'analyze', 'slip', 'explore'])
       expect(html).toContain(`id="${tab}-tab"`);
     expect(() => new Script(editor, { filename: 'code-workspace.js' })).not.toThrow();
+    expect(() => new Script(ranker, { filename: 'score-trim.js' })).not.toThrow();
     expect(() => new Script(schedule, { filename: 'schedule-hints.js' })).not.toThrow();
     expect(() => new Script(code.replace(/^import .*;\n/gm, ''), { filename: 'code-analysis.js' }))
       .not.toThrow();
   });
-  it('checks fresh provider odds against the user maximum before booking', () => {
+  it('checks fresh provider odds against the user-defined target before booking', () => {
     const server = read('../src/api/mini-app-routes.ts');
     expect(server).toContain('maximumOdds: z.number().finite().min(1.01)');
     expect(server).toContain('preparation.currentOdds > input.maximumOdds');
