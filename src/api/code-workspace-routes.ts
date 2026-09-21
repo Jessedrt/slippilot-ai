@@ -78,7 +78,7 @@ export async function importBookingCode(code: string, deps: Deps, initData: stri
       marketName: item.marketName, selectionName: item.selectionName,
       odds: item.odds, confidence: Math.max(0, Math.min(99, review.confidence)),
       risk: review.risk, verdict: review.verdict, reason: review.reason };
-  });
+  }).sort((left, right) => right.confidence - left.confidence);
   // An imported, unspecified target is a balanced non-preset. It cannot claim 2.00/5.00
   // simply because the original combined odds happened to be close to those values.
   const minimum = minimumQualityForTarget(undefined, 'balanced');
@@ -108,7 +108,7 @@ export async function importBookingCode(code: string, deps: Deps, initData: stri
     analyzedAt: analysis.analyzedAt,
     summary: `${excluded.length ? `${excluded.length} unavailable/started selections excluded. ` : ''}${analysis.summary}`,
     selections: all, editableSlip, rejected: all.length - accepted.length,
-    disclaimer: `Only AI-reviewed selections scoring at least ${minimum}/100 without rejection may be edited. ${excluded.length} expired/unavailable selections were excluded. Scores measure evidence quality, not win probability. Odds are refreshed before code creation; no wager was placed.` };
+    disclaimer: `Only AI-reviewed selections scoring at least ${minimum}/100 without rejection may be edited. ${excluded.length} expired/unavailable selections were excluded. Ranked scores measure evidence quality, not win probability. Odds are refreshed before code creation; no wager was placed.` };
 }
 
 export function registerCodeWorkspaceRoutes(app: FastifyInstance, deps: Deps): void {
