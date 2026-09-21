@@ -1,0 +1,24 @@
+/* Final responsive refinements for the isolated design review. */
+@media (min-width: 850px) {
+  body.aurex-redesign .app-shell .bottom-nav {
+    position: fixed; float: none; left: max(16px, calc(50% - 555px));
+    top: 122px; bottom: auto; transform: none;
+    margin: 0; width: 154px; max-width: 154px;
+  }
+}
+@media (min-width: 850px) and (max-width: 1000px) {
+  body.aurex-redesign .app-shell { padding-left: 184px; }
+  body.aurex-redesign .app-shell .view { padding-right: 19px; }
+  body.aurex-redesign .app-shell #build-view.active { grid-template-columns: minmax(0, .94fr) minmax(305px, 1.06fr); gap: 15px; }
+  body.aurex-redesign .app-shell .aurex-feature-hero { padding-inline: 23px !important; }
+}
+@media (max-width: 849px) {
+  body.aurex-redesign .app-shell .bottom-nav { float: none; }
+  body.aurex-redesign .app-shell { padding-bottom: calc(105px + var(--safe)); }
+}
+@media (max-width: 380px) {
+  body.aurex-redesign .app-shell .bottom-nav .nav-item { gap: 1px; }
+  body.aurex-redesign .app-shell .bottom-nav .nav-item .nav-label { font-size: 9px; }
+  body.aurex-redesign .app-shell #read-code-form { grid-template-columns: 38px minmax(0, 1fr); gap: 8px 10px; }
+  body.aurex-redesign .app-shell #read-code-form .tool-icon { width: 38px; height: 38px; }
+}
