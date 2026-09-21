@@ -1,0 +1,59 @@
+/* White + emerald Aurex concept. Single final override, preview branch only. */
+:root{color-scheme:light;--ax-bg:#f6faf8;--ax-card:#fff;--ax-line:#e4eeea;--ax-text:#14251f;--ax-muted:#697c74;--ax-accent:#078a55}
+html,body{background:#f6faf8!important;color:#14251f!important;color-scheme:light!important}
+body{background:linear-gradient(160deg,#fff 0%,#f4faf7 55%,#fff 100%)!important;font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif!important}
+.app-shell{max-width:1120px!important;background:transparent!important;color:#14251f!important}
+.app-shell main{background:transparent!important}
+.app-shell .view{padding:26px 19px 34px!important;color:#14251f!important}
+.app-shell :is(.hero-copy,.builder-card,.tool-card,.slip-summary,.desk-panel,.empty-state,.result-panel,.help-panel,.odds-estimate,.sticky-action,.desk-edit-bar,.pick-row,.loading-card){background:#fff!important;border:1px solid #e4eeea!important;border-radius:19px!important;color:#14251f!important;box-shadow:0 6px 24px #183f3010!important;backdrop-filter:none!important}
+.app-shell .hero-copy{background:radial-gradient(ellipse at 92% 9%,#dcf8ed 0%,transparent 44%),#fff!important;border:0!important;box-shadow:none!important;padding:23px 10px 26px!important;min-height:0!important}
+.app-shell .hero-copy:after{right:-35px!important;top:-25px!important;border-color:#bdeedb!important;box-shadow:0 0 0 22px #b9eed51c,0 0 0 45px #b9eed512!important}
+.app-shell .hero-copy h1{color:#101d18!important;font-size:clamp(40px,8vw,62px)!important;letter-spacing:-.065em!important;line-height:1.04!important;max-width:560px!important;margin:14px 0!important}
+.app-shell .hero-copy h1 span{color:#067d4c!important;-webkit-text-fill-color:#067d4c!important}
+.app-shell :is(.hero-copy p,.section-title p,.tool-card p,.desk-note,.field-help,.odds-estimate p,.pick-row p){color:#697c74!important;line-height:1.55!important}
+.app-shell .eyebrow{color:#078a55!important;font-size:10px!important;letter-spacing:.13em!important;font-weight:800!important}
+.app-shell .section-title h2{color:#14251f!important;font-size:clamp(30px,6vw,43px)!important;letter-spacing:-.055em!important}
+.app-shell .section-title{margin-bottom:19px!important}
+.app-shell .build-steps{gap:8px!important;margin:8px 0 17px!important}
+.app-shell .build-steps>div{background:#fff!important;border:1px solid #e5efea!important;border-radius:15px!important;box-shadow:0 3px 13px #164f2e09!important;padding:13px 10px!important}
+.app-shell .build-steps strong{color:#1a3428!important}.app-shell .build-steps span{color:#078a55!important;font-weight:800!important}
+.app-shell .quick-presets{gap:10px!important;margin-bottom:16px!important}
+.app-shell .quick-presets button{background:#fff!important;color:#17382a!important;border:1px solid #dbece3!important;border-radius:14px!important;box-shadow:0 3px 12px #164f2e09!important}
+.app-shell .quick-presets button[aria-pressed=true]{border-color:#07975a!important;background:#e8f8f0!important}
+.app-shell .builder-card{padding:23px!important}.app-shell :is(fieldset legend,.field>span,.slip-actions>span){color:#18362a!important;font-weight:750!important}
+.app-shell :is(input:not([type=radio]):not([type=checkbox]):not([type=file]),select,textarea){background:#fff!important;color:#14251f!important;border:1px solid #dce9e2!important;border-radius:12px!important;box-shadow:0 2px 8px #164f2e05!important;min-height:49px!important;font-size:16px!important}
+.app-shell :is(input,textarea)::placeholder{color:#91a29a!important}
+.app-shell :is(input,select,textarea,button):focus-visible{outline:3px solid #62cba58c!important;outline-offset:2px!important}
+.app-shell .segmented{background:#f3f8f5!important;border-radius:13px!important}.app-shell .segmented label span{color:#43584d!important}.app-shell .segmented input:checked+span{background:#e4f8ed!important;color:#067b48!important;border-color:#75c9a3!important}
+.app-shell .odds-estimate{background:#f0faf5!important;border-color:#d6efe1!important}.app-shell .odds-estimate strong{color:#078a55!important}
+.app-shell :is(.primary,button[type=submit],#generate-code){background:linear-gradient(115deg,#17b877,#078d56)!important;color:white!important;border:0!important;box-shadow:0 8px 18px #05965a25!important;border-radius:12px!important;font-weight:750!important;text-shadow:none!important}
+.app-shell :is(.primary,button[type=submit],#generate-code):active{transform:scale(.985)!important}
+.app-shell :is(.tool-card h3,.desk-heading h3,.empty-state h3,.pick-row h3){color:#14251f!important}
+.app-shell .tool-card .tool-icon{background:#e4f8ed!important;color:#078a55!important}
+.app-shell .tool-card{gap:13px!important}.app-shell #read-code-form{background:linear-gradient(150deg,#fff,#f4fcf8)!important;border-color:#cfe8dc!important}
+.app-shell .slip-summary{background:linear-gradient(115deg,#fff,#f0faf5)!important}.app-shell .slip-summary strong{color:#078a55!important}
+.app-shell .desk-row{background:#fff!important;border:1px solid #e5efea!important;color:#14251f!important;border-radius:13px!important}
+.app-shell :is(.desk-edit-bar,.sticky-action){background:#f2faf6!important;border-color:#dcefe4!important}
+.app-shell :is(.desk-filter button,.desk-heading button,.slip-actions button,.desk-shortcuts button,.empty-state button,.pick-row button){color:#087e4d!important;border-color:#dcece3!important;background:#eff9f4!important;border-radius:10px!important}
+.app-shell .bottom-nav{background:#fffffff5!important;border:1px solid #e0ede5!important;box-shadow:0 12px 35px #164f2e20!important;border-radius:24px!important;backdrop-filter:blur(20px)!important;-webkit-backdrop-filter:blur(20px)!important;height:72px!important}
+.app-shell .bottom-nav .nav-item{color:#6d8075!important;height:60px!important;border-radius:17px!important}
+.app-shell .bottom-nav .nav-item.active{background:#e4f8ee!important;color:#078a55!important}
+.app-shell .bottom-nav .nav-icon svg{stroke:currentColor!important}.app-shell .bottom-nav .nav-label{font-weight:650!important;font-size:10px!important}
+.app-shell .bottom-nav .nav-item.active .nav-label{font-weight:800!important}
+.app-shell .bottom-nav .nav-item.active:before{content:'';position:absolute;top:0;left:23%;right:23%;height:2px;background:#07945b;border-radius:3px}
+.app-shell .toast{background:#143d2b!important;color:white!important}
+/* Concept-specific, real-data-safe header and utility affordances. */
+.aurex-white-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:24px 20px 4px;max-width:1120px;margin:auto}
+.aurex-white-logo{font-size:26px;font-weight:850;letter-spacing:-.07em;color:#14251f;line-height:1}.aurex-white-logo span{color:#059b5e}.aurex-white-sub{font-size:10px;letter-spacing:.02em;color:#72877c;margin-top:5px}
+.aurex-white-header button{border:1px solid #d9ede2;background:#fff;color:#087f4d;padding:9px 12px;border-radius:12px;font-weight:700;font-size:12px}
+.aurex-white-search{display:flex;gap:9px;align-items:center;margin:0 0 17px!important;background:#fff;border:1px solid #dfebe4;border-radius:14px;padding:10px 13px;box-shadow:0 4px 15px #123e2508}
+.aurex-white-search input{border:0!important;box-shadow:none!important;padding:0!important;min-height:28px!important;background:transparent!important;outline:0!important}
+.aurex-white-search svg{width:17px;height:17px;stroke:#6c8a79;fill:none;stroke-width:2}
+.aurex-white-feature{background:linear-gradient(125deg,#073c2b,#021a15)!important;color:#fff!important;border:0!important;border-radius:18px!important;padding:23px!important;margin:16px 0!important;position:relative;overflow:hidden}
+.aurex-white-feature:after{content:'';position:absolute;width:140px;height:140px;border:1px solid #50f1ac6b;border-radius:50%;right:-36px;top:-43px;box-shadow:0 0 0 19px #2ed49d16,0 0 0 40px #2ed49d12;pointer-events:none}
+.aurex-white-feature strong{display:block;font-size:23px;line-height:1.14;letter-spacing:-.045em;max-width:210px}.aurex-white-feature p{color:#c7e5d8!important;font-size:12px;max-width:240px}.aurex-white-feature button{background:#e5fff2!important;color:#076b43!important;border:0!important;border-radius:11px;padding:10px 15px;font-weight:750}
+.aurex-white-tabs{display:flex;gap:5px;overflow:auto;padding:5px;margin:0 0 16px;border-radius:14px;background:#f0f5f2}.aurex-white-tabs button{flex:1;min-width:max-content;padding:10px 12px;border:0;border-radius:10px;background:transparent;color:#64796e;font-weight:650;font-size:12px}.aurex-white-tabs button[aria-selected=true]{background:white;color:#067d4c;box-shadow:0 3px 9px #13492b12}
+.aurex-white-hidden{display:none!important}
+@media(max-width:560px){.app-shell .view{padding:14px 16px 28px!important}.app-shell .hero-copy{padding:16px 5px 20px!important}.app-shell .hero-copy h1{font-size:43px!important}.app-shell .builder-card{padding:19px!important}.aurex-white-header{padding:19px 17px 4px}.app-shell .bottom-nav{bottom:calc(9px + env(safe-area-inset-bottom,0px))!important}}
+@media(min-width:800px){.app-shell #build-view.active{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}.aurex-white-search{grid-column:1!important}.aurex-white-feature{grid-column:1!important}.app-shell #build-view .builder-card{grid-column:2!important;grid-row:1/7!important}}
+@media(prefers-reduced-motion:reduce){.app-shell *{animation:none!important;transition:none!important}}
