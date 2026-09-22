@@ -213,6 +213,31 @@ describe('API-Sports client', () => {
     ).rejects.toMatchObject({ code: 'invalid_response', providerDetail: 'paging:missing' });
   });
 
+  it('never sends the unsupported page parameter to API-Basketball', async () => {
+    const calls: string[] = [];
+    const client = new ApiSportsClient({
+      apiKey: 'test-key',
+      maxRetries: 0,
+      fetch: (input) => {
+        calls.push(
+          typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url,
+        );
+        const { paging, ...body } = envelope([]);
+        void paging;
+        return Promise.resolve(json(body));
+      },
+    });
+
+    await client.requestAllPages(
+      'basketball',
+      '/games',
+      { date: '2026-09-22', timezone: 'UTC' },
+      basketballGameSchema,
+    );
+    expect(calls).toHaveLength(1);
+    expect(new URL(calls[0]!).searchParams.has('page')).toBe(false);
+  });
+
   it('handles quota exhaustion, missing entitlement and bounded transient retries', async () => {
     const quota = new ApiSportsClient({
       apiKey: 'test-key',
