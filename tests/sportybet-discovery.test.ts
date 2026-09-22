@@ -93,7 +93,7 @@ describe('SportyBet live discovery', () => {
     expect(snapshot.slip.selections[0]).toMatchObject({
       odds: 1.5,
       fixture: { id: 'sr:match:1', sport: 'basketball' },
-      reasoning: ['Live SportyBet market snapshot.', expect.any(String)],
+      reasoning: ['Live SportyBet market snapshot.', expect.any(String), expect.any(String)],
     });
   });
   it('keeps daily presets inside the current Africa/Lagos calendar day', async () => {

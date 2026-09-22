@@ -23,20 +23,46 @@ export class SportyBetSlipBuilder {
     materialChange = 0.05,
   ): Promise<BookingPreparation> {
     const resolved: ProviderSelection[] = [];
-    const unavailable: Array<{ number: number; selection: CandidateSelection; reason: string }> = [];
+    const unavailable: Array<{ number: number; selection: CandidateSelection; reason: string }> =
+      [];
     for (const [index, selection] of selections.entries()) {
-      // Exact event IDs avoid accidentally resolving another match with similar names.
-      const direct = await this.provider.getEvent(selection.eventId);
-      const event = direct ?? this.events.match(selection, await this.provider.findEvents(
-        selection.fixture.homeTeam, selection.fixture.awayTeam,
-      ));
-      if (!event || event.providerEventId !== selection.eventId || event.status !== 'scheduled') {
-        unavailable.push({ number: index + 1, selection,
-          reason: 'Fixture missing or already started' });
+      const assessment = selection.assessment;
+      if (
+        !assessment ||
+        assessment.recommendationVerdict !== 'keep' ||
+        assessment.statisticalSupport !== 'supported'
+      ) {
+        unavailable.push({
+          number: index + 1,
+          selection,
+          reason: 'Selection has no current, explicitly supported analysis',
+        });
         continue;
       }
-      const market = this.markets.match(selection,
-        await this.provider.getMarkets(event.providerEventId));
+      if (assessment.expiresAt.getTime() <= Date.now()) {
+        unavailable.push({ number: index + 1, selection, reason: 'Analysis expired' });
+        continue;
+      }
+      // Exact event IDs avoid accidentally resolving another match with similar names.
+      const direct = await this.provider.getEvent(selection.eventId);
+      const event =
+        direct ??
+        this.events.match(
+          selection,
+          await this.provider.findEvents(selection.fixture.homeTeam, selection.fixture.awayTeam),
+        );
+      if (!event || event.providerEventId !== selection.eventId || event.status !== 'scheduled') {
+        unavailable.push({
+          number: index + 1,
+          selection,
+          reason: 'Fixture missing or already started',
+        });
+        continue;
+      }
+      const market = this.markets.match(
+        selection,
+        await this.provider.getMarkets(event.providerEventId),
+      );
       if (market) {
         resolved.push(this.markets.toProviderSelection(market));
         continue;
@@ -45,8 +71,10 @@ export class SportyBetSlipBuilder {
       // The general event endpoint can omit a bookable market. Ask SportyBet's
       // exact Outcomes endpoint for this tuple; never guess an outcome by name.
       const requested: ProviderSelection = {
-        eventId: selection.eventId, marketId: selection.providerMarketId,
-        selectionId: selection.providerSelectionId, odds: selection.odds,
+        eventId: selection.eventId,
+        marketId: selection.providerMarketId,
+        selectionId: selection.providerSelectionId,
+        odds: selection.odds,
         ...(selection.specifier != null ? { specifier: selection.specifier } : {}),
       };
       let refreshed: ProviderSelection[] = [];
@@ -56,26 +84,39 @@ export class SportyBetSlipBuilder {
         } catch (error) {
           // An absent exact outcome is a normal verification failure. Network,
           // rate-limit and provider errors must not be mislabelled as suspension.
-          if (!(error instanceof Error && error.message.startsWith('SportyBet selection unavailable:')))
+          if (!(
+            error instanceof Error && error.message.startsWith('SportyBet selection unavailable:')
+          ))
             throw error;
         }
       }
-      const exact = refreshed.filter((item) => item.eventId === requested.eventId &&
-        item.marketId === requested.marketId && item.selectionId === requested.selectionId &&
-        (item.specifier ?? null) === (requested.specifier ?? null) &&
-        Number.isFinite(item.odds) && item.odds > 1);
+      const exact = refreshed.filter(
+        (item) =>
+          item.eventId === requested.eventId &&
+          item.marketId === requested.marketId &&
+          item.selectionId === requested.selectionId &&
+          (item.specifier ?? null) === (requested.specifier ?? null) &&
+          Number.isFinite(item.odds) &&
+          item.odds > 1,
+      );
       if (exact.length === 1) {
         resolved.push(exact[0]!);
         continue;
       }
-      unavailable.push({ number: index + 1, selection,
-        reason: 'Exact market could not be verified for booking (not necessarily suspended)' });
+      unavailable.push({
+        number: index + 1,
+        selection,
+        reason: 'Exact market could not be verified for booking (not necessarily suspended)',
+      });
     }
     if (unavailable.length) {
-      const details = unavailable.map(({ number, selection, reason }) =>
-        `#${number} ${selection.fixture.homeTeam} vs ${selection.fixture.awayTeam} (${selection.selectionName}): ${reason}`);
+      const details = unavailable.map(
+        ({ number, selection, reason }) =>
+          `#${number} ${selection.fixture.homeTeam} vs ${selection.fixture.awayTeam} (${selection.selectionName}): ${reason}`,
+      );
       return {
-        status: 'unavailable', selection: unavailable[0]!.selection,
+        status: 'unavailable',
+        selection: unavailable[0]!.selection,
         reason: `${details.join('; ')}. Review or replace the unverified selections using their numbered rows, then tap Reanalyze before generating a new code. Your slip was not changed; no wager was placed.`,
       };
     }
@@ -91,9 +132,14 @@ export class SportyBetSlipBuilder {
     };
   }
 
-  async createCode(preparation: BookingPreparation): Promise<string> {
-    if (preparation.status !== 'ready')
+  async createCode(preparation: BookingPreparation, acceptOddsChange = false): Promise<string> {
+    if (
+      preparation.status === 'unavailable' ||
+      (preparation.status === 'odds_changed' && !acceptOddsChange)
+    )
       throw new Error('Booking preparation requires user review.');
+    // Provider createBookingCode creates a reusable non-staking code only. It
+    // never places a wager and must not be described as a betting outcome.
     return this.provider.createBookingCode(preparation.selections);
   }
 }

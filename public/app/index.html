@@ -26,13 +26,16 @@
   </head>
   <body>
     <div class="app-shell">
-      <div class="live-pill" style="display:none" aria-hidden="true"><i></i> READY</div>
-      <main style="padding-top:max(12px, env(safe-area-inset-top, 0px))">
+      <div class="live-pill" style="display: none" aria-hidden="true"><i></i> READY</div>
+      <main style="padding-top: max(12px, env(safe-area-inset-top, 0px))">
         <section class="view active" id="build-view" aria-labelledby="build-tab">
           <div class="hero-copy">
             <p class="eyebrow">SLIP BUILDER</p>
             <h1>Build your next <span class="hero-highlight">slip.</span></h1>
-            <p>Set an odds target. If today's eligible markets are empty, AUREX checks up to two days ahead.</p>
+            <p>
+              Set an odds target. If today's eligible markets are empty, AUREX checks up to two days
+              ahead.
+            </p>
           </div>
           <div class="build-steps" aria-label="How it works">
             <div><span>01</span><strong>Set target</strong></div>
@@ -40,84 +43,312 @@
             <div><span>03</span><strong>Get code</strong></div>
           </div>
           <div class="quick-presets" aria-label="Quick odds targets">
-            <button type="button" data-preset-odds="5" data-preset-games="5" aria-pressed="false"><span>5.00 odds</span><small>Start with a target</small></button>
-            <button type="button" data-preset-odds="2" data-preset-games="3" aria-pressed="false"><span>2.00 odds</span><small>Start with a target</small></button>
+            <button type="button" data-preset-odds="5" data-preset-games="5" aria-pressed="false">
+              <span>5.00 odds</span><small>Start with a target</small>
+            </button>
+            <button type="button" data-preset-odds="2" data-preset-games="3" aria-pressed="false">
+              <span>2.00 odds</span><small>Start with a target</small>
+            </button>
           </div>
           <form id="build-form" class="builder-card">
             <fieldset>
               <legend>Choose your sport</legend>
               <div class="segmented">
-                <label><input type="radio" name="sport" value="football" checked /><span>Football</span></label>
-                <label><input type="radio" name="sport" value="basketball" /><span>Basketball</span></label>
+                <label
+                  ><input type="radio" name="sport" value="football" checked /><span
+                    >Football</span
+                  ></label
+                >
+                <label
+                  ><input type="radio" name="sport" value="basketball" /><span
+                    >Basketball</span
+                  ></label
+                >
               </div>
             </fieldset>
             <div class="form-row">
-              <label class="field"><span>Target combined odds</span><input id="target-odds" name="targetOdds" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 2, 10 or 150" aria-describedby="target-odds-help" required /><small class="field-help" id="target-odds-help">Enter decimal odds of at least 1.01.</small></label>
-              <label class="field"><span>Risk mode</span><select id="risk-mode" aria-describedby="risk-mode-help"><option value="conservative">Conservative</option><option selected value="balanced">Balanced</option><option value="aggressive">Aggressive</option></select><small class="field-help" id="risk-mode-help">Changes the match-count estimate; not a guarantee of safety.</small></label>
+              <label class="field"
+                ><span>Target combined odds</span
+                ><input
+                  id="target-odds"
+                  name="targetOdds"
+                  type="text"
+                  inputmode="decimal"
+                  autocomplete="off"
+                  placeholder="e.g. 2, 10 or 150"
+                  aria-describedby="target-odds-help"
+                  required
+                /><small class="field-help" id="target-odds-help"
+                  >Enter decimal odds of at least 1.01.</small
+                ></label
+              >
+              <label class="field"
+                ><span>Risk mode</span
+                ><select id="risk-mode" aria-describedby="risk-mode-help">
+                  <option value="conservative">Conservative</option>
+                  <option selected value="balanced">Balanced</option>
+                  <option value="aggressive">Aggressive</option></select
+                ><small class="field-help" id="risk-mode-help"
+                  >Changes the match-count estimate; not a guarantee of safety.</small
+                ></label
+              >
             </div>
-            <div class="odds-estimate" role="status" aria-live="polite"><div><span>Estimated matches</span><strong id="estimated-games">Enter target odds</strong></div><p>Calculated automatically from your target and risk mode. The final number of selections and combined odds may differ.</p></div>
-            <p class="field-help">Today first; tomorrow or the following day only when no eligible active markets are available on earlier days (Lagos time). Odds are never guaranteed.</p>
-            <div class="chips hidden" id="count-chips" aria-hidden="true"><button type="button" class="selected" data-count="5" tabindex="-1">5</button><button type="button" class="selected" data-count="3" tabindex="-1">3</button></div>
-            <button class="primary" type="submit"><span>Build &amp; analyze</span><b aria-hidden="true">→</b></button>
+            <div class="odds-estimate" role="status" aria-live="polite">
+              <div>
+                <span>Estimated matches</span
+                ><strong id="estimated-games">Enter target odds</strong>
+              </div>
+              <p>
+                Calculated automatically from your target and risk mode. The final number of
+                selections and combined odds may differ.
+              </p>
+            </div>
+            <p class="field-help">
+              Today first; tomorrow or the following day only when no eligible active markets are
+              available on earlier days (Lagos time). Odds are never guaranteed.
+            </p>
+            <div class="chips hidden" id="count-chips" aria-hidden="true">
+              <button type="button" class="selected" data-count="5" tabindex="-1">5</button
+              ><button type="button" class="selected" data-count="3" tabindex="-1">3</button>
+            </div>
+            <button class="primary" type="submit">
+              <span>Build &amp; analyze</span><b aria-hidden="true">→</b>
+            </button>
           </form>
           <details class="help-panel">
             <summary>How is the match count estimated?</summary>
-            <p>AUREX uses your target and risk mode to estimate a count before analyzing available fixtures. It may return fewer selections or different combined odds. AI scores are not win probabilities.</p>
+            <p>
+              AUREX uses your target and risk mode to estimate a count before analyzing available
+              fixtures. It may return fewer selections or different combined odds. AI scores are not
+              win probabilities.
+            </p>
           </details>
-          <div class="loading-card hidden" id="loading"><div class="pulse"></div><div><b>Reviewing markets</b><span id="loading-label">Finding suitable fixtures…</span></div></div>
+          <div class="loading-card hidden" id="loading">
+            <div class="pulse"></div>
+            <div>
+              <b>Reviewing markets</b><span id="loading-label">Finding suitable fixtures…</span>
+            </div>
+          </div>
           <div class="notice hidden" id="build-error" role="alert"></div>
         </section>
         <section class="view" id="analyze-view" aria-labelledby="analyze-tab">
-          <div class="section-title"><p class="eyebrow">ANALYSIS TOOLS</p><h2>Look closer at a slip.</h2><p>Paste a booking code to analyze, edit individual markets and trim odds, or review a public X post or screenshot.</p></div>
-          <div class="tool-grid">
-            <form class="tool-card" id="read-code-form"><span class="tool-icon">#</span><div><h3>Booking code · edit &amp; trim</h3><p>Verify each current selection, choose a specific alternative market or trim your code to a target.</p></div><input id="read-code" maxlength="20" placeholder="Paste code" aria-label="Booking code" required /><button type="submit">Analyze &amp; edit code</button></form>
-            <form class="tool-card" id="x-form"><span class="tool-icon">𝕏</span><div><h3>X / Twitter post</h3><p>Extract public booking codes from post text.</p></div><input id="x-url" type="url" placeholder="https://x.com/…/status/…" aria-label="X post URL" required /><button type="submit">Read post</button></form>
-            <form class="tool-card" id="shot-form"><span class="tool-icon">▣</span><div><h3>Slip screenshot</h3><p>Extract teams, markets, odds and visible codes. PNG, JPG or WebP; maximum 6 MB.</p></div><label class="upload"><input id="shot-file" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Choose slip screenshot" required /><span>Choose screenshot</span></label><button type="submit">Analyze image</button></form>
+          <div class="section-title">
+            <p class="eyebrow">ANALYSIS TOOLS</p>
+            <h2>Look closer at a slip.</h2>
+            <p>
+              Paste a booking code to analyze, edit individual markets and trim odds, or review a
+              public X post or screenshot.
+            </p>
           </div>
-          <div id="analysis-status" class="analysis-status hidden" role="status" aria-live="polite"></div>
+          <div class="tool-grid">
+            <form class="tool-card" id="read-code-form">
+              <span class="tool-icon">#</span>
+              <div>
+                <h3>Booking code · edit &amp; trim</h3>
+                <p>
+                  Verify each current selection, choose a specific alternative market or trim your
+                  code to a target.
+                </p>
+              </div>
+              <input
+                id="read-code"
+                maxlength="20"
+                placeholder="Paste code"
+                aria-label="Booking code"
+                required
+              /><button type="submit">Analyze &amp; edit code</button>
+            </form>
+            <form class="tool-card" id="x-form">
+              <span class="tool-icon">𝕏</span>
+              <div>
+                <h3>X / Twitter post</h3>
+                <p>Extract public booking codes from post text.</p>
+              </div>
+              <input
+                id="x-url"
+                type="url"
+                placeholder="https://x.com/…/status/…"
+                aria-label="X post URL"
+                required
+              /><button type="submit">Read post</button>
+            </form>
+            <form class="tool-card" id="shot-form">
+              <span class="tool-icon">▣</span>
+              <div>
+                <h3>Slip screenshot</h3>
+                <p>
+                  Extract teams, markets, odds and visible codes. PNG, JPG or WebP; maximum 6 MB.
+                </p>
+              </div>
+              <label class="upload"
+                ><input
+                  id="shot-file"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  aria-label="Choose slip screenshot"
+                  required
+                /><span>Choose screenshot</span></label
+              ><button type="submit">Analyze image</button>
+            </form>
+          </div>
+          <div
+            id="analysis-status"
+            class="analysis-status hidden"
+            role="status"
+            aria-live="polite"
+          ></div>
           <div class="result-panel hidden" id="analysis-result"></div>
         </section>
         <section class="view" id="slip-view" aria-labelledby="slip-tab">
-          <div class="section-title"><p class="eyebrow">YOUR WORKSPACE</p><h2>My slip.</h2></div>
-          <div id="empty-slip" class="empty-state"><span>◎</span><h3>No active slip</h3><p>Build an analyzed slip to see your selections here.</p><button type="button" data-go="build">Build a slip</button></div>
+          <div class="section-title">
+            <p class="eyebrow">YOUR WORKSPACE</p>
+            <h2>My slip.</h2>
+          </div>
+          <div id="empty-slip" class="empty-state">
+            <span>◎</span>
+            <h3>No active slip</h3>
+            <p>Build an analyzed slip to see your selections here.</p>
+            <button type="button" data-go="build">Build a slip</button>
+          </div>
           <div id="slip-content" class="hidden">
-            <div class="slip-summary"><div><span>COMBINED ODDS</span><strong id="combined-odds">—</strong></div><div><span>AVG. AI SCORE</span><strong id="average-confidence">—</strong></div></div>
-            <p class="field-help">These are actual returned selections, not a promise to reach the requested odds or game count. AI scores are not winning probabilities.</p>
-            <section class="desk-panel" id="slip-insights" aria-label="Slip insights" aria-live="polite"></section>
-            <div class="desk-edit-bar"><div><strong>Slip editor</strong><span>Remove a selection below, replace its market, or refresh the analysis.</span></div><button type="button" id="reanalyze-slip">Reanalyze</button></div>
-            <p id="slip-editor-status" class="desk-status hidden" role="status" aria-live="polite"></p>
-            <div class="slip-actions"><span>Selections</span><button type="button" id="clear-slip">Clear all</button></div>
+            <div class="slip-summary">
+              <div><span>VERIFIED BOOKMAKER ODDS</span><strong id="combined-odds">—</strong></div>
+              <div>
+                <span>AVG. EVIDENCE QUALITY</span><strong id="average-confidence">—</strong>
+              </div>
+            </div>
+            <p class="field-help">
+              These are actual returned selections, not a promise to reach the requested odds or
+              game count. AI scores are not winning probabilities.
+            </p>
+            <section
+              class="desk-panel"
+              id="slip-insights"
+              aria-label="Slip insights"
+              aria-live="polite"
+            ></section>
+            <div class="desk-edit-bar">
+              <div>
+                <strong>Slip editor</strong
+                ><span>Remove a selection below, replace its market, or refresh the analysis.</span>
+              </div>
+              <button type="button" id="reanalyze-slip">Reanalyze</button>
+            </div>
+            <p
+              id="slip-editor-status"
+              class="desk-status hidden"
+              role="status"
+              aria-live="polite"
+            ></p>
+            <div class="slip-actions">
+              <span>Selections</span><button type="button" id="clear-slip">Clear all</button>
+            </div>
             <div class="pick-list" id="pick-list"></div>
-            <div class="sticky-action"><p>Live markets are refreshed before creating a code.</p><button class="primary" id="generate-code"><span>Generate SportyBet code</span><b aria-hidden="true">→</b></button></div>
+            <div class="sticky-action">
+              <p>Live markets are refreshed before creating a code.</p>
+              <button class="primary" id="generate-code">
+                <span>Generate SportyBet code</span><b aria-hidden="true">→</b>
+              </button>
+            </div>
           </div>
           <div class="result-panel hidden" id="code-result" role="status" aria-live="polite"></div>
         </section>
         <section class="view" id="explore-view" aria-labelledby="explore-tab">
-          <div class="section-title"><p class="eyebrow">AUREX DESK</p><h2>Explore.</h2><p>Today-first fixture discovery, watchlist and recent research in one place.</p></div>
+          <div class="section-title">
+            <p class="eyebrow">AUREX DESK</p>
+            <h2>Explore.</h2>
+            <p>Today-first fixture discovery, watchlist and recent research in one place.</p>
+          </div>
           <section class="desk-panel" aria-labelledby="fixtures-heading">
-            <div class="desk-heading"><div><span class="eyebrow">LIVE SOURCE</span><h3 id="fixtures-heading">Upcoming fixtures</h3></div><button type="button" id="refresh-fixtures">Refresh</button></div>
-            <div class="desk-filter" role="group" aria-label="Fixture sport"><button type="button" data-fixture-sport="football" aria-pressed="true">⚽ Football</button><button type="button" data-fixture-sport="basketball" aria-pressed="false">🏀 Basketball</button></div>
-            <p id="desk-status" class="desk-status" role="status" aria-live="polite">Open in Telegram to load provider fixtures.</p>
+            <div class="desk-heading">
+              <div>
+                <span class="eyebrow">LIVE SOURCE</span>
+                <h3 id="fixtures-heading">Upcoming fixtures</h3>
+              </div>
+              <button type="button" id="refresh-fixtures">Refresh</button>
+            </div>
+            <div class="desk-filter" role="group" aria-label="Fixture sport">
+              <button type="button" data-fixture-sport="football" aria-pressed="true">
+                ⚽ Football</button
+              ><button type="button" data-fixture-sport="basketball" aria-pressed="false">
+                🏀 Basketball
+              </button>
+            </div>
+            <p id="desk-status" class="desk-status" role="status" aria-live="polite">
+              Open in Telegram to load provider fixtures.
+            </p>
             <div id="desk-fixtures" class="desk-rows"></div>
-            <p class="desk-note">SportyBet-supplied schedule. Listings do not guarantee active odds or a bookable market.</p>
+            <p class="desk-note">
+              SportyBet-supplied schedule. Listings do not guarantee active odds or a bookable
+              market.
+            </p>
           </section>
           <section class="desk-panel" aria-labelledby="watch-heading">
-            <div class="desk-heading"><div><span class="eyebrow">TRACKED MATCHES</span><h3>Watchlist</h3></div><button type="button" id="refresh-watchlist">Refresh</button><p id="watch-status" class="desk-status" role="status" aria-live="polite"></p></div>
+            <div class="desk-heading">
+              <div>
+                <span class="eyebrow">TRACKED MATCHES</span>
+                <h3>Watchlist</h3>
+              </div>
+              <button type="button" id="refresh-watchlist">Refresh</button>
+              <p id="watch-status" class="desk-status" role="status" aria-live="polite"></p>
+            </div>
             <div id="watch-items" class="desk-rows"></div>
           </section>
           <section class="desk-panel" aria-labelledby="history-heading">
-            <div class="desk-heading"><div><span class="eyebrow">PRIVATE ACTIVITY</span><h3>Analysis history</h3></div><button type="button" id="clear-history">Clear</button></div>
-            <p class="desk-note">Recent slip builds and booking-code reviews are saved on this device only, not synced across Telegram devices.</p>
+            <div class="desk-heading">
+              <div>
+                <span class="eyebrow">PRIVATE ACTIVITY</span>
+                <h3>Analysis history</h3>
+              </div>
+              <button type="button" id="clear-history">Clear</button>
+            </div>
+            <p class="desk-note">
+              Recent slip builds and booking-code reviews are saved on this device only, not synced
+              across Telegram devices.
+            </p>
             <div id="history-items" class="desk-rows"></div>
           </section>
-          <div class="desk-shortcuts"><button type="button" data-go="analyze">Analyze a code →</button><button type="button" data-go="build">Build a slip →</button></div>
+          <div class="desk-shortcuts">
+            <button type="button" data-go="analyze">Analyze a code →</button
+            ><button type="button" data-go="build">Build a slip →</button>
+          </div>
         </section>
       </main>
       <nav class="bottom-nav" aria-label="Primary navigation: tap or swipe to change sections">
-        <button type="button" class="nav-item active" id="build-tab" data-view="build" aria-current="page"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 16.5h7M16.5 13v7" /></svg></span><span class="nav-label">Build</span></button>
-        <button type="button" class="nav-item" id="analyze-tab" data-view="analyze"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="5.8" /><path d="m15.1 15.1 4.5 4.5" /></svg></span><span class="nav-label">Analyze</span></button>
-        <button type="button" class="nav-item" id="slip-tab" data-view="slip"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3h10l3 3v15l-4-2-4 2-4-2-4 2-4 2V6l3-3Z" /><path d="M9 9h6M9 13h6" /></svg><i id="slip-count" class="is-empty">0</i></span><span class="nav-label">My slip</span></button>
-        <button type="button" class="nav-item" id="explore-tab" data-view="explore"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m15.3 8.7-2 4.6-4.6 2 2-4.6 4.6-2Z"/></svg></span><span class="nav-label">Explore</span></button>
+        <button
+          type="button"
+          class="nav-item active"
+          id="build-tab"
+          data-view="build"
+          aria-current="page"
+        >
+          <span class="nav-icon" aria-hidden="true"
+            ><svg viewBox="0 0 24 24">
+              <path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 16.5h7M16.5 13v7" /></svg></span
+          ><span class="nav-label">Build</span>
+        </button>
+        <button type="button" class="nav-item" id="analyze-tab" data-view="analyze">
+          <span class="nav-icon" aria-hidden="true"
+            ><svg viewBox="0 0 24 24">
+              <circle cx="10.8" cy="10.8" r="5.8" />
+              <path d="m15.1 15.1 4.5 4.5" /></svg></span
+          ><span class="nav-label">Analyze</span>
+        </button>
+        <button type="button" class="nav-item" id="slip-tab" data-view="slip">
+          <span class="nav-icon" aria-hidden="true"
+            ><svg viewBox="0 0 24 24">
+              <path d="M7 3h10l3 3v15l-4-2-4 2-4-2-4 2-4 2V6l3-3Z" />
+              <path d="M9 9h6M9 13h6" /></svg
+            ><i id="slip-count" class="is-empty">0</i></span
+          ><span class="nav-label">My slip</span>
+        </button>
+        <button type="button" class="nav-item" id="explore-tab" data-view="explore">
+          <span class="nav-icon" aria-hidden="true"
+            ><svg viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="8.5" />
+              <path d="m15.3 8.7-2 4.6-4.6 2 2-4.6 4.6-2Z" /></svg></span
+          ><span class="nav-label">Explore</span>
+        </button>
       </nav>
     </div>
     <div class="toast" id="toast" role="status"></div>

@@ -137,8 +137,8 @@ export class YouClient {
       if (hit) return hit;
     } catch (error) {
       this.options.logger?.warn(
-        { err: error, operation },
-        'AUREX You.com cache read failed',
+        { operation, errorType: error instanceof Error ? error.name : 'UnknownError' },
+        'AUREX optional You.com cache read unavailable; continuing with live research',
       );
     }
     const result = parse(await this.request(url, body));
@@ -150,8 +150,8 @@ export class YouClient {
       );
     } catch (error) {
       this.options.logger?.warn(
-        { err: error, operation },
-        'AUREX You.com cache write failed',
+        { operation, errorType: error instanceof Error ? error.name : 'UnknownError' },
+        'AUREX optional You.com cache write unavailable',
       );
     }
     return result;

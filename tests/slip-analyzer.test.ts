@@ -44,10 +44,14 @@ describe('GeminiSlipAnalyzer', () => {
                       selections: [
                         {
                           index: 1,
-                          confidence: 61,
+                          evidenceQualityScore: 61,
+                          statisticalSupport: 'insufficient',
+                          conflictingEvidence: false,
                           risk: 'medium',
                           verdict: 'caution',
                           reason: 'The total requires a relatively high scoring game.',
+                          sourceUrls: [],
+                          evidenceRetrievedAt: new Date().toISOString(),
                         },
                       ],
                     }),
@@ -108,10 +112,14 @@ describe('GeminiSlipAnalyzer', () => {
                     selections: [
                       {
                         index: 1,
-                        confidence: 70,
+                        evidenceQualityScore: 70,
+                        statisticalSupport: 'insufficient',
+                        conflictingEvidence: false,
                         risk: 'lower',
-                        verdict: 'keep',
+                        verdict: 'caution',
                         reason: 'Supported over market.',
+                        sourceUrls: [],
+                        evidenceRetrievedAt: new Date().toISOString(),
                       },
                     ],
                   }),

@@ -1,5 +1,11 @@
 import type { SportyBetProvider, SportyBetEvent } from './contracts.js';
-import type { CandidateSelection, NormalizedMarket, RiskLevel, SlipDraft, Sport } from '../types/domain.js';
+import type {
+  CandidateSelection,
+  NormalizedMarket,
+  RiskLevel,
+  SlipDraft,
+  Sport,
+} from '../types/domain.js';
 import { isAllowedBasketballOverMarket } from './basketball-over-markets.js';
 import { leagueExclusionReason } from './league-quality.js';
 export { isAllowedBasketballOverMarket } from './basketball-over-markets.js';
@@ -15,7 +21,9 @@ export interface LiveSlipSnapshot {
 export class NoTodayMarketsError extends Error {
   readonly statusCode = 404;
   constructor(sport: Sport, excludedLeagues = 0) {
-    super(`No supported ${sport} matches with eligible active SportyBet markets were found today, tomorrow or the following day in Nigeria (WAT). No later dates were included. Try another sport or check later.${excludedLeagues ? ` The league filter excluded ${excludedLeagues} fixture${excludedLeagues === 1 ? '' : 's'} from youth, reserve, amateur, lower-tier, friendly or simulated competitions; see Explore for the unfiltered fixture list.` : ''}`);
+    super(
+      `No supported ${sport} matches with eligible active SportyBet markets were found today, tomorrow or the following day in Nigeria (WAT). No later dates were included. Try another sport or check later.${excludedLeagues ? ` The league filter excluded ${excludedLeagues} fixture${excludedLeagues === 1 ? '' : 's'} from youth, reserve, amateur, lower-tier, friendly or simulated competitions; see Explore for the unfiltered fixture list.` : ''}`,
+    );
     this.name = 'NoTodayMarketsError';
   }
 }
@@ -23,7 +31,9 @@ export class NoTodayMarketsError extends Error {
 export class MarketVerificationUnavailableError extends Error {
   readonly statusCode = 424;
   constructor() {
-    super('The sports provider could not verify all markets for the selected day. No later day was substituted or fixtures invented. Please retry.');
+    super(
+      'The sports provider could not verify all markets for the selected day. No later day was substituted or fixtures invented. Please retry.',
+    );
     this.name = 'MarketVerificationUnavailableError';
   }
 }
@@ -69,7 +79,7 @@ function selectionDirection(market: Pick<NormalizedMarket, 'selectionName'>): st
 
 export function chooseVariedMarket(
   markets: NormalizedMarket[],
-  targetPerLeg: number,
+  _targetPerLeg: number,
   usedFamilies: ReadonlyMap<string, number>,
   usedDirections: ReadonlyMap<string, number>,
 ): NormalizedMarket | null {
@@ -85,19 +95,27 @@ export function chooseVariedMarket(
   const scored = eligible.map((market) => {
     const family = marketFamily(market);
     const direction = selectionDirection(market);
-    const priceDifference = Math.abs(Math.log(market.odds / targetPerLeg));
     const familyPenalty = Math.min(0.6, (usedFamilies.get(family) ?? 0) * 0.27);
     const directionPenalty = Math.min(0.24, (usedDirections.get(direction) ?? 0) * 0.08);
     const exoticPenalty = family.startsWith('other:') ? 0.3 : 0;
-    return { market, score: priceDifference + familyPenalty + directionPenalty + exoticPenalty };
+    // Eligibility and stable market diversity are evaluated before any target-odds
+    // preference. Target price is deliberately not evidence of market quality.
+    return { market, score: familyPenalty + directionPenalty + exoticPenalty };
   });
-  scored.sort((left, right) => left.score - right.score || left.market.providerMarketId.localeCompare(right.market.providerMarketId));
+  scored.sort(
+    (left, right) =>
+      left.score - right.score ||
+      left.market.providerMarketId.localeCompare(right.market.providerMarketId),
+  );
   return scored[0]?.market ?? null;
 }
 
 export function lagosCalendarDay(date: Date): string {
   return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Africa/Lagos', year: 'numeric', month: '2-digit', day: '2-digit',
+    timeZone: 'Africa/Lagos',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
   }).format(date);
 }
 
@@ -110,15 +128,18 @@ export function interleaveLeagues(events: SportyBetEvent[]): SportyBetEvent[] {
     group.push(event);
     grouped.set(league, group);
   }
-  const ordered = [...grouped.values()].sort((a, b) =>
-    (a[0]?.startsAt.getTime() ?? 0) - (b[0]?.startsAt.getTime() ?? 0),
+  const ordered = [...grouped.values()].sort(
+    (a, b) => (a[0]?.startsAt.getTime() ?? 0) - (b[0]?.startsAt.getTime() ?? 0),
   );
   const result: SportyBetEvent[] = [];
   let remaining = events.length;
   while (remaining > 0) {
     for (const group of ordered) {
       const next = group.shift();
-      if (next) { result.push(next); remaining -= 1; }
+      if (next) {
+        result.push(next);
+        remaining -= 1;
+      }
     }
   }
   return result;
@@ -132,7 +153,9 @@ export function interleaveLeagues(events: SportyBetEvent[]): SportyBetEvent[] {
  */
 export function interleaveKickoffWindows(events: SportyBetEvent[]): SportyBetEvent[] {
   const clock = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Africa/Lagos', hour: '2-digit', hourCycle: 'h23',
+    timeZone: 'Africa/Lagos',
+    hour: '2-digit',
+    hourCycle: 'h23',
   });
   const windows = new Map<number, SportyBetEvent[]>();
   for (const event of events) {
@@ -142,14 +165,18 @@ export function interleaveKickoffWindows(events: SportyBetEvent[]): SportyBetEve
     group.push(event);
     windows.set(window, group);
   }
-  const ordered = [...windows.entries()].sort(([a], [b]) => a - b)
+  const ordered = [...windows.entries()]
+    .sort(([a], [b]) => a - b)
     .map(([, group]) => interleaveLeagues(group));
   const result: SportyBetEvent[] = [];
   let remaining = events.length;
   while (remaining > 0) {
     for (const group of ordered) {
       const next = group.shift();
-      if (next) { result.push(next); remaining -= 1; }
+      if (next) {
+        result.push(next);
+        remaining -= 1;
+      }
     }
   }
   return result;
@@ -169,12 +196,19 @@ export async function buildLiveSlipSnapshot(
   }
   const now = new Date();
   const seen = new Set<string>();
-  const events = (await provider.listEvents(sport)).filter((event) => {
-    if (event.status !== 'scheduled' || !Number.isFinite(event.startsAt.getTime()) ||
-        event.startsAt.getTime() <= now.getTime() || seen.has(event.providerEventId)) return false;
-    seen.add(event.providerEventId);
-    return true;
-  }).sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+  const events = (await provider.listEvents(sport))
+    .filter((event) => {
+      if (
+        event.status !== 'scheduled' ||
+        !Number.isFinite(event.startsAt.getTime()) ||
+        event.startsAt.getTime() <= now.getTime() ||
+        seen.has(event.providerEventId)
+      )
+        return false;
+      seen.add(event.providerEventId);
+      return true;
+    })
+    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
 
   let excludedLeagues = 0;
   for (const offset of [0, 1, 2] as const) {
@@ -190,7 +224,10 @@ export async function buildLiveSlipSnapshot(
     });
     if (!eligibleDayEvents.length) continue;
     const diverseEvents = interleaveKickoffWindows(eligibleDayEvents);
-    const desiredPerLeg = Math.max(1.05, Math.pow(targetOdds ?? 3, 1 / Math.max(1, Math.min(gameCount, eligibleDayEvents.length))));
+    const desiredPerLeg = Math.max(
+      1.05,
+      Math.pow(targetOdds ?? 3, 1 / Math.max(1, Math.min(gameCount, eligibleDayEvents.length))),
+    );
     const candidates: CandidateSelection[] = [];
     const usedFamilies = new Map<string, number>();
     const usedDirections = new Map<string, number>();
@@ -198,9 +235,14 @@ export async function buildLiveSlipSnapshot(
     for (let index = 0; index < diverseEvents.length && candidates.length < gameCount;) {
       const batch = diverseEvents.slice(index, index + Math.min(4, gameCount - candidates.length));
       index += batch.length;
-      const results = await Promise.allSettled(batch.map((event) => provider.getMarkets(event.providerEventId)));
+      const results = await Promise.allSettled(
+        batch.map((event) => provider.getMarkets(event.providerEventId)),
+      );
       for (const [position, result] of results.entries()) {
-        if (result.status !== 'fulfilled') { marketVerificationFailed = true; continue; }
+        if (result.status !== 'fulfilled') {
+          marketVerificationFailed = true;
+          continue;
+        }
         const event = batch[position];
         if (!event) continue;
         const markets = result.value.filter((market) => market.sport === sport);
@@ -214,14 +256,24 @@ export async function buildLiveSlipSnapshot(
         candidates.push({
           ...market,
           fixture: {
-            id: event.providerEventId, providerId: event.providerEventId, sport,
-            league: event.league ?? 'Unknown competition', homeTeam: event.homeTeam,
-            awayTeam: event.awayTeam, startsAt: event.startsAt, status: event.status,
+            id: event.providerEventId,
+            providerId: event.providerEventId,
+            sport,
+            league: event.league ?? 'Unknown competition',
+            homeTeam: event.homeTeam,
+            awayTeam: event.awayTeam,
+            startsAt: event.startsAt,
+            status: event.status,
           },
-          modelProbability: impliedProbability, confidenceScore: impliedProbability,
-          dataQuality: 'medium', riskLevel: riskLevel(market.odds),
-          reasoning: ['Live SportyBet market snapshot.',
-            'Chosen using target-price proximity and market-family diversity; not a prediction of a win.'],
+          modelProbability: 0,
+          confidenceScore: 0,
+          dataQuality: 'medium',
+          riskLevel: riskLevel(market.odds),
+          reasoning: [
+            'Live SportyBet market snapshot.',
+            `Bookmaker implied probability is ${impliedProbability}% before margin; it is not a model projection or recommendation.`,
+            'Awaiting independent evidence review; target odds did not affect eligibility.',
+          ],
         });
         if (candidates.length === gameCount) break;
       }
@@ -233,10 +285,15 @@ export async function buildLiveSlipSnapshot(
     }
     const selections = candidates.slice(0, gameCount);
     return {
-      scheduleDate: date, dayOffset: offset,
+      scheduleDate: date,
+      dayOffset: offset,
       combinedOdds: rounded(selections.reduce((total, selection) => total * selection.odds, 1)),
-      slip: { id: crypto.randomUUID(), selections,
-        ...(targetOdds ? { targetOdds } : {}), riskMode: 'balanced' },
+      slip: {
+        id: crypto.randomUUID(),
+        selections,
+        ...(targetOdds ? { targetOdds } : {}),
+        riskMode: 'balanced',
+      },
     };
   }
   throw new NoTodayMarketsError(sport, excludedLeagues);

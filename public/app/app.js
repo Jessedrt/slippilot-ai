@@ -94,16 +94,17 @@ function renderSlip() {
   if (!selections.length) return;
   const odds = selections.reduce((total, pick) => total * pick.odds, 1);
   const confidence =
-    selections.reduce((total, pick) => total + pick.confidence, 0) / selections.length;
+    selections.reduce((total, pick) => total + (pick.evidenceQualityScore ?? pick.confidence), 0) /
+    selections.length;
   $('#combined-odds').textContent = odds.toFixed(2);
-  $('#average-confidence').textContent = `${Math.round(confidence)}%`;
+  $('#average-confidence').textContent = `${Math.round(confidence)}/100`;
   $('#pick-list').innerHTML = selections
     .map(
       (pick, index) => `
     <article class="pick-row">
       <span class="pick-num">${String(index + 1).padStart(2, '0')}</span>
-      <div><h3>${escapeHtml(pick.homeTeam)} vs ${escapeHtml(pick.awayTeam)}</h3><p>${escapeHtml(pick.selectionName)} @ ${pick.odds.toFixed(2)}</p></div>
-      <div class="pick-score">${Math.round(pick.confidence)}%<small>${escapeHtml(pick.risk)} risk</small></div>
+      <div><h3>${escapeHtml(pick.homeTeam)} vs ${escapeHtml(pick.awayTeam)}</h3><p>${escapeHtml(pick.selectionName)} · SportyBet odds ${pick.odds.toFixed(2)}${pick.statisticalProjection == null ? '' : ` · statistical projection ${Number(pick.statisticalProjection).toFixed(1)}`}${pick.verifiedStatisticsSource ? ` · ${escapeHtml(pick.verifiedStatisticsSource)} stats retrieved ${escapeHtml(new Date(pick.statisticsRetrievedAt).toLocaleString())}` : ''}${pick.missingData?.length ? ` · missing: ${escapeHtml(pick.missingData.join(' '))}` : ''}</p></div>
+      <div class="pick-score">${Math.round(pick.evidenceQualityScore ?? pick.confidence)}/100<small>evidence · ${escapeHtml(pick.risk)} risk</small></div>
       <button data-remove="${index}">Remove</button>
     </article>`,
     )
@@ -175,7 +176,11 @@ $('#build-form').addEventListener('submit', async (event) => {
     saveSlip(result);
     tg?.HapticFeedback?.notificationOccurred('success');
     switchView('slip');
-    toast(`${result.selections.length} picks analyzed`);
+    toast(
+      result.targetReached
+        ? `${result.selections.length} eligible picks analyzed`
+        : `${result.selections.length} eligible picks · target not reached`,
+    );
   } catch (error) {
     $('#build-error').textContent = error.message;
     $('#build-error').classList.remove('hidden');

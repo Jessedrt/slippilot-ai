@@ -1,20 +1,42 @@
 import { z } from 'zod';
 import type { CandidateSelection } from '../types/domain.js';
 
-const analysisSchema = z.object({
-  summary: z.string().min(1).max(600),
-  selections: z.array(
-    z.object({
-      index: z.number().int().positive(),
-      confidence: z.number().min(0).max(99),
-      risk: z.enum(['lower', 'medium', 'higher']),
-      verdict: z.enum(['keep', 'caution', 'reject']),
-      reason: z.string().min(1).max(300),
-    }),
-  ),
-});
+const analysisSchema = z
+  .object({
+    summary: z.string().min(1).max(600),
+    selections: z.array(
+      z
+        .object({
+          index: z.number().int().positive(),
+          evidenceQualityScore: z.number().finite().min(0).max(100),
+          statisticalSupport: z.enum(['supported', 'mixed', 'insufficient']),
+          conflictingEvidence: z.boolean(),
+          risk: z.enum(['lower', 'medium', 'higher']),
+          verdict: z.enum(['keep', 'caution', 'reject']),
+          reason: z.string().min(1).max(300),
+          sourceUrls: z.array(z.string().url()).max(12),
+          evidenceRetrievedAt: z.string().datetime(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
 
-export type SlipAnalysis = z.infer<typeof analysisSchema> & {
+export interface SlipSelectionReview {
+  index: number;
+  /** Backwards-compatible display alias. It is evidence quality, not win probability. */
+  confidence: number;
+  evidenceQualityScore?: number;
+  statisticalSupport?: 'supported' | 'mixed' | 'insufficient';
+  conflictingEvidence?: boolean;
+  risk: 'lower' | 'medium' | 'higher';
+  verdict: 'keep' | 'caution' | 'reject';
+  reason: string;
+  sourceUrls?: string[];
+  evidenceRetrievedAt?: string;
+}
+export type SlipAnalysis = Omit<z.infer<typeof analysisSchema>, 'selections'> & {
+  selections: SlipSelectionReview[];
   model: string;
   analyzedAt: string;
 };
@@ -69,7 +91,8 @@ export class GeminiSlipAnalyzer implements SlipAnalyzer {
               text: [
                 'Act as a cautious sports-market risk analyst. Analyze every supplied selection before a booking code can be created.',
                 'Use only the fixture, start time, market, selection, and live odds supplied. Never invent form, injuries, lineups, results, or certainty.',
-                'Confidence measures market/risk quality, not a guaranteed win. Mark fragile, unusual, ambiguous, or high-odds markets as caution or reject.',
+                'evidenceQualityScore measures source/evidence quality, never probability. statisticalSupport is separate from risk and verdict.',
+                'Gemini has no independent sources in this request, so do not mark a selection keep/supported. Use caution or reject with insufficient support and an empty sourceUrls array.',
                 'Return exactly one item for each input index.',
                 JSON.stringify(input),
               ].join('\n'),
@@ -90,12 +113,29 @@ export class GeminiSlipAnalyzer implements SlipAnalyzer {
                 type: 'OBJECT',
                 properties: {
                   index: { type: 'INTEGER' },
-                  confidence: { type: 'NUMBER', minimum: 0, maximum: 99 },
+                  evidenceQualityScore: { type: 'NUMBER', minimum: 0, maximum: 100 },
+                  statisticalSupport: {
+                    type: 'STRING',
+                    enum: ['supported', 'mixed', 'insufficient'],
+                  },
+                  conflictingEvidence: { type: 'BOOLEAN' },
                   risk: { type: 'STRING', enum: ['lower', 'medium', 'higher'] },
                   verdict: { type: 'STRING', enum: ['keep', 'caution', 'reject'] },
                   reason: { type: 'STRING' },
+                  sourceUrls: { type: 'ARRAY', items: { type: 'STRING' } },
+                  evidenceRetrievedAt: { type: 'STRING' },
                 },
-                required: ['index', 'confidence', 'risk', 'verdict', 'reason'],
+                required: [
+                  'index',
+                  'evidenceQualityScore',
+                  'statisticalSupport',
+                  'conflictingEvidence',
+                  'risk',
+                  'verdict',
+                  'reason',
+                  'sourceUrls',
+                  'evidenceRetrievedAt',
+                ],
               },
             },
           },
@@ -155,7 +195,15 @@ export class GeminiSlipAnalyzer implements SlipAnalyzer {
     ) {
       throw new Error('Gemini analysis did not cover every selection.');
     }
-    return { ...parsed, model: usedModel!, analyzedAt: new Date().toISOString() };
+    return {
+      ...parsed,
+      selections: parsed.selections.map((item) => ({
+        ...item,
+        confidence: item.evidenceQualityScore,
+      })),
+      model: usedModel!,
+      analyzedAt: new Date().toISOString(),
+    };
   }
 }
 

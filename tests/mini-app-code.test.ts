@@ -108,7 +108,12 @@ describe('Mini App analyzed booking flow', () => {
       payload: { selections: built.selections, analysisToken: built.analysisToken },
     });
     expect(code.statusCode).toBe(200);
-    expect(code.json()).toMatchObject({ status: 'ready', code: 'AUREX123', selections: 1 });
+    expect(code.json()).toMatchObject({
+      status: 'booking_code_created',
+      code: 'AUREX123',
+      selections: 1,
+      betPlaced: false,
+    });
     expect(analysisCalls).toBe(1);
 
     const tampered = await app.inject({
