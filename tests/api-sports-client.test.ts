@@ -188,6 +188,31 @@ describe('API-Sports client', () => {
     expect(events[0]?.providerDetail).not.toContain('invalid-private-date');
   });
 
+  it('accepts documented non-paginated basketball envelopes but still requires football paging', async () => {
+    const withoutPaging = (response: unknown) => {
+      const { paging, ...value } = envelope(response);
+      void paging;
+      return value;
+    };
+    const basketball = new ApiSportsClient({
+      apiKey: 'test-key',
+      maxRetries: 0,
+      fetch: () => Promise.resolve(json(withoutPaging([]))),
+    });
+    await expect(
+      basketball.request('basketball', '/games', {}, z.array(basketballGameSchema)),
+    ).resolves.toMatchObject({ paging: { current: 1, total: 1 }, data: [] });
+
+    const football = new ApiSportsClient({
+      apiKey: 'test-key',
+      maxRetries: 0,
+      fetch: () => Promise.resolve(json(withoutPaging([]))),
+    });
+    await expect(
+      football.request('football', '/fixtures', {}, z.array(footballFixtureSchema)),
+    ).rejects.toMatchObject({ code: 'invalid_response', providerDetail: 'paging:missing' });
+  });
+
   it('handles quota exhaustion, missing entitlement and bounded transient retries', async () => {
     const quota = new ApiSportsClient({
       apiKey: 'test-key',
