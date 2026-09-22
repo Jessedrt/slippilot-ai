@@ -293,6 +293,8 @@ export class ApiSportsClient {
           throw new ApiSportsError(
             'invalid_response',
             `API-Sports ${product} returned a malformed response.`,
+            false,
+            this.validationSummary(envelope.error),
           );
         if (hasErrors(envelope.data.errors)) {
           const detail = this.redact(errorText(envelope.data.errors));
@@ -315,13 +317,19 @@ export class ApiSportsClient {
           );
         }
         const parsed = responseSchema.safeParse(envelope.data.response);
-        if (
-          !parsed.success ||
-          (Array.isArray(parsed.data) && envelope.data.results !== parsed.data.length)
-        )
+        if (!parsed.success)
           throw new ApiSportsError(
             'invalid_response',
             `API-Sports ${product} response failed strict validation.`,
+            false,
+            this.validationSummary(parsed.error),
+          );
+        if (Array.isArray(parsed.data) && envelope.data.results !== parsed.data.length)
+          throw new ApiSportsError(
+            'invalid_response',
+            `API-Sports ${product} response failed strict validation.`,
+            false,
+            `results_count_mismatch:declared=${envelope.data.results}:parsed=${parsed.data.length}`,
           );
         const result: ApiSportsResult<T> = {
           data: parsed.data,
@@ -445,6 +453,14 @@ export class ApiSportsClient {
         /((?:api[-_ ]?key|token|authorization|credential)["'\s:=]+)[^\s,;}]+/gi,
         '$1[REDACTED]',
       )
+      .slice(0, 240);
+  }
+
+  private validationSummary(error: z.ZodError): string {
+    return error.issues
+      .slice(0, 8)
+      .map((issue) => `${issue.path.map(String).join('.') || '<root>'}:${issue.code}`)
+      .join(',')
       .slice(0, 240);
   }
 
