@@ -30,6 +30,13 @@ export const envSchema = z
     VISION_MODEL: z.string().min(3).default('gemini-2.5-flash'),
     SPORTS_PROVIDER: z.string().default('disabled'),
     SPORTS_API_KEY: z.preprocess(blankToUndefined, z.string().optional()),
+    API_SPORTS_ENABLED: z.stringbool().default(false),
+    API_SPORTS_KEY: z.preprocess(blankToUndefined, z.string().min(16).optional()),
+    API_SPORTS_COMMERCIAL_USE_APPROVED: z.stringbool().default(false),
+    API_SPORTS_FOOTBALL_ENABLED: z.stringbool().default(false),
+    API_SPORTS_BASKETBALL_TOTALS_ENABLED: z.stringbool().default(false),
+    API_SPORTS_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(30_000).default(8_000),
+    API_SPORTS_MAX_RETRIES: z.coerce.number().int().min(0).max(3).default(2),
     YOU_API_ENABLED: z.stringbool().default(false),
     YDC_API_KEY: z.preprocess(blankToUndefined, z.string().min(8).optional()),
     YDC_API_KEY_2: z.preprocess(blankToUndefined, z.string().min(8).optional()),
@@ -88,6 +95,24 @@ export const envSchema = z
         code: 'custom',
         path: ['GEMINI_API_KEY'],
         message: 'GEMINI_API_KEY or AI_API_KEY is required when AI_PROVIDER=gemini',
+      });
+    }
+    if (config.API_SPORTS_ENABLED && !config.API_SPORTS_KEY) {
+      context.addIssue({
+        code: 'custom',
+        path: ['API_SPORTS_KEY'],
+        message: 'API_SPORTS_KEY is required when API_SPORTS_ENABLED=true',
+      });
+    }
+    if (
+      (config.API_SPORTS_FOOTBALL_ENABLED || config.API_SPORTS_BASKETBALL_TOTALS_ENABLED) &&
+      (!config.API_SPORTS_ENABLED || !config.API_SPORTS_COMMERCIAL_USE_APPROVED)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['API_SPORTS_COMMERCIAL_USE_APPROVED'],
+        message:
+          'Automatic API-Sports analysis requires the client and documented commercial-use approval.',
       });
     }
     // NODE_ENV is production in Vercel Preview, too. A preview without secrets

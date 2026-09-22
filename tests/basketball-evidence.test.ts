@@ -98,4 +98,26 @@ describe('basketball total evidence gate', () => {
       ),
     ).toThrow('do not match');
   });
+
+  it('requires a larger score-only sample when possession data is unavailable', () => {
+    const withoutPossessions = snapshot({
+      home: {
+        games: Array.from({ length: 5 }, (_, index) => ({
+          playedAt: new Date(now.getTime() - (index + 1) * 86_400_000),
+          pointsFor: 75,
+          pointsAgainst: 74,
+        })),
+      },
+      away: {
+        games: Array.from({ length: 5 }, (_, index) => ({
+          playedAt: new Date(now.getTime() - (index + 1) * 86_400_000),
+          pointsFor: 76,
+          pointsAgainst: 75,
+        })),
+      },
+    });
+    expect(() => evaluateBasketballTotal(pick('Under 165.5'), withoutPossessions, now)).toThrow(
+      'at least eight',
+    );
+  });
 });

@@ -48,6 +48,7 @@ export interface BasketballStatisticsRequest {
   homeTeam: string;
   awayTeam: string;
   startsAt: Date;
+  marketOvertimeIncluded: boolean;
 }
 
 export interface BasketballStatisticsProvider {
@@ -63,6 +64,10 @@ export class BasketballEvidenceError extends Error {
     readonly reasonCode:
       | 'provider_not_configured'
       | 'provider_unavailable'
+      | 'missing_subscription'
+      | 'quota_exhausted'
+      | 'fixture_unmapped'
+      | 'unsupported_competition'
       | 'invalid_or_insufficient_evidence' = 'invalid_or_insufficient_evidence',
   ) {
     super(message);
@@ -154,7 +159,12 @@ export function evaluateBasketballTotal(
   const awayAgainst = average(snapshot.away.games.map((game) => game.pointsAgainst));
   let projection = (homeFor + awayAgainst + awayFor + homeAgainst) / 2;
   const withPossessions = allGames.filter((game) => game.possessions != null);
-  if (withPossessions.length === allGames.length) {
+  const paceAdjusted = withPossessions.length === allGames.length;
+  if (!paceAdjusted && (snapshot.home.games.length < 8 || snapshot.away.games.length < 8))
+    throw new BasketballEvidenceError(
+      'Insufficient statistical evidence: score-only basketball totals require at least eight venue-relevant games per team when possession data is unavailable.',
+    );
+  if (paceAdjusted) {
     const pace = average(withPossessions.map((game) => game.possessions!));
     const efficiencyTotal = average(
       withPossessions.map(
@@ -174,7 +184,8 @@ export function evaluateBasketballTotal(
       'Insufficient statistical evidence: total direction is ambiguous.',
     );
   const edge = direction === 'over' ? projection - line : line - projection;
-  const supported = edge >= 3;
+  const minimumEdge = paceAdjusted ? 3 : 6;
+  const supported = edge >= minimumEdge;
   const source: EvidenceSource = {
     name: snapshot.source.name,
     url: snapshot.source.url,
@@ -188,10 +199,14 @@ export function evaluateBasketballTotal(
     evidenceQualityScore: Math.min(
       95,
       70 +
-        (withPossessions.length === allGames.length ? 10 : 0) +
+        (paceAdjusted ? 10 : 0) +
         (snapshot.lineupStatus === 'confirmed' ? 10 : snapshot.lineupStatus === 'partial' ? 4 : 0),
     ),
-    statisticalSupport: supported ? 'supported' : Math.abs(edge) < 3 ? 'mixed' : 'insufficient',
+    statisticalSupport: supported
+      ? 'supported'
+      : Math.abs(edge) < minimumEdge
+        ? 'mixed'
+        : 'insufficient',
     recommendationVerdict: supported ? 'keep' : 'reject',
     assessedAt: now,
     expiresAt,

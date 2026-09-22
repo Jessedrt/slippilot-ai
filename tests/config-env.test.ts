@@ -34,4 +34,23 @@ describe('production configuration', () => {
     vi.stubEnv('VERCEL_ENV', 'production');
     expect(() => loadConfig({ NODE_ENV: 'production' })).toThrow(/TELEGRAM_BOT_TOKEN/);
   });
+  it('keeps API-Sports analysis disabled until credentials and commercial approval exist', () => {
+    expect(loadConfig({}).API_SPORTS_ENABLED).toBe(false);
+    expect(() => loadConfig({ API_SPORTS_ENABLED: 'true' })).toThrow(/API_SPORTS_KEY/);
+    expect(() =>
+      loadConfig({
+        API_SPORTS_ENABLED: 'true',
+        API_SPORTS_KEY: 'rotated-test-key-value',
+        API_SPORTS_FOOTBALL_ENABLED: 'true',
+      }),
+    ).toThrow(/commercial-use approval/);
+    expect(
+      loadConfig({
+        API_SPORTS_ENABLED: 'true',
+        API_SPORTS_KEY: 'rotated-test-key-value',
+        API_SPORTS_COMMERCIAL_USE_APPROVED: 'true',
+        API_SPORTS_FOOTBALL_ENABLED: 'true',
+      }).API_SPORTS_FOOTBALL_ENABLED,
+    ).toBe(true);
+  });
 });

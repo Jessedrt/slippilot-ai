@@ -103,7 +103,7 @@ function renderSlip() {
       (pick, index) => `
     <article class="pick-row">
       <span class="pick-num">${String(index + 1).padStart(2, '0')}</span>
-      <div><h3>${escapeHtml(pick.homeTeam)} vs ${escapeHtml(pick.awayTeam)}</h3><p>${escapeHtml(pick.selectionName)} · verified odds ${pick.odds.toFixed(2)}${pick.statisticalProjection == null ? '' : ` · projection ${Number(pick.statisticalProjection).toFixed(1)}`}</p></div>
+      <div><h3>${escapeHtml(pick.homeTeam)} vs ${escapeHtml(pick.awayTeam)}</h3><p>${escapeHtml(pick.selectionName)} · SportyBet odds ${pick.odds.toFixed(2)}${pick.statisticalProjection == null ? '' : ` · statistical projection ${Number(pick.statisticalProjection).toFixed(1)}`}${pick.verifiedStatisticsSource ? ` · ${escapeHtml(pick.verifiedStatisticsSource)} stats retrieved ${escapeHtml(new Date(pick.statisticsRetrievedAt).toLocaleString())}` : ''}${pick.missingData?.length ? ` · missing: ${escapeHtml(pick.missingData.join(' '))}` : ''}</p></div>
       <div class="pick-score">${Math.round(pick.evidenceQualityScore ?? pick.confidence)}/100<small>evidence · ${escapeHtml(pick.risk)} risk</small></div>
       <button data-remove="${index}">Remove</button>
     </article>`,

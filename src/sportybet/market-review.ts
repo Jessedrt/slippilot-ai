@@ -12,6 +12,14 @@ import {
   isBasketballGameTotal,
   type BasketballStatisticsProvider,
 } from '../sports/basketball-statistics.js';
+import {
+  FootballEvidenceError,
+  evaluateFootballTotal,
+  isFootballGameTotal,
+  type FootballStatisticsProvider,
+} from '../sports/football-statistics.js';
+import { ApiSportsError } from '../api-sports/client.js';
+import { FixtureMappingError } from '../api-sports/fixture-matcher.js';
 
 /** Review confidence measures evidence quality, NOT the probability of winning. */
 export class MarketReviewUnavailableError extends Error {
@@ -133,6 +141,7 @@ export async function buildReviewedLiveSlipSnapshot(
   targetOdds?: number,
   riskMode: RiskMode = 'balanced',
   basketballStatistics?: BasketballStatisticsProvider,
+  footballStatistics?: FootballStatisticsProvider,
 ): Promise<ReviewedSnapshot> {
   if (!Number.isSafeInteger(gameCount) || gameCount < 1) throw new Error('Invalid game count.');
   const minimum = minimumQualityForTarget(targetOdds, riskMode);
@@ -180,7 +189,14 @@ export async function buildReviewedLiveSlipSnapshot(
               ...market,
             }),
           )
-        : markets;
+        : sport === 'football' && footballStatistics
+          ? markets.filter((market) =>
+              isFootballGameTotal({
+                ...original,
+                ...market,
+              }),
+            )
+          : markets;
     const choices = shortlistMarketOptions(
       reviewableMarkets,
       sport,
@@ -204,7 +220,11 @@ export async function buildReviewedLiveSlipSnapshot(
             'Basketball totals are unavailable because no authorized statistics provider is configured. Odds are not used as evidence and no statistics are invented.',
             'provider_not_configured',
           );
-        let snapshotPromise = statisticsCache.get(candidate.eventId);
+        const marketOvertimeIncluded = /(?:incl(?:uding)?\.?\s*overtime|with overtime)/i.test(
+          candidate.marketName,
+        );
+        const statisticsKey = `${candidate.eventId}:ot:${marketOvertimeIncluded}`;
+        let snapshotPromise = statisticsCache.get(statisticsKey);
         if (!snapshotPromise) {
           snapshotPromise = basketballStatistics.getSnapshot({
             bookmakerEventId: candidate.eventId,
@@ -212,13 +232,30 @@ export async function buildReviewedLiveSlipSnapshot(
             homeTeam: candidate.fixture.homeTeam,
             awayTeam: candidate.fixture.awayTeam,
             startsAt: candidate.fixture.startsAt,
+            marketOvertimeIncluded,
           });
-          statisticsCache.set(candidate.eventId, snapshotPromise);
+          statisticsCache.set(statisticsKey, snapshotPromise);
         }
         let rawSnapshot: unknown;
         try {
           rawSnapshot = await snapshotPromise;
-        } catch {
+        } catch (error) {
+          if (error instanceof ApiSportsError) {
+            const reason =
+              error.code === 'missing_entitlement' || error.code === 'unauthorized'
+                ? 'missing_subscription'
+                : error.code === 'quota_exhausted' || error.code === 'rate_limited'
+                  ? 'quota_exhausted'
+                  : 'provider_unavailable';
+            throw new BasketballEvidenceError(error.message, reason);
+          }
+          if (error instanceof FixtureMappingError)
+            throw new BasketballEvidenceError(
+              error.message,
+              error.reason === 'unsupported_competition'
+                ? 'unsupported_competition'
+                : 'fixture_unmapped',
+            );
           throw new BasketballEvidenceError(
             'Basketball statistics provider unavailable. No market was recommended and no target was forced.',
             'provider_unavailable',
@@ -245,6 +282,63 @@ export async function buildReviewedLiveSlipSnapshot(
           if (error instanceof BasketballEvidenceError || error instanceof Error) continue;
           continue;
         }
+      } else if (sport === 'football' && footballStatistics) {
+        let snapshotPromise = statisticsCache.get(candidate.eventId);
+        if (!snapshotPromise) {
+          snapshotPromise = footballStatistics.getSnapshot({
+            bookmakerEventId: candidate.eventId,
+            competition: candidate.fixture.league,
+            homeTeam: candidate.fixture.homeTeam,
+            awayTeam: candidate.fixture.awayTeam,
+            startsAt: candidate.fixture.startsAt,
+          });
+          statisticsCache.set(candidate.eventId, snapshotPromise);
+        }
+        let rawSnapshot: unknown;
+        try {
+          rawSnapshot = await snapshotPromise;
+        } catch (error) {
+          if (error instanceof ApiSportsError) {
+            const reason =
+              error.code === 'missing_entitlement' || error.code === 'unauthorized'
+                ? 'missing_subscription'
+                : error.code === 'quota_exhausted' || error.code === 'rate_limited'
+                  ? 'quota_exhausted'
+                  : 'provider_unavailable';
+            throw new FootballEvidenceError(error.message, reason);
+          }
+          if (error instanceof FixtureMappingError)
+            throw new FootballEvidenceError(
+              error.message,
+              error.reason === 'unsupported_competition'
+                ? 'unsupported_competition'
+                : 'fixture_unmapped',
+            );
+          throw new FootballEvidenceError(
+            'API-Sports football statistics are unavailable, the subscription lacks access, or the fixture could not be mapped exactly. No target was forced.',
+            'provider_unavailable',
+          );
+        }
+        try {
+          const assessment = evaluateFootballTotal(candidate, rawSnapshot);
+          if (
+            assessment.statisticalSupport !== 'supported' ||
+            assessment.recommendationVerdict !== 'keep'
+          )
+            continue;
+          candidate = {
+            ...candidate,
+            assessment,
+            confidenceScore: assessment.evidenceQualityScore,
+            dataQuality: assessment.evidenceQualityScore >= 80 ? 'high' : 'medium',
+            reasoning: [
+              `API-Sports home/away goal projection ${assessment.statisticalProjection}; bookmaker implied probability ${assessment.bookmakerImpliedProbability}% is shown separately.`,
+              `Verified source: ${assessment.sources[0]!.name}, retrieved ${assessment.sources[0]!.retrievedAt.toISOString()}.`,
+            ],
+          };
+        } catch {
+          continue;
+        }
       }
       options.push(candidate);
     }
@@ -253,6 +347,10 @@ export async function buildReviewedLiveSlipSnapshot(
     if (sport === 'basketball')
       throw new BasketballEvidenceError(
         'Insufficient statistical evidence: no basketball total had fresh, consistent, metric-specific support.',
+      );
+    if (sport === 'football' && footballStatistics)
+      throw new FootballEvidenceError(
+        'Insufficient statistical evidence: no football goal total had fresh, exact, home/away statistical support.',
       );
     throw new MarketReviewUnavailableError();
   }

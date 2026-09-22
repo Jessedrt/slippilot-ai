@@ -15,6 +15,10 @@ import {
   BasketballEvidenceError,
   type BasketballStatisticsProvider,
 } from '../sports/basketball-statistics.js';
+import {
+  FootballEvidenceError,
+  type FootballStatisticsProvider,
+} from '../sports/football-statistics.js';
 
 export interface MiniAppDependencies {
   sportyBet: SportyBetProvider;
@@ -22,6 +26,7 @@ export interface MiniAppDependencies {
   screenshotAnalyzer: ScreenshotAnalyzer;
   telegramBotToken?: string;
   basketballStatistics?: BasketballStatisticsProvider;
+  footballStatistics?: FootballStatisticsProvider;
 }
 const buildSchema = z
   .object({
@@ -56,6 +61,9 @@ const selectionSchema = z
     analysisExpiresAt: z.string().datetime().optional(),
     statisticalProjection: z.number().finite().optional(),
     bookmakerImpliedProbability: z.number().finite().min(0).max(100).optional(),
+    verifiedStatisticsSource: z.string().max(120).optional(),
+    statisticsRetrievedAt: z.string().datetime().optional(),
+    missingData: z.array(z.string().max(120)).max(10).optional(),
     risk: z.enum(['lower', 'medium', 'higher']),
   })
   .strict();
@@ -238,8 +246,16 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
         input.targetOdds,
         input.riskMode,
         deps.basketballStatistics,
+        deps.footballStatistics,
       );
     } catch (error) {
+      if (error instanceof FootballEvidenceError) {
+        return reply.status(error.statusCode).send({
+          status: 'football_statistics_unavailable',
+          reason: error.reasonCode,
+          message: `${error.message} Try another sport or retry after configuration is verified. No slip or booking code was created.`,
+        });
+      }
       if (!(error instanceof BasketballEvidenceError)) throw error;
       return reply.status(error.statusCode).send({
         status: 'basketball_totals_unavailable',
@@ -273,6 +289,24 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
             bookmakerImpliedProbability:
               selection.assessment?.bookmakerImpliedProbability ??
               Number((100 / selection.odds).toFixed(2)),
+            ...(selection.assessment?.sources.find(
+              (source) => source.kind === 'authorized-statistics',
+            )
+              ? {
+                  verifiedStatisticsSource: selection.assessment.sources.find(
+                    (source) => source.kind === 'authorized-statistics',
+                  )!.name,
+                  statisticsRetrievedAt: selection.assessment.sources
+                    .find((source) => source.kind === 'authorized-statistics')!
+                    .retrievedAt.toISOString(),
+                }
+              : {}),
+            missingData:
+              selection.sport === 'football' && selection.assessment
+                ? ['Confirmed lineups and player availability were unavailable unless stated.']
+                : selection.sport === 'basketball' && selection.assessment
+                  ? ['Possession and player availability data may be unavailable.']
+                  : [],
             analysisExpiresAt: (
               selection.assessment?.expiresAt ??
               new Date(new Date(analysis.analyzedAt).getTime() + ANALYSIS_TOKEN_TTL_MS)

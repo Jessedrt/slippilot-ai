@@ -16,6 +16,11 @@ import { createLogger } from './utils/logger.js';
 import { PrismaWatchStore, TelegramWatchSender, WatchService } from './watch/watch-service.js';
 import { YouClient } from './you/client.js';
 import { DisabledWebResearchProvider, YouProvider } from './you/provider.js';
+import { ApiSportsClient } from './api-sports/client.js';
+import {
+  ApiSportsBasketballStatisticsProvider,
+  ApiSportsFootballStatisticsProvider,
+} from './api-sports/statistics-provider.js';
 
 export function createApplication() {
   const config = loadConfig();
@@ -60,7 +65,28 @@ export function createApplication() {
         cacheTtlMs: config.SPORTYBET_CACHE_TTL_MS,
       })
     : new UnsupportedSportyBetProvider();
-  const aiKeys = [...new Set([config.GEMINI_API_KEY, config.AI_API_KEY].filter(Boolean))] as string[];
+  const apiSports =
+    config.API_SPORTS_ENABLED && config.API_SPORTS_KEY
+      ? new ApiSportsClient({
+          apiKey: config.API_SPORTS_KEY,
+          timeoutMs: config.API_SPORTS_TIMEOUT_MS,
+          maxRetries: config.API_SPORTS_MAX_RETRIES,
+          cache,
+        })
+      : null;
+  const footballStatistics =
+    apiSports && config.API_SPORTS_COMMERCIAL_USE_APPROVED && config.API_SPORTS_FOOTBALL_ENABLED
+      ? new ApiSportsFootballStatisticsProvider(apiSports)
+      : undefined;
+  const basketballStatistics =
+    apiSports &&
+    config.API_SPORTS_COMMERCIAL_USE_APPROVED &&
+    config.API_SPORTS_BASKETBALL_TOTALS_ENABLED
+      ? new ApiSportsBasketballStatisticsProvider(apiSports)
+      : undefined;
+  const aiKeys = [
+    ...new Set([config.GEMINI_API_KEY, config.AI_API_KEY].filter(Boolean)),
+  ] as string[];
   const aiKey = aiKeys[0];
   const slipAnalyzer =
     youClient && config.YOU_RESEARCH_ENABLED
@@ -90,11 +116,20 @@ export function createApplication() {
     slipAnalyzer,
     screenshotAnalyzer,
   });
-  const alertReady = Boolean(config.CRON_SECRET && config.TELEGRAM_BOT_TOKEN &&
-    config.SPORTYBET_PROVIDER_ENABLED && process.env.VERCEL_ENV === 'production');
-  const watch = new WatchService(new PrismaWatchStore(database.client), sportyBet,
-    alertReady && config.TELEGRAM_BOT_TOKEN ? new TelegramWatchSender(config.TELEGRAM_BOT_TOKEN) : null,
-    alertReady);
+  const alertReady = Boolean(
+    config.CRON_SECRET &&
+    config.TELEGRAM_BOT_TOKEN &&
+    config.SPORTYBET_PROVIDER_ENABLED &&
+    process.env.VERCEL_ENV === 'production',
+  );
+  const watch = new WatchService(
+    new PrismaWatchStore(database.client),
+    sportyBet,
+    alertReady && config.TELEGRAM_BOT_TOKEN
+      ? new TelegramWatchSender(config.TELEGRAM_BOT_TOKEN)
+      : null,
+    alertReady,
+  );
   const appPromise = createServer(
     logger,
     { config, metrics, cache, database, sports, sportyBet },
@@ -105,6 +140,8 @@ export function createApplication() {
       sportyBet,
       slipAnalyzer,
       screenshotAnalyzer,
+      ...(footballStatistics ? { footballStatistics } : {}),
+      ...(basketballStatistics ? { basketballStatistics } : {}),
       ...(config.TELEGRAM_BOT_TOKEN ? { telegramBotToken: config.TELEGRAM_BOT_TOKEN } : {}),
     },
     { service: watch, ...(config.CRON_SECRET ? { cronSecret: config.CRON_SECRET } : {}) },
@@ -113,15 +150,17 @@ export function createApplication() {
   const webhookRegistrationPromise =
     process.env.VERCEL_ENV === 'production' && bot && config.TELEGRAM_WEBHOOK_SECRET
       ? ensureProductionWebhook(bot.telegram, config.TELEGRAM_WEBHOOK_SECRET)
-        .then((changed) => {
-          logger.info({ changed }, 'AUREX Telegram webhook verified');
-          return true;
-        })
-        .catch((error: unknown) => {
-          logger.warn({ message: error instanceof Error ? error.message : 'Unknown setup failure' },
-            'AUREX Telegram webhook setup failed');
-          return false;
-        })
+          .then((changed) => {
+            logger.info({ changed }, 'AUREX Telegram webhook verified');
+            return true;
+          })
+          .catch((error: unknown) => {
+            logger.warn(
+              { message: error instanceof Error ? error.message : 'Unknown setup failure' },
+              'AUREX Telegram webhook setup failed',
+            );
+            return false;
+          })
       : Promise.resolve(false);
 
   return { appPromise, bot, cache, config, database, logger, webhookRegistrationPromise };

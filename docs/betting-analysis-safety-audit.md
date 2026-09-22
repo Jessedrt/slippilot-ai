@@ -31,6 +31,8 @@ Audit branch: `fix/betting-analysis-safety-audit`
   feed. It is not used as a silent substitute for the missing basketball statistics adapter.
 - The repository's global Prettier check already reports many pre-existing files. Files changed by this
   audit are formatted, but reformatting the entire application is intentionally outside this safety PR.
+  The recorded baseline was 124 files. After `src/app.ts` became a material integration change and was
+  formatted, 123 untouched baseline files remain; no unrelated file was reformatted.
 
 ## Implementation summary
 
@@ -102,3 +104,64 @@ does not claim that You.com or SportyBet supplies licensed statistics.
   are never represented as live evidence.
 - A preview deployment depends on the repository's Vercel integration and preview credentials; no
   production deployment is performed by this branch.
+
+## API-Sports integration
+
+### Architecture
+
+The independent evidence path is now:
+
+1. SportyBet supplies scheduled events, active market IDs, selections, odds and booking codes.
+2. `ApiSportsFixtureMatcher` requests the UTC date from API-Football or API-Basketball and accepts only
+   one exact competition/team/orientation match within 15 minutes of the SportyBet kickoff.
+3. Stable API-Sports fixture, competition and team IDs are used for subsequent history requests.
+4. Football totals require five completed same-season home matches for the home team and five away
+   matches for the away team. The projection combines their venue-specific scoring/conceding averages.
+5. Basketball totals use pace/possession inputs only when supplied for every sample. Without them, the
+   score-only alternative requires eight recent venue-relevant games per team and a six-point margin;
+   missing regulation quarter scores reject regulation-only markets.
+6. The existing strict AI `keep` gate, target-odds preference and final SportyBet booking preflight still
+   run after statistical eligibility.
+
+`ApiSportsClient` uses the documented direct API hosts, sends `x-apisports-key` only from the backend,
+validates the response envelope and sport schemas, treats HTTP-200 `errors` as failures, handles 401,
+403, 429, quota headers and timeouts, bounds retries, and uses 2-minute fixture / 15-minute historical
+cache TTLs. Redis failure affects only the cache, never the mandatory provider request.
+
+### Production flags and credentials
+
+- `API_SPORTS_KEY`: newly rotated backend credential. The previously exposed key must not be reused.
+- `API_SPORTS_ENABLED=false`: constructs the client only when explicitly enabled.
+- `API_SPORTS_COMMERCIAL_USE_APPROVED=false`: records that written commercial/publication permissions
+  have been obtained. This is deliberately not inferred from payment or API access.
+- `API_SPORTS_FOOTBALL_ENABLED=false`: enables verified API-Football goal-total evaluation.
+- `API_SPORTS_BASKETBALL_TOTALS_ENABLED=false`: enables API-Basketball totals only after field coverage
+  and rights are verified.
+- `API_SPORTS_TIMEOUT_MS=8000`, `API_SPORTS_MAX_RETRIES=2`: bounded transport controls.
+
+The configuration rejects sport feature flags unless the client and commercial-approval flag are both
+enabled. The key is never returned to the Mini App, included in URLs, or written to logs.
+
+### Coverage snapshot and credential boundary
+
+On 22 September 2026, a direct read of the first 100-item SportyBet Nigeria upcoming-events page returned:
+
+| Sport      | SportyBet page result                                                                                                                                   | API-Sports exact mapped count                                  |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Football   | 100 unique fixtures across Bundesliga, EFL Cup, LaLiga, Premier League, Serie A and UEFA Champions League                                               | Not run: no rotated credential/verified entitlements available |
+| Basketball | 80 unique fixtures across 22 competitions, including Euroleague, NBA, WNBA, NBL, LKL, Basketligaen, VBA and several lower-tier/women's/cup competitions | Not run: no rotated credential/verified entitlements available |
+
+These are point-in-time first-page SportyBet results, not full or permanent coverage claims. The new
+coverage reporter produces total, mapped, unmapped, ambiguous, reversed-orientation and unsupported-
+competition counts from a credentialed run. Mock coverage tests are labelled deterministic tests and
+are not presented as live coverage.
+
+### Licensing boundary
+
+API-Sports' published terms prohibit unapproved direct resale, state that API-Sports does not itself
+grant publication licences or commercial rights for competitions, and warn that betting-platform use
+may require additional licences from rights holders. Before either sport flag is enabled, obtain written
+confirmation covering commercial betting analysis, derived projections, cache retention, end-user
+display, intended countries and request volume from API-Sports and any required competition rights
+holders. Confirm separately that the account/key is entitled to API-Football and API-Basketball and
+record the daily/per-minute quotas for both products.
