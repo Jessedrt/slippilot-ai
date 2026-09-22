@@ -21,8 +21,12 @@ const pick = (selectionName: string) =>
     },
   });
 const snapshot = (overrides: Record<string, unknown> = {}) => ({
-  eventId: 'event-1',
+  providerEventId: 'provider-event-1',
+  providerCompetitionId: 'provider-competition-1',
   competition: 'Test League',
+  homeTeam: 'Home',
+  awayTeam: 'Away',
+  startsAt: new Date('2026-09-22T18:00:00Z'),
   retrievedAt: now,
   overtimeIncluded: true,
   lineupStatus: 'confirmed',
@@ -80,5 +84,18 @@ describe('basketball total evidence gate', () => {
         now,
       ),
     ).toThrow('conflicting');
+  });
+
+  it('rejects an ambiguous provider fixture mapping', () => {
+    expect(() =>
+      evaluateBasketballTotal(pick('Under 165.5'), snapshot({ awayTeam: 'Different Team' }), now),
+    ).toThrow('do not match');
+    expect(() =>
+      evaluateBasketballTotal(
+        pick('Under 165.5'),
+        snapshot({ startsAt: new Date('2026-09-22T19:00:00Z') }),
+        now,
+      ),
+    ).toThrow('do not match');
   });
 });

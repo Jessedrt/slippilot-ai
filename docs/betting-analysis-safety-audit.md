@@ -62,10 +62,35 @@ No new environment variable is activated by this PR because the repository has n
 basketball data vendor selected. Production basketball automatic totals therefore fail safely with an
 `Insufficient statistical evidence` response.
 
-To enable them, implement `BasketballStatisticsProvider` using an authorized, documented source and
-inject it into `MiniAppDependencies`. The adapter must map the vendor response into the strict snapshot
-schema and preserve source URL/name and retrieval time. The required API key variable and cost depend on
-the vendor selected; this PR does not claim that You.com or SportyBet supplies those licensed statistics.
+### Provider investigation (22 September 2026)
+
+The live SportyBet Nigeria upcoming-events response was sampled directly (100-event page, basketball
+sport ID `sr:sport:2`). It listed 26 competitions, including Euroleague, NBA, WNBA, Greece Basketball
+League, Australia NBL, Slovenia 1. A SKL, Lithuania LKL, Denmark Basketligaen, Czech NBL, Chile LNB,
+Vietnam VBA, France Nationale 1 and several women's, cup, friendly and lower-tier competitions. This is
+a point-in-time bookmaker listing, not a permanent coverage claim; an adapter must check coverage and
+map the exact fixture on every request.
+
+| Provider                     | Documented fit                                                                                                                                                                                                                                                                                                                                                                                              | Commercial boundary                                                                                                                                                                       |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API-Sports API-Basketball    | Publishes a 427-league coverage table with schedule, historical data, standings, team/player statistics and odds flags per competition. Its table explicitly includes several leagues in the sampled SportyBet set (NBA/WNBA, Chile LNB, Czech NBL, Basketligaen, LKL and VBA). It says live games/events update every 15 seconds. Coverage flags vary by league and must be checked rather than inferred.  | Free tier: 100 requests/day; paid pricing starts at US$10/month. Account/API key and confirmation that the intended betting-analysis use and display/retention are licensed are required. |
+| Sportradar Global Basketball | Documents real-time scoring/statistics “when available,” over 200 competitions, competition/season/team statistics, lineups, head-to-head and event mapping endpoints. Its public FAQ names Euroleague and TBSL, but its coverage matrix must be checked for every sampled SportyBet competition and data field. A 10-second live timeline delta is documented; endpoint cache/update rates otherwise vary. | 30-day trial is documented as 1,000 calls and 1 QPS. Production fees and data rights are order-form/contract based; obtain a production API key and written rights for this use.          |
+| Sportmonks                   | Current official product documentation advertises football, cricket and Formula 1, not a basketball API.                                                                                                                                                                                                                                                                                                    | Not a candidate for this basketball requirement unless Sportmonks supplies separate written product documentation and rights.                                                             |
+
+Recommendation: validate API-Sports first because its public coverage matrix overlaps more of the actual
+SportyBet snapshot and its entry pricing is published. Before writing an adapter, obtain an API-Basketball
+key and written confirmation of commercial betting-analysis, derived-statistics, caching and end-user
+display rights. Run a credentialed coverage audit that records provider competition IDs and required
+fields for all currently listed SportyBet competitions. If its statistics/lineup depth is insufficient,
+request a Sportradar Global Basketball production quote and coverage export. Never fall back from an
+unmapped competition to a similarly named league.
+
+To enable them, implement `BasketballStatisticsProvider` using the selected licensed source and inject it
+into `MiniAppDependencies`. The interface passes the SportyBet competition, teams, start time and event ID;
+the adapter must resolve an exact provider event and return provider competition/event IDs. The schema
+then checks competition, both teams and start time (15-minute maximum variance), source authorization,
+retrieval time and all evidence fields. No credential or provider is currently configured, and this PR
+does not claim that You.com or SportyBet supplies licensed statistics.
 
 ## Remaining limitations
 

@@ -11,7 +11,10 @@ import { buildReviewedLiveSlipSnapshot } from '../sportybet/market-review.js';
 import type { SportyBetProvider } from '../sportybet/contracts.js';
 import type { CandidateSelection } from '../types/domain.js';
 import { XPostReader } from '../social/x-post-reader.js';
-import type { BasketballStatisticsProvider } from '../sports/basketball-statistics.js';
+import {
+  BasketballEvidenceError,
+  type BasketballStatisticsProvider,
+} from '../sports/basketball-statistics.js';
 
 export interface MiniAppDependencies {
   sportyBet: SportyBetProvider;
@@ -225,15 +228,25 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
       input.targetOdds === undefined
         ? input.gameCount!
         : automaticLegCount(input.targetOdds, input.riskMode);
-    const snapshot = await buildReviewedLiveSlipSnapshot(
-      deps.sportyBet,
-      deps.slipAnalyzer,
-      input.sport,
-      plannedGames,
-      input.targetOdds,
-      input.riskMode,
-      deps.basketballStatistics,
-    );
+    let snapshot;
+    try {
+      snapshot = await buildReviewedLiveSlipSnapshot(
+        deps.sportyBet,
+        deps.slipAnalyzer,
+        input.sport,
+        plannedGames,
+        input.targetOdds,
+        input.riskMode,
+        deps.basketballStatistics,
+      );
+    } catch (error) {
+      if (!(error instanceof BasketballEvidenceError)) throw error;
+      return reply.status(error.statusCode).send({
+        status: 'basketball_totals_unavailable',
+        reason: error.reasonCode,
+        message: `${error.message} Try another sport. No slip or booking code was created.`,
+      });
+    }
     const analysis = snapshot.analysis;
     const selections = snapshot.slip.selections
       .flatMap((selection, index) => {

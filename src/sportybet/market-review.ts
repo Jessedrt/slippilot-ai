@@ -199,10 +199,20 @@ export async function buildReviewedLiveSlipSnapshot(
         ],
       };
       if (sport === 'basketball') {
-        if (!basketballStatistics) throw new BasketballEvidenceError();
+        if (!basketballStatistics)
+          throw new BasketballEvidenceError(
+            'Basketball totals are unavailable because no authorized statistics provider is configured. Odds are not used as evidence and no statistics are invented.',
+            'provider_not_configured',
+          );
         let snapshotPromise = statisticsCache.get(candidate.eventId);
         if (!snapshotPromise) {
-          snapshotPromise = basketballStatistics.getSnapshot(candidate.eventId);
+          snapshotPromise = basketballStatistics.getSnapshot({
+            bookmakerEventId: candidate.eventId,
+            competition: candidate.fixture.league,
+            homeTeam: candidate.fixture.homeTeam,
+            awayTeam: candidate.fixture.awayTeam,
+            startsAt: candidate.fixture.startsAt,
+          });
           statisticsCache.set(candidate.eventId, snapshotPromise);
         }
         let rawSnapshot: unknown;
@@ -211,6 +221,7 @@ export async function buildReviewedLiveSlipSnapshot(
         } catch {
           throw new BasketballEvidenceError(
             'Basketball statistics provider unavailable. No market was recommended and no target was forced.',
+            'provider_unavailable',
           );
         }
         try {

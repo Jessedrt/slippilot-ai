@@ -18,8 +18,12 @@ const teamSchema = z
 
 export const basketballStatisticsSnapshotSchema = z
   .object({
-    eventId: z.string().min(1),
+    providerEventId: z.string().min(1),
+    providerCompetitionId: z.string().min(1),
     competition: z.string().min(1),
+    homeTeam: z.string().min(1),
+    awayTeam: z.string().min(1),
+    startsAt: z.coerce.date(),
     retrievedAt: z.coerce.date(),
     overtimeIncluded: z.boolean(),
     lineupStatus: z.enum(['confirmed', 'partial', 'unavailable']),
@@ -38,15 +42,28 @@ export const basketballStatisticsSnapshotSchema = z
 
 export type BasketballStatisticsSnapshot = z.infer<typeof basketballStatisticsSnapshotSchema>;
 
+export interface BasketballStatisticsRequest {
+  bookmakerEventId: string;
+  competition: string;
+  homeTeam: string;
+  awayTeam: string;
+  startsAt: Date;
+}
+
 export interface BasketballStatisticsProvider {
   readonly name: string;
-  getSnapshot(eventId: string): Promise<unknown>;
+  /** Resolve the exact bookmaker fixture to a licensed provider event; never guess a match. */
+  getSnapshot(request: BasketballStatisticsRequest): Promise<unknown>;
 }
 
 export class BasketballEvidenceError extends Error {
   readonly statusCode = 424;
   constructor(
     message = 'Insufficient statistical evidence: a documented basketball statistics provider is not configured or did not return a valid, fresh snapshot.',
+    readonly reasonCode:
+      | 'provider_not_configured'
+      | 'provider_unavailable'
+      | 'invalid_or_insufficient_evidence' = 'invalid_or_insufficient_evidence',
   ) {
     super(message);
     this.name = 'BasketballEvidenceError';
@@ -56,7 +73,12 @@ export class BasketballEvidenceError extends Error {
 export class DisabledBasketballStatisticsProvider implements BasketballStatisticsProvider {
   readonly name = 'disabled';
   getSnapshot(): Promise<never> {
-    return Promise.reject(new BasketballEvidenceError());
+    return Promise.reject(
+      new BasketballEvidenceError(
+        'Basketball totals are unavailable because no authorized statistics provider is configured. Odds are not used as evidence and no statistics are invented.',
+        'provider_not_configured',
+      ),
+    );
   }
 }
 
@@ -89,7 +111,14 @@ export function evaluateBasketballTotal(
     );
   }
   const snapshot = basketballStatisticsSnapshotSchema.parse(rawSnapshot);
-  if (snapshot.eventId !== selection.eventId)
+  const normalize = (value: string) =>
+    value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLowerCase();
+  if (
+    normalize(snapshot.competition) !== normalize(selection.fixture.league) ||
+    normalize(snapshot.homeTeam) !== normalize(selection.fixture.homeTeam) ||
+    normalize(snapshot.awayTeam) !== normalize(selection.fixture.awayTeam) ||
+    Math.abs(snapshot.startsAt.getTime() - selection.fixture.startsAt.getTime()) > 15 * 60_000
+  )
     throw new BasketballEvidenceError(
       'Insufficient statistical evidence: statistics do not match the bookmaker event.',
     );

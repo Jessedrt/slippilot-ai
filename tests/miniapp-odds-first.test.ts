@@ -27,6 +27,67 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 describe('Mini App odds-first build', () => {
+  it('explains that basketball totals are unavailable when no statistics provider is configured', async () => {
+    const fixture = {
+      providerEventId: 'basketball-1',
+      homeTeam: 'Home',
+      awayTeam: 'Away',
+      startsAt: new Date(Date.now() + 3_600_000),
+      status: 'scheduled' as const,
+      league: 'Test League',
+    };
+    const sportyBet = {
+      name: 'SportyBet',
+      listEvents: () => Promise.resolve([fixture]),
+      getMarkets: () =>
+        Promise.resolve([
+          {
+            eventId: fixture.providerEventId,
+            providerMarketId: 'total',
+            providerSelectionId: 'under',
+            sport: 'basketball' as const,
+            category: 'Total',
+            marketName: 'Over/Under (incl. overtime)',
+            selectionName: 'Under 165.5',
+            line: 165.5,
+            odds: 1.9,
+            status: 'active' as const,
+            lastUpdated: new Date(),
+          },
+        ]),
+      findEvents: () => Promise.resolve([]),
+      getEvent: () => Promise.resolve(null),
+      resolveBookingCode: () => Promise.resolve([]),
+      createBookingCode: () => Promise.resolve('TEST123'),
+      health: () => Promise.resolve({ ok: true, detail: 'test' }),
+    } as SportyBetProvider;
+    const app = Fastify();
+    await app.register(sensible);
+    registerMiniAppRoutes(app, {
+      sportyBet,
+      telegramBotToken: botToken,
+      slipAnalyzer: { analyze: () => Promise.reject(new Error('must not run')) },
+      screenshotAnalyzer: { analyze: () => Promise.resolve({ items: [], bookingCodes: [] }) },
+    });
+    try {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/miniapp/build',
+        headers: { 'x-telegram-init-data': telegramInitData() },
+        payload: { sport: 'basketball', gameCount: 1 },
+      });
+      expect(response.statusCode).toBe(424);
+      const body = response.json<{ status: string; reason: string; message: string }>();
+      expect(body).toMatchObject({
+        status: 'basketball_totals_unavailable',
+        reason: 'provider_not_configured',
+      });
+      expect(body.message).toContain('No slip or booking code was created');
+    } finally {
+      await app.close();
+    }
+  });
+
   it('derives count from odds and returns only today when eligible games exist, with real date', async () => {
     const today = Array.from({ length: 3 }, (_, index) => ({
       providerEventId: `today-${index + 1}`,

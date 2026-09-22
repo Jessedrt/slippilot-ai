@@ -50,10 +50,14 @@ const provider = (id: string, markets: NormalizedMarket[]): SportyBetProvider =>
 });
 const statistics = (id: string, contradictions: string[] = []): BasketballStatisticsProvider => ({
   name: 'authorized-test-feed',
-  getSnapshot: () =>
+  getSnapshot: (request) =>
     Promise.resolve({
-      eventId: id,
-      competition: 'Test League',
+      providerEventId: `stats-${id}`,
+      providerCompetitionId: 'stats-test-league',
+      competition: request.competition,
+      homeTeam: request.homeTeam,
+      awayTeam: request.awayTeam,
+      startsAt: request.startsAt,
       retrievedAt: new Date(),
       overtimeIncluded: true,
       lineupStatus: 'confirmed',
