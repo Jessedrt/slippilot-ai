@@ -213,7 +213,38 @@ describe('API-Sports client', () => {
     ).rejects.toMatchObject({ code: 'invalid_response', providerDetail: 'paging:missing' });
   });
 
-  it('never sends the unsupported page parameter to API-Basketball', async () => {
+  it('omits page for the first request and paginates only when metadata requires it', async () => {
+    const calls: string[] = [];
+    let request = 0;
+    const client = new ApiSportsClient({
+      apiKey: 'test-key',
+      maxRetries: 0,
+      fetch: (input) => {
+        calls.push(
+          typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url,
+        );
+        request += 1;
+        return Promise.resolve(
+          json({
+            ...envelope([]),
+            paging: { current: request, total: 2 },
+          }),
+        );
+      },
+    });
+
+    await client.requestAllPages(
+      'football',
+      '/fixtures',
+      { date: '2026-09-22', timezone: 'UTC' },
+      footballFixtureSchema,
+    );
+    expect(calls).toHaveLength(2);
+    expect(new URL(calls[0]!).searchParams.has('page')).toBe(false);
+    expect(new URL(calls[1]!).searchParams.get('page')).toBe('2');
+  });
+
+  it('never sends a page parameter to single-page API-Basketball requests', async () => {
     const calls: string[] = [];
     const client = new ApiSportsClient({
       apiKey: 'test-key',
@@ -236,6 +267,66 @@ describe('API-Sports client', () => {
     );
     expect(calls).toHaveLength(1);
     expect(new URL(calls[0]!).searchParams.has('page')).toBe(false);
+  });
+
+  it('caches current-season entitlement denials without exposing provider detail to users', async () => {
+    const stored = new Map<string, unknown>();
+    const cache = {
+      get: <T>(key: string) => Promise.resolve((stored.get(key) as T | undefined) ?? null),
+      set: <T>(key: string, value: T) => {
+        stored.set(key, value);
+        return Promise.resolve();
+      },
+    };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        json(
+          envelope(
+            [],
+            { plan: 'Free plans do not have access to this season, try from 2022 to 2024.' },
+            0,
+          ),
+        ),
+      );
+    const client = new ApiSportsClient({
+      apiKey: 'test-key',
+      maxRetries: 0,
+      fetch: fetchMock,
+      cache,
+    });
+
+    const firstError = await client
+      .request('basketball', '/games', { date: '2026-09-22' }, z.array(basketballGameSchema))
+      .catch((error: unknown) => error);
+    expect(firstError).toBeInstanceOf(ApiSportsError);
+    if (!(firstError instanceof ApiSportsError)) throw new Error('Expected API-Sports error');
+    expect(firstError).toMatchObject({
+      code: 'missing_entitlement',
+      source: 'live',
+    });
+    expect(firstError.message).toContain('Free plan does not include the requested current season');
+    await expect(
+      client.request('basketball', '/games', { date: '2026-09-22' }, z.array(basketballGameSchema)),
+    ).rejects.toMatchObject({ code: 'missing_entitlement', source: 'cache' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const coldFetch = vi.fn<typeof fetch>();
+    const coldClient = new ApiSportsClient({
+      apiKey: 'test-key',
+      maxRetries: 0,
+      fetch: coldFetch,
+      cache,
+    });
+    await expect(
+      coldClient.request(
+        'basketball',
+        '/games',
+        { date: '2026-09-22' },
+        z.array(basketballGameSchema),
+      ),
+    ).rejects.toMatchObject({ code: 'missing_entitlement', source: 'cache' });
+    expect(coldFetch).not.toHaveBeenCalled();
   });
 
   it('handles quota exhaustion, missing entitlement and bounded transient retries', async () => {
