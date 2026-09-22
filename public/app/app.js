@@ -51,19 +51,20 @@ function switchView(name) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-async function api(path, body) {
+async function api(path, body, options = {}) {
   let response;
   try {
     response = await fetch(path, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-telegram-init-data': tg?.initData || '' },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(55_000),
+      signal: options.signal || AbortSignal.timeout(48_000),
     });
   } catch (error) {
-    if (error?.name === 'TimeoutError' || error?.name === 'AbortError') {
+    if (error?.name === 'TimeoutError') {
       throw new Error('This is taking too long. Nothing was booked—please try again.');
     }
+    if (error?.name === 'AbortError') throw error;
     throw new Error('Connection lost. Check your internet and try again.');
   }
   const data = await response.json().catch(() => ({}));
@@ -99,15 +100,24 @@ function renderSlip() {
   $('#combined-odds').textContent = odds.toFixed(2);
   $('#average-confidence').textContent = `${Math.round(confidence)}/100`;
   $('#pick-list').innerHTML = selections
-    .map(
-      (pick, index) => `
+    .map((pick, index) => {
+      const researchSources = Array.isArray(pick.researchSources)
+        ? pick.researchSources.flatMap((url) => {
+            try {
+              return [new URL(url).hostname];
+            } catch {
+              return [];
+            }
+          })
+        : [];
+      return `
     <article class="pick-row">
       <span class="pick-num">${String(index + 1).padStart(2, '0')}</span>
-      <div><h3>${escapeHtml(pick.homeTeam)} vs ${escapeHtml(pick.awayTeam)}</h3><p>${escapeHtml(pick.selectionName)} · SportyBet odds ${pick.odds.toFixed(2)}${pick.statisticalProjection == null ? '' : ` · statistical projection ${Number(pick.statisticalProjection).toFixed(1)}`}${pick.verifiedStatisticsSource ? ` · ${escapeHtml(pick.verifiedStatisticsSource)} stats retrieved ${escapeHtml(new Date(pick.statisticsRetrievedAt).toLocaleString())}` : ''}${pick.missingData?.length ? ` · missing: ${escapeHtml(pick.missingData.join(' '))}` : ''}</p></div>
+      <div><h3>${escapeHtml(pick.homeTeam)} vs ${escapeHtml(pick.awayTeam)}</h3><p>${escapeHtml(pick.selectionName)} · SportyBet odds ${pick.odds.toFixed(2)}${pick.statisticalProjection == null ? '' : ` · statistical projection ${Number(pick.statisticalProjection).toFixed(1)}`}${pick.verifiedStatisticsSource ? ` · ${escapeHtml(pick.verifiedStatisticsSource)} stats retrieved ${escapeHtml(new Date(pick.statisticsRetrievedAt).toLocaleString())}` : ''}${pick.missingData?.length ? ` · missing: ${escapeHtml(pick.missingData.join(' '))}` : ''}</p>${pick.aiResearchSummary ? `<p>AI research review: ${escapeHtml(pick.aiResearchSummary)}${researchSources.length ? ` · sources: ${escapeHtml(researchSources.join(', '))}` : ' · no traceable research URL returned'}</p>` : ''}</div>
       <div class="pick-score">${Math.round(pick.evidenceQualityScore ?? pick.confidence)}/100<small>evidence · ${escapeHtml(pick.risk)} risk</small></div>
       <button data-remove="${index}">Remove</button>
-    </article>`,
-    )
+    </article>`;
+    })
     .join('');
 }
 
@@ -158,21 +168,46 @@ $$('[data-preset-odds]').forEach((button) =>
   }),
 );
 
+let activeBuild = null;
+const cancelBuild = $('#cancel-build');
+cancelBuild?.addEventListener('click', () => activeBuild?.abort());
+
 $('#build-form').addEventListener('submit', async (event) => {
   event.preventDefault();
+  if (activeBuild) return;
   $('#build-error').classList.add('hidden');
   $('#loading').classList.remove('hidden');
   const submit = event.currentTarget.querySelector('[type=submit]');
+  const controller = new AbortController();
+  activeBuild = controller;
+  const buildStartedAt = Date.now();
+  const loadingLabel = $('#loading-label');
+  const loadingElapsed = $('#loading-elapsed');
+  event.currentTarget.setAttribute('aria-busy', 'true');
+  const loadingTimer = setInterval(() => {
+    const seconds = Math.floor((Date.now() - buildStartedAt) / 1000);
+    loadingElapsed.textContent = `${seconds} second${seconds === 1 ? '' : 's'} elapsed`;
+    loadingLabel.textContent =
+      seconds >= 25
+        ? 'Completing evidence review. Unsupported fixtures will remain excluded…'
+        : seconds >= 10
+          ? 'Still verifying fixtures, statistics and research…'
+          : 'Waiting for verified provider results…';
+  }, 1000);
   submit.disabled = true;
   try {
     const targetValue = Number($('#target-odds').value);
-    const result = await api('/api/miniapp/build', {
-      sport: new FormData(event.currentTarget).get('sport'),
-      gameCount,
-      riskMode: $('#risk-mode').value,
-      todayOnly,
-      ...(Number.isFinite(targetValue) && targetValue > 1 ? { targetOdds: targetValue } : {}),
-    });
+    const result = await api(
+      '/api/miniapp/build',
+      {
+        sport: new FormData(event.currentTarget).get('sport'),
+        gameCount,
+        riskMode: $('#risk-mode').value,
+        todayOnly,
+        ...(Number.isFinite(targetValue) && targetValue > 1 ? { targetOdds: targetValue } : {}),
+      },
+      { signal: controller.signal },
+    );
     saveSlip(result);
     tg?.HapticFeedback?.notificationOccurred('success');
     switchView('slip');
@@ -182,10 +217,22 @@ $('#build-form').addEventListener('submit', async (event) => {
         : `${result.selections.length} eligible picks · target not reached`,
     );
   } catch (error) {
-    $('#build-error').textContent = error.message;
+    const cancelled = error?.name === 'AbortError' && controller.signal.aborted;
+    const rejections = error?.data?.rejections;
+    const rejectedDetail = rejections
+      ? ` ${Number(rejections.mappingRejected) || 0} fixture(s) were unmapped and ${Number(rejections.statisticsRejected) || 0} market assessment(s) lacked sufficient evidence.`
+      : '';
+    $('#build-error').textContent = cancelled
+      ? 'Analysis cancelled. The request was stopped in this app; no slip or booking code was created.'
+      : `${error.message}${rejectedDetail}`;
     $('#build-error').classList.remove('hidden');
     tg?.HapticFeedback?.notificationOccurred('error');
   } finally {
+    clearInterval(loadingTimer);
+    activeBuild = null;
+    event.currentTarget.removeAttribute('aria-busy');
+    loadingLabel.textContent = 'Request accepted. Waiting for provider results…';
+    loadingElapsed.textContent = '0 seconds elapsed';
     $('#loading').classList.add('hidden');
     submit.disabled = false;
   }
@@ -231,22 +278,6 @@ $('#generate-code').addEventListener('click', async () => {
     showResult($('#code-result'), `<h3>Code not created</h3><p>${escapeHtml(error.message)}</p>`);
   } finally {
     button.disabled = false;
-  }
-});
-
-$('#read-code-form').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  try {
-    const result = await api('/api/miniapp/read-code', { code: $('#read-code').value.trim() });
-    showResult(
-      $('#analysis-result'),
-      `<h3>Code analyzed</h3><div class="code-block"><code>${escapeHtml(result.code)}</code><button data-copy="${escapeHtml(result.code)}">Copy</button></div><p>${result.selections} selections · current odds ${Number(result.combinedOdds).toFixed(2)}</p>`,
-    );
-  } catch (error) {
-    showResult(
-      $('#analysis-result'),
-      `<h3>Could not read code</h3><p>${escapeHtml(error.message)}</p>`,
-    );
   }
 });
 

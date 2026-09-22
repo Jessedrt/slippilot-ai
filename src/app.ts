@@ -18,9 +18,14 @@ import { YouClient } from './you/client.js';
 import { DisabledWebResearchProvider, YouProvider } from './you/provider.js';
 import { ApiSportsClient } from './api-sports/client.js';
 import {
+  parseVerifiedFixtureMappings,
+  VerifiedFixtureIdentityRegistry,
+} from './api-sports/fixture-identity.js';
+import {
   ApiSportsBasketballStatisticsProvider,
   ApiSportsFootballStatisticsProvider,
 } from './api-sports/statistics-provider.js';
+import { ApiSportsOperations } from './api-sports/operations.js';
 
 export function createApplication() {
   const config = loadConfig();
@@ -43,7 +48,9 @@ export function createApplication() {
       ? new YouClient({
           apiKey: youApiKeys[0],
           apiKeys: youApiKeys.slice(1),
-          timeoutMs: Math.max(config.YOU_TIMEOUT_MS, 45_000),
+          timeoutMs: config.YOU_TIMEOUT_MS,
+          totalTimeoutMs: config.YOU_TOTAL_TIMEOUT_MS,
+          maxAttempts: config.YOU_MAX_ATTEMPTS,
           maxResults: config.YOU_MAX_RESULTS,
           cacheTtlMs: config.YOU_CACHE_TTL_MS,
           cache,
@@ -65,6 +72,7 @@ export function createApplication() {
         cacheTtlMs: config.SPORTYBET_CACHE_TTL_MS,
       })
     : new UnsupportedSportyBetProvider();
+  const apiSportsOperations = new ApiSportsOperations();
   const apiSports =
     config.API_SPORTS_ENABLED && config.API_SPORTS_KEY
       ? new ApiSportsClient({
@@ -72,17 +80,26 @@ export function createApplication() {
           timeoutMs: config.API_SPORTS_TIMEOUT_MS,
           maxRetries: config.API_SPORTS_MAX_RETRIES,
           cache,
+          onRequest: (event) => apiSportsOperations.recordRequest(event),
         })
       : null;
+  const apiSportsIdentities = new VerifiedFixtureIdentityRegistry(
+    parseVerifiedFixtureMappings(config.API_SPORTS_VERIFIED_MAPPINGS_JSON),
+  );
+  const apiSportsAnalysisAuthorized = Boolean(
+    config.API_SPORTS_COMMERCIAL_USE_APPROVED && config.API_SPORTS_DATA_RIGHTS_CONFIRMED,
+  );
   const footballStatistics =
-    apiSports && config.API_SPORTS_COMMERCIAL_USE_APPROVED && config.API_SPORTS_FOOTBALL_ENABLED
-      ? new ApiSportsFootballStatisticsProvider(apiSports)
+    apiSports && apiSportsAnalysisAuthorized && config.API_SPORTS_FOOTBALL_ENABLED
+      ? new ApiSportsFootballStatisticsProvider(apiSports, apiSportsIdentities, apiSportsOperations)
       : undefined;
   const basketballStatistics =
-    apiSports &&
-    config.API_SPORTS_COMMERCIAL_USE_APPROVED &&
-    config.API_SPORTS_BASKETBALL_TOTALS_ENABLED
-      ? new ApiSportsBasketballStatisticsProvider(apiSports)
+    apiSports && apiSportsAnalysisAuthorized && config.API_SPORTS_BASKETBALL_TOTALS_ENABLED
+      ? new ApiSportsBasketballStatisticsProvider(
+          apiSports,
+          apiSportsIdentities,
+          apiSportsOperations,
+        )
       : undefined;
   const aiKeys = [
     ...new Set([config.GEMINI_API_KEY, config.AI_API_KEY].filter(Boolean)),
@@ -142,6 +159,43 @@ export function createApplication() {
       screenshotAnalyzer,
       ...(footballStatistics ? { footballStatistics } : {}),
       ...(basketballStatistics ? { basketballStatistics } : {}),
+      analysisDeadlineMs: config.ANALYSIS_DEADLINE_MS,
+      analysisConcurrency: config.API_SPORTS_ANALYSIS_CONCURRENCY,
+      ...(apiSports ? { apiSportsClient: apiSports } : {}),
+      apiSportsIdentities,
+      apiSportsOperations,
+      apiSportsActivation: {
+        football: {
+          requested: config.API_SPORTS_FOOTBALL_ENABLED,
+          active: Boolean(footballStatistics),
+          ...(!config.API_SPORTS_ENABLED
+            ? { reason: 'client_disabled' as const }
+            : !config.API_SPORTS_KEY
+              ? { reason: 'missing_key' as const }
+              : !config.API_SPORTS_FOOTBALL_ENABLED
+                ? { reason: 'sport_disabled' as const }
+                : !config.API_SPORTS_COMMERCIAL_USE_APPROVED
+                  ? { reason: 'commercial_use_not_declared' as const }
+                  : !config.API_SPORTS_DATA_RIGHTS_CONFIRMED
+                    ? { reason: 'data_rights_unconfirmed' as const }
+                    : {}),
+        },
+        basketball: {
+          requested: config.API_SPORTS_BASKETBALL_TOTALS_ENABLED,
+          active: Boolean(basketballStatistics),
+          ...(!config.API_SPORTS_ENABLED
+            ? { reason: 'client_disabled' as const }
+            : !config.API_SPORTS_KEY
+              ? { reason: 'missing_key' as const }
+              : !config.API_SPORTS_BASKETBALL_TOTALS_ENABLED
+                ? { reason: 'sport_disabled' as const }
+                : !config.API_SPORTS_COMMERCIAL_USE_APPROVED
+                  ? { reason: 'commercial_use_not_declared' as const }
+                  : !config.API_SPORTS_DATA_RIGHTS_CONFIRMED
+                    ? { reason: 'data_rights_unconfirmed' as const }
+                    : {}),
+        },
+      },
       ...(config.TELEGRAM_BOT_TOKEN ? { telegramBotToken: config.TELEGRAM_BOT_TOKEN } : {}),
     },
     { service: watch, ...(config.CRON_SECRET ? { cronSecret: config.CRON_SECRET } : {}) },

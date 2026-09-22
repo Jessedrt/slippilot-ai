@@ -7,8 +7,18 @@ describe('target-specific evidence quality (not winning probabilities)', () => {
     for (const odds of [2, 5]) {
       for (const risk of ['conservative', 'balanced', 'aggressive'] as const) {
         expect(minimumQualityForTarget(odds, risk)).toBe(68);
-        expect(passesAiQuality({ confidence: 67, verdict: 'keep' }, minimumQualityForTarget(odds, risk))).toBe(false);
-        expect(passesAiQuality({ confidence: 68, verdict: 'keep' }, minimumQualityForTarget(odds, risk))).toBe(true);
+        expect(
+          passesAiQuality(
+            { confidence: 67, statisticalSupport: 'supported', verdict: 'keep' },
+            minimumQualityForTarget(odds, risk),
+          ),
+        ).toBe(false);
+        expect(
+          passesAiQuality(
+            { confidence: 68, statisticalSupport: 'supported', verdict: 'keep' },
+            minimumQualityForTarget(odds, risk),
+          ),
+        ).toBe(true);
       }
     }
   });
@@ -21,10 +31,24 @@ describe('target-specific evidence quality (not winning probabilities)', () => {
   });
   it('rejects scores below each minimum, rejected verdicts and invalid scores', () => {
     for (const min of [50, 55, 60, 68]) {
-      expect(passesAiQuality({ confidence: min - 1, verdict: 'keep' }, min)).toBe(false);
-      expect(passesAiQuality({ confidence: min, verdict: 'keep' }, min)).toBe(true);
-      expect(passesAiQuality({ confidence: 99, verdict: 'reject' }, min)).toBe(false);
-      expect(passesAiQuality({ confidence: NaN, verdict: 'keep' }, min)).toBe(false);
+      expect(
+        passesAiQuality(
+          { confidence: min - 1, statisticalSupport: 'supported', verdict: 'keep' },
+          min,
+        ),
+      ).toBe(false);
+      expect(
+        passesAiQuality({ confidence: min, statisticalSupport: 'supported', verdict: 'keep' }, min),
+      ).toBe(true);
+      expect(
+        passesAiQuality(
+          { confidence: 99, statisticalSupport: 'supported', verdict: 'reject' },
+          min,
+        ),
+      ).toBe(false);
+      expect(
+        passesAiQuality({ confidence: NaN, statisticalSupport: 'supported', verdict: 'keep' }, min),
+      ).toBe(false);
     }
   });
 });

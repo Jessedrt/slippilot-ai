@@ -88,6 +88,24 @@ describe('API-Sports client', () => {
     expect(error).toBeInstanceOf(ApiSportsError);
     expect(error).toMatchObject({ code: 'missing_entitlement' });
     expect(String(error)).not.toContain(key);
+
+    const rejectedCredential = new ApiSportsClient({
+      apiKey: key,
+      fetch: () => Promise.resolve(json(envelope([], { key: 'Invalid API key' }, 0))),
+      maxRetries: 0,
+    });
+    await expect(
+      rejectedCredential.request('football', '/fixtures', {}, z.array(footballFixtureSchema)),
+    ).rejects.toMatchObject({ code: 'unauthorized' });
+
+    const minuteLimit = new ApiSportsClient({
+      apiKey: key,
+      fetch: () => Promise.resolve(json(envelope([], { rate: 'Too many requests per minute' }, 0))),
+      maxRetries: 0,
+    });
+    await expect(
+      minuteLimit.request('football', '/fixtures', {}, z.array(footballFixtureSchema)),
+    ).rejects.toMatchObject({ code: 'rate_limited' });
   });
 
   it('handles quota exhaustion, missing entitlement and bounded transient retries', async () => {
@@ -131,5 +149,32 @@ describe('API-Sports client', () => {
     await expect(
       client.request('football', '/fixtures', {}, z.array(footballFixtureSchema)),
     ).rejects.toMatchObject({ code: 'timeout' });
+  });
+
+  it('deduplicates concurrent identical provider requests', async () => {
+    let resolveResponse: ((response: Response) => void) | undefined;
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveResponse = resolve;
+        }),
+    );
+    const client = new ApiSportsClient({ apiKey: 'test-key', fetch: fetchMock, maxRetries: 0 });
+    const first = client.request(
+      'football',
+      '/fixtures',
+      { date: '2026-09-22' },
+      z.array(footballFixtureSchema),
+    );
+    const second = client.request(
+      'football',
+      '/fixtures',
+      { date: '2026-09-22' },
+      z.array(footballFixtureSchema),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    resolveResponse?.(json(envelope([football])));
+    await expect(Promise.all([first, second])).resolves.toHaveLength(2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

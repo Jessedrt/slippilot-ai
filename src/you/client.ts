@@ -17,6 +17,8 @@ export interface YouClientOptions {
   apiKey: string;
   apiKeys?: string[];
   timeoutMs?: number;
+  totalTimeoutMs?: number;
+  maxAttempts?: number;
   maxResults?: number;
   cacheTtlMs?: number;
   cache?: Pick<CacheService, 'get' | 'set'>;
@@ -48,6 +50,8 @@ export type StructuredResearchResponse = z.infer<typeof structuredResearchRespon
 export class YouClient {
   private readonly timeoutMs: number;
   private readonly maxResults: number;
+  private readonly totalTimeoutMs: number;
+  private readonly maxAttempts: number;
   private readonly cacheTtlMs: number;
   private readonly fetchImpl: typeof fetch;
   private readonly sleep: (milliseconds: number) => Promise<void>;
@@ -56,9 +60,12 @@ export class YouClient {
   private active = 0;
   private lastStartedAt = 0;
   private readonly waiters: Array<() => void> = [];
+  private readonly inFlight = new Map<string, Promise<unknown>>();
 
   constructor(private readonly options: YouClientOptions) {
     this.timeoutMs = options.timeoutMs ?? 15_000;
+    this.totalTimeoutMs = options.totalTimeoutMs ?? 25_000;
+    this.maxAttempts = options.maxAttempts ?? 2;
     this.maxResults = options.maxResults ?? 8;
     this.cacheTtlMs = options.cacheTtlMs ?? 300_000;
     this.fetchImpl = options.fetch ?? globalThis.fetch;
@@ -141,7 +148,16 @@ export class YouClient {
         'AUREX optional You.com cache read unavailable; continuing with live research',
       );
     }
-    const result = parse(await this.request(url, body));
+    const existing = this.inFlight.get(cacheKey);
+    if (existing) return existing as Promise<T>;
+    const pending = this.request(url, body).then(parse);
+    this.inFlight.set(cacheKey, pending);
+    let result: T;
+    try {
+      result = await pending;
+    } finally {
+      if (this.inFlight.get(cacheKey) === pending) this.inFlight.delete(cacheKey);
+    }
     try {
       await this.options.cache?.set(
         cacheKey,
@@ -159,12 +175,16 @@ export class YouClient {
 
   private async request(url: string, body: unknown): Promise<unknown> {
     let lastError: unknown;
-    const maxAttempts = Math.max(3, this.apiKeys.length);
+    const maxAttempts = this.maxAttempts;
+    const deadlineAt = Date.now() + this.totalTimeoutMs;
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const remaining = deadlineAt - Date.now();
+      if (remaining <= 0)
+        throw new YouApiError('You.com request deadline exceeded before analysis completed.');
       try {
         return await this.runLimited(async () => {
           const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+          const timeout = setTimeout(() => controller.abort(), Math.min(this.timeoutMs, remaining));
           try {
             this.options.logger?.debug({ provider: 'You.com', url, attempt }, 'You.com request');
             const response = await this.fetchImpl(url, {
@@ -196,16 +216,18 @@ export class YouClient {
           status === 429 ||
           (status !== undefined && status >= 500) ||
           (error instanceof Error && error.name === 'AbortError');
-        const exhausted = attempt === maxAttempts - 1 || (!canRotate && attempt === 2);
+        const exhausted = attempt === maxAttempts - 1;
         if ((!transient && !canRotate) || exhausted) throw error;
         if (canRotate) this.keyIndex = (this.keyIndex + 1) % this.apiKeys.length;
         const retryAfter =
           error instanceof YouApiError
             ? Number((error as YouApiError & { retryAfter?: string }).retryAfter)
             : 0;
-        await this.sleep(
-          Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 250 * 2 ** attempt,
-        );
+        const delay =
+          Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 250 * 2 ** attempt;
+        if (Date.now() + delay >= deadlineAt)
+          throw new YouApiError('You.com request deadline exceeded before retry.');
+        await this.sleep(delay);
       }
     }
     throw lastError;

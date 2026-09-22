@@ -32,6 +32,7 @@ const config = () =>
     API_SPORTS_ENABLED: 'true',
     API_SPORTS_KEY: key,
     API_SPORTS_COMMERCIAL_USE_APPROVED: 'true',
+    API_SPORTS_DATA_RIGHTS_CONFIRMED: 'true',
     API_SPORTS_FOOTBALL_ENABLED: 'true',
     API_SPORTS_BASKETBALL_TOTALS_ENABLED: 'true',
   });
@@ -66,6 +67,17 @@ describe('API-Sports provider diagnostics', () => {
     });
     expect(JSON.stringify(football)).not.toContain('must-not-leak');
     expect(JSON.stringify(football)).not.toContain(key);
+    const rightsUnconfirmed = loadConfig({
+      API_SPORTS_ENABLED: 'true',
+      API_SPORTS_KEY: key,
+      API_SPORTS_COMMERCIAL_USE_APPROVED: 'true',
+      API_SPORTS_FOOTBALL_ENABLED: 'true',
+    });
+    expect(await diagnoseApiSports(rightsUnconfirmed, 'football', client)).toMatchObject({
+      state: 'connected',
+      analysisEnabled: false,
+      activationBlock: 'data_rights_unconfirmed',
+    });
     const disabledSport = loadConfig({ API_SPORTS_ENABLED: 'true', API_SPORTS_KEY: key });
     expect(await diagnoseApiSports(disabledSport, 'basketball', client)).toMatchObject({
       state: 'connected',
@@ -74,7 +86,9 @@ describe('API-Sports provider diagnostics', () => {
   });
 
   it('fails closed for missing key, inactive plan, and unavailable or rejected providers', async () => {
-    expect(await diagnoseApiSports(loadConfig({}), 'football')).toMatchObject({ state: 'disabled' });
+    expect(await diagnoseApiSports(loadConfig({}), 'football')).toMatchObject({
+      state: 'disabled',
+    });
     const inactive = {
       verifyEntitlement: vi.fn().mockResolvedValue({
         data: { ...statusBody.response, subscription: { active: 0 } },
@@ -84,16 +98,18 @@ describe('API-Sports provider diagnostics', () => {
       state: 'inactive_subscription',
     });
     const rejected = {
-      verifyEntitlement: vi.fn().mockRejectedValue(
-        new ApiSportsError('unauthorized', `Secret ${key} rejected`),
-      ),
+      verifyEntitlement: vi
+        .fn()
+        .mockRejectedValue(new ApiSportsError('unauthorized', `Secret ${key} rejected`)),
     };
     const result = await diagnoseApiSports(config(), 'basketball', rejected);
     expect(result).toMatchObject({ state: 'unauthorized' });
     expect(JSON.stringify(result)).not.toContain(key);
-    expect(await diagnoseApiSports(config(), 'basketball', {
-      verifyEntitlement: vi.fn().mockRejectedValue(new Error('network')),
-    })).toMatchObject({ state: 'provider_unavailable' });
+    expect(
+      await diagnoseApiSports(config(), 'basketball', {
+        verifyEntitlement: vi.fn().mockRejectedValue(new Error('network')),
+      }),
+    ).toMatchObject({ state: 'provider_unavailable' });
   });
 
   it('does not allow unauthenticated access to the Mini App diagnostics route', async () => {
@@ -111,6 +127,12 @@ describe('API-Sports provider diagnostics', () => {
     try {
       const unauthorized = await app.inject({ method: 'GET', url: '/api/miniapp/provider-status' });
       expect(unauthorized.statusCode).toBe(401);
+      const unauthorizedCoverage = await app.inject({
+        method: 'POST',
+        url: '/api/miniapp/provider-coverage',
+        payload: { sport: 'football', maximumFixtures: 1 },
+      });
+      expect(unauthorizedCoverage.statusCode).toBe(401);
       const params = new URLSearchParams({
         auth_date: String(Math.floor(Date.now() / 1000)),
         query_id: 'diagnostics-test',

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import type { ApiSportsClient, ApiSportsProduct } from './client.js';
+import { VerifiedFixtureIdentityRegistry } from './fixture-identity.js';
+import type { ApiSportsOperations } from './operations.js';
 
 const teamSchema = z
   .object({ id: z.number().int().positive(), name: z.string().min(1) })
@@ -73,7 +75,13 @@ export interface FixtureMatchRequest {
 export class FixtureMappingError extends Error {
   readonly statusCode = 424;
   constructor(
-    readonly reason: 'unmapped' | 'ambiguous' | 'orientation_mismatch' | 'unsupported_competition',
+    readonly reason:
+      | 'unmapped'
+      | 'ambiguous'
+      | 'orientation_mismatch'
+      | 'unsupported_competition'
+      | 'kickoff_mismatch'
+      | 'status_invalid',
     message: string,
   ) {
     super(message);
@@ -86,36 +94,92 @@ export const normalizedProviderName = (value: string): string =>
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
+    .replace(/&/g, ' and ')
     .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\butd\b/g, 'united')
     .trim();
 
 const day = (date: Date) => date.toISOString().slice(0, 10);
 const closeKickoff = (timestamp: number, startsAt: Date) =>
   Math.abs(timestamp * 1000 - startsAt.getTime()) <= 15 * 60_000;
 
+const lookupDays = (startsAt: Date): string[] => [
+  ...new Set([-15, 0, 15].map((minutes) => day(new Date(startsAt.getTime() + minutes * 60_000)))),
+];
+
 export class ApiSportsFixtureMatcher {
-  constructor(private readonly client: ApiSportsClient) {}
+  constructor(
+    private readonly client: ApiSportsClient,
+    private readonly identities = new VerifiedFixtureIdentityRegistry(),
+    private readonly operations?: ApiSportsOperations,
+  ) {}
 
   async matchFootball(request: FixtureMatchRequest): Promise<FootballFixture> {
-    const result = await this.client.request(
-      'football',
-      '/fixtures',
-      { date: day(request.startsAt), timezone: 'UTC' },
-      z.array(footballFixtureSchema),
-      120,
+    const results = await Promise.all(
+      lookupDays(request.startsAt).map((date) =>
+        this.client.requestAllPages(
+          'football',
+          '/fixtures',
+          { date, timezone: 'UTC' },
+          footballFixtureSchema,
+          120,
+        ),
+      ),
     );
-    return this.unique<FootballFixture>('football', result.data, request);
+    try {
+      const fixture = this.unique<FootballFixture>(
+        'football',
+        this.uniqueItems(
+          results.flatMap((result) => result.data),
+          (item) => item.fixture.id,
+        ),
+        request,
+      );
+      this.operations?.recordFixture('football', true, this.sources(results));
+      return fixture;
+    } catch (error) {
+      this.operations?.recordFixture(
+        'football',
+        false,
+        this.sources(results),
+        error instanceof FixtureMappingError ? error.reason : 'provider_failure',
+      );
+      throw error;
+    }
   }
 
   async matchBasketball(request: FixtureMatchRequest): Promise<BasketballGame> {
-    const result = await this.client.request(
-      'basketball',
-      '/games',
-      { date: day(request.startsAt), timezone: 'UTC' },
-      z.array(basketballGameSchema),
-      120,
+    const results = await Promise.all(
+      lookupDays(request.startsAt).map((date) =>
+        this.client.requestAllPages(
+          'basketball',
+          '/games',
+          { date, timezone: 'UTC' },
+          basketballGameSchema,
+          120,
+        ),
+      ),
     );
-    return this.unique<BasketballGame>('basketball', result.data, request);
+    try {
+      const game = this.unique<BasketballGame>(
+        'basketball',
+        this.uniqueItems(
+          results.flatMap((result) => result.data),
+          (item) => item.id,
+        ),
+        request,
+      );
+      this.operations?.recordFixture('basketball', true, this.sources(results));
+      return game;
+    } catch (error) {
+      this.operations?.recordFixture(
+        'basketball',
+        false,
+        this.sources(results),
+        error instanceof FixtureMappingError ? error.reason : 'provider_failure',
+      );
+      throw error;
+    }
   }
 
   private unique<T extends FootballFixture | BasketballGame>(
@@ -126,6 +190,20 @@ export class ApiSportsFixtureMatcher {
     const competition = normalizedProviderName(request.competition);
     const home = normalizedProviderName(request.homeTeam);
     const away = normalizedProviderName(request.awayTeam);
+    const competitionId = this.identities.competitionId(product, request.competition);
+    const homeId = this.identities.teamId(product, request.homeTeam);
+    const awayId = this.identities.teamId(product, request.awayTeam);
+    const sameTeam = (team: { id: number; name: string }, name: string, id?: number) =>
+      id !== undefined ? team.id === id : normalizedProviderName(team.name) === name;
+    const inCompetition = items.filter((item) =>
+      competitionId !== undefined
+        ? item.league.id === competitionId
+        : normalizedProviderName(item.league.name) === competition,
+    );
+    const orientedIdentity = (item: T) =>
+      sameTeam(item.teams.home, home, homeId) && sameTeam(item.teams.away, away, awayId);
+    const reversedIdentity = (item: T) =>
+      sameTeam(item.teams.home, away, awayId) && sameTeam(item.teams.away, home, homeId);
     const timed = items.filter((item) =>
       closeKickoff(
         product === 'football'
@@ -134,14 +212,8 @@ export class ApiSportsFixtureMatcher {
         request.startsAt,
       ),
     );
-    const sameCompetition = timed.filter(
-      (item) => normalizedProviderName(item.league.name) === competition,
-    );
-    const oriented = sameCompetition.filter(
-      (item) =>
-        normalizedProviderName(item.teams.home.name) === home &&
-        normalizedProviderName(item.teams.away.name) === away,
-    );
+    const sameCompetition = timed.filter((item) => inCompetition.includes(item));
+    const oriented = sameCompetition.filter(orientedIdentity);
     if (oriented.length > 1)
       throw new FixtureMappingError(
         'ambiguous',
@@ -154,14 +226,18 @@ export class ApiSportsFixtureMatcher {
           ? (item as FootballFixture).fixture.status.short
           : (item as BasketballGame).status.short;
       if (!['NS', 'TBD'].includes(status))
-        throw new FixtureMappingError('unmapped', 'The API-Sports fixture is not scheduled.');
+        throw new FixtureMappingError(
+          'status_invalid',
+          'The API-Sports fixture is not in an accepted scheduled status.',
+        );
       return item;
     }
-    const reversed = sameCompetition.some(
-      (item) =>
-        normalizedProviderName(item.teams.home.name) === away &&
-        normalizedProviderName(item.teams.away.name) === home,
-    );
+    if (inCompetition.some(orientedIdentity))
+      throw new FixtureMappingError(
+        'kickoff_mismatch',
+        'API-Sports lists the same teams outside the accepted kickoff-time window.',
+      );
+    const reversed = sameCompetition.some(reversedIdentity);
     if (reversed)
       throw new FixtureMappingError(
         'orientation_mismatch',
@@ -176,5 +252,16 @@ export class ApiSportsFixtureMatcher {
       'unmapped',
       'No exact API-Sports fixture matched the SportyBet event.',
     );
+  }
+
+  private uniqueItems<T>(items: T[], id: (item: T) => number): T[] {
+    return [...new Map(items.map((item) => [id(item), item])).values()];
+  }
+
+  private sources(
+    results: Array<{ source: 'cache' | 'live' | 'mixed' }>,
+  ): 'cache' | 'live' | 'mixed' {
+    const sources = new Set(results.map((result) => result.source));
+    return sources.size > 1 ? 'mixed' : (results[0]?.source ?? 'live');
   }
 }

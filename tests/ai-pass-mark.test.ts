@@ -54,6 +54,7 @@ const analyzer = (
       selections: items.map((_item, index) => ({
         index: index + 1,
         confidence,
+        statisticalSupport: 'supported' as const,
         risk: 'lower' as const,
         verdict,
         reason: 'Test evidence.',
@@ -64,11 +65,22 @@ const analyzer = (
 describe('AI evidence-quality pass mark', () => {
   it('keeps strict legacy default inclusive at 68 and rejects bad verdicts', () => {
     expect(MIN_AI_QUALITY_SCORE).toBe(68);
-    expect(passesAiQuality({ confidence: 67, verdict: 'keep' })).toBe(false);
-    expect(passesAiQuality({ confidence: 68, verdict: 'keep' })).toBe(true);
-    expect(passesAiQuality({ confidence: 68, verdict: 'caution' })).toBe(false);
-    expect(passesAiQuality({ confidence: 99, verdict: 'reject' })).toBe(false);
-    expect(passesAiQuality({ confidence: Number.NaN, verdict: 'keep' })).toBe(false);
+    expect(
+      passesAiQuality({ confidence: 67, statisticalSupport: 'supported', verdict: 'keep' }),
+    ).toBe(false);
+    expect(
+      passesAiQuality({ confidence: 68, statisticalSupport: 'supported', verdict: 'keep' }),
+    ).toBe(true);
+    expect(
+      passesAiQuality({ confidence: 68, statisticalSupport: 'supported', verdict: 'caution' }),
+    ).toBe(false);
+    expect(
+      passesAiQuality({ confidence: 99, statisticalSupport: 'supported', verdict: 'reject' }),
+    ).toBe(false);
+    expect(
+      passesAiQuality({ confidence: Number.NaN, statisticalSupport: 'supported', verdict: 'keep' }),
+    ).toBe(false);
+    expect(passesAiQuality({ confidence: 99, verdict: 'keep' })).toBe(false);
   });
   it('never offers scores below 68 for the explicit 2.00 target', async () => {
     await expect(

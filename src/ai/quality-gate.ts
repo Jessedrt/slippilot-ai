@@ -20,8 +20,7 @@ export function passesAiQuality(
     minimum >= 50 &&
     minimum <= 68 &&
     review.verdict === 'keep' &&
-    review.statisticalSupport !== 'mixed' &&
-    review.statisticalSupport !== 'insufficient' &&
+    review.statisticalSupport === 'supported' &&
     review.conflictingEvidence !== true &&
     Number.isFinite(evidenceQuality) &&
     evidenceQuality >= minimum &&
