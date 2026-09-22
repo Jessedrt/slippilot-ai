@@ -13,6 +13,15 @@ export interface CoverageReport {
   orientationMismatches: number;
   unsupportedCompetitions: number;
   competitions: Array<{ name: string; total: number; mapped: number }>;
+  /** Only exact, unambiguous matches; never inferred from similar team or league names. */
+  mappedFixtures: Array<{
+    sportyBetEventId: string;
+    apiSportsFixtureId: string;
+    apiSportsCompetitionId: string;
+    apiSportsHomeTeamId: string;
+    apiSportsAwayTeamId: string;
+    apiSportsSeason: string;
+  }>;
 }
 
 /** Credentialed callers supply real SportyBet fixtures; no mock result is labelled live. */
@@ -32,6 +41,7 @@ export async function buildApiSportsCoverageReport(
     orientationMismatches: 0,
     unsupportedCompetitions: 0,
     competitions: [],
+    mappedFixtures: [],
   };
   const competitions = new Map<string, { total: number; mapped: number }>();
   for (const event of events) {
@@ -46,15 +56,36 @@ export async function buildApiSportsCoverageReport(
         awayTeam: event.awayTeam,
         startsAt: event.startsAt,
       };
-      if (sport === 'football') await matcher.matchFootball(request);
-      else await matcher.matchBasketball(request);
+      const match =
+        sport === 'football'
+          ? await matcher.matchFootball(request).then((fixture) => ({
+              fixtureId: fixture.fixture.id,
+              competitionId: fixture.league.id,
+              homeTeamId: fixture.teams.home.id,
+              awayTeamId: fixture.teams.away.id,
+              season: fixture.league.season,
+            }))
+          : await matcher.matchBasketball(request).then((game) => ({
+              fixtureId: game.id,
+              competitionId: game.league.id,
+              homeTeamId: game.teams.home.id,
+              awayTeamId: game.teams.away.id,
+              season: game.league.season,
+            }));
+      report.mappedFixtures.push({
+        sportyBetEventId: event.providerEventId,
+        apiSportsFixtureId: String(match.fixtureId),
+        apiSportsCompetitionId: String(match.competitionId),
+        apiSportsHomeTeamId: String(match.homeTeamId),
+        apiSportsAwayTeamId: String(match.awayTeamId),
+        apiSportsSeason: String(match.season),
+      });
       report.mapped += 1;
       summary.mapped += 1;
     } catch (error) {
-      if (!(error instanceof FixtureMappingError)) {
-        report.unmapped += 1;
-        continue;
-      }
+      // Authentication, quota, network or malformed provider responses must abort
+      // the entire audit. Reporting these as unmapped would give false coverage.
+      if (!(error instanceof FixtureMappingError)) throw error;
       if (error.reason === 'ambiguous') report.ambiguous += 1;
       else if (error.reason === 'orientation_mismatch') report.orientationMismatches += 1;
       else if (error.reason === 'unsupported_competition') report.unsupportedCompetitions += 1;
