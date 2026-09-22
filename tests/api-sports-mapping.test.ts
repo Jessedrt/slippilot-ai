@@ -45,6 +45,32 @@ describe('API-Sports exact fixture matching', () => {
   it('accepts only an exact competition, orientation and kickoff match', async () => {
     await expect(matcher([item()]).matchBasketball(request)).resolves.toMatchObject({ id: 1 });
   });
+
+  it('accepts documented numeric basketball seasons and normalizes them to strings', async () => {
+    const numericSeason = {
+      ...item(),
+      league: { ...item().league, season: 2026 },
+    };
+
+    await expect(matcher([numericSeason]).matchBasketball(request)).resolves.toMatchObject({
+      id: 1,
+      league: { season: '2026' },
+    });
+  });
+
+  it.each([null, '', -1, 2026.5, { year: 2026 }])(
+    'rejects an invalid basketball season value: %j',
+    async (season) => {
+      const invalidSeason = {
+        ...item(),
+        league: { ...item().league, season },
+      };
+
+      await expect(matcher([invalidSeason]).matchBasketball(request)).rejects.toMatchObject({
+        code: 'invalid_response',
+      });
+    },
+  );
   it('rejects ambiguous names, home/away reversal and unsupported competitions', async () => {
     await expect(
       matcher([item(), item('Paris BC', 'London BC', 'Euroleague', 2)]).matchBasketball(request),
