@@ -57,6 +57,7 @@ export class ApiSportsError extends Error {
     readonly retryable = false,
     /** Redacted provider detail for backend diagnostics only. Never return this to clients. */
     readonly providerDetail?: string,
+    readonly source: 'live' | 'cache' = 'live',
   ) {
     super(message);
     this.name = 'ApiSportsError';
@@ -110,6 +111,7 @@ export class ApiSportsClient {
   private readonly fetchImpl: typeof fetch;
   private readonly bases: Record<ApiSportsProduct, string>;
   private readonly inFlight = new Map<string, Promise<ApiSportsResult<unknown>>>();
+  private readonly denied = new Map<string, number>();
 
   constructor(private readonly options: ApiSportsClientOptions) {
     if (!options.apiKey.trim())
@@ -166,7 +168,7 @@ export class ApiSportsClient {
       this.options.onRequest?.({
         product,
         path,
-        source: 'live',
+        source: error instanceof ApiSportsError ? error.source : 'live',
         outcome: 'failure',
         durationMs: Date.now() - startedAt,
         ...(error instanceof ApiSportsError ? { errorCode: error.code } : {}),
@@ -194,6 +196,36 @@ export class ApiSportsClient {
         .map(([key, value]) => [key, String(value)]),
     );
     const safeKey = `api-sports:${product}:${path}:${query.toString()}`;
+    const denialKey = `api-sports:denied:${product}:${path}:${query.toString()}`;
+    const deniedUntil = this.denied.get(denialKey);
+    if (deniedUntil && deniedUntil > Date.now())
+      throw new ApiSportsError(
+        'missing_entitlement',
+        `API-Sports ${product} subscription does not include the requested data.`,
+        false,
+        'cached_entitlement_denial',
+        'cache',
+      );
+    if (deniedUntil) this.denied.delete(denialKey);
+    if (this.options.cache) {
+      try {
+        const cachedDenial = await this.options.cache.get<{ expiresAt: string }>(denialKey);
+        const expiresAt = cachedDenial ? new Date(cachedDenial.expiresAt).getTime() : Number.NaN;
+        if (Number.isFinite(expiresAt) && expiresAt > Date.now()) {
+          this.denied.set(denialKey, expiresAt);
+          throw new ApiSportsError(
+            'missing_entitlement',
+            `API-Sports ${product} subscription does not include the requested data.`,
+            false,
+            'cached_entitlement_denial',
+            'cache',
+          );
+        }
+      } catch (error) {
+        if (error instanceof ApiSportsError) throw error;
+        // Optional cache failures never bypass provider-backed analysis.
+      }
+    }
     if (cacheTtlSeconds > 0 && this.options.cache) {
       try {
         const cached = await this.options.cache.get<{
@@ -314,12 +346,28 @@ export class ApiSportsClient {
                   ? 'quota_exhausted'
                   : 'provider_error';
           // Provider error detail is not sent to the Mini App: it may contain account data.
-          throw new ApiSportsError(
-            code,
-            `API-Sports ${product} rejected the request (${code}).`,
-            false,
-            detail,
-          );
+          const message =
+            code === 'missing_entitlement' &&
+            /free plans? do not have access to this season/i.test(normalized)
+              ? `API-Sports ${product} Free plan does not include the requested current season. Upgrade that product subscription before retrying.`
+              : `API-Sports ${product} rejected the request (${code}).`;
+          const providerError = new ApiSportsError(code, message, false, detail);
+          if (code === 'missing_entitlement') {
+            const expiresAt = Date.now() + 5 * 60_000;
+            this.denied.set(denialKey, expiresAt);
+            if (this.options.cache) {
+              try {
+                await this.options.cache.set(
+                  denialKey,
+                  { expiresAt: new Date(expiresAt).toISOString() },
+                  300,
+                );
+              } catch {
+                // The process-local denial still prevents immediate duplicate requests.
+              }
+            }
+          }
+          throw providerError;
         }
         const paging = envelope.data.paging;
         if (!paging && product !== 'basketball')
@@ -399,17 +447,28 @@ export class ApiSportsClient {
     maxPages = 10,
   ): Promise<ApiSportsResult<T[]>> {
     if ('page' in parameters) throw new Error('Pagination is managed by requestAllPages.');
-    // API-Basketball endpoints such as /games reject the Football-only `page`
-    // query parameter and return a non-paginated envelope. Fetch exactly once.
-    if (product === 'basketball')
-      return this.request(product, path, parameters, z.array(itemSchema), cacheTtlSeconds);
-    const items: T[] = [];
-    let retrievedAt = new Date(0);
-    let remainingDaily: number | undefined;
-    let remainingMinute: number | undefined;
-    let totalPages = 1;
-    const sources = new Set<ApiSportsResult<T[]>['source']>();
-    for (let page = 1; page <= totalPages; page += 1) {
+    // API-Sports accepts an omitted page as page one. Some products reject an
+    // explicit `page=1`, so inspect page-one metadata before requesting page 2+.
+    const first = await this.request(
+      product,
+      path,
+      parameters,
+      z.array(itemSchema),
+      cacheTtlSeconds,
+    );
+    const totalPages = first.paging.total;
+    if (first.paging.current !== 1)
+      throw new ApiSportsError(
+        'invalid_response',
+        `API-Sports ${product} returned inconsistent pagination.`,
+      );
+    if (totalPages > maxPages)
+      throw new ApiSportsError(
+        'invalid_response',
+        `API-Sports ${product} pagination exceeds the configured safe limit.`,
+      );
+    const results = [first];
+    for (let page = 2; page <= totalPages; page += 1) {
       const result = await this.request(
         product,
         path,
@@ -417,27 +476,27 @@ export class ApiSportsClient {
         z.array(itemSchema),
         cacheTtlSeconds,
       );
-      if (page === 1) {
-        totalPages = result.paging.total;
-        if (totalPages > maxPages)
-          throw new ApiSportsError(
-            'invalid_response',
-            `API-Sports ${product} pagination exceeds the configured safe limit.`,
-          );
-      }
       if (result.paging.current !== page || result.paging.total !== totalPages)
         throw new ApiSportsError(
           'invalid_response',
           `API-Sports ${product} returned inconsistent pagination.`,
         );
-      items.push(...result.data);
-      sources.add(result.source);
-      if (result.retrievedAt > retrievedAt) retrievedAt = result.retrievedAt;
-      remainingDaily = result.remainingDaily ?? remainingDaily;
-      remainingMinute = result.remainingMinute ?? remainingMinute;
+      results.push(result);
     }
+    const sources = new Set(results.map((result) => result.source));
+    const retrievedAt = new Date(
+      Math.max(...results.map((result) => result.retrievedAt.getTime())),
+    );
+    const remainingDaily = results.reduce<number | undefined>(
+      (remaining, result) => result.remainingDaily ?? remaining,
+      undefined,
+    );
+    const remainingMinute = results.reduce<number | undefined>(
+      (remaining, result) => result.remainingMinute ?? remaining,
+      undefined,
+    );
     return {
-      data: items,
+      data: results.flatMap((result) => result.data),
       retrievedAt,
       paging: { current: totalPages, total: totalPages },
       source: sources.size > 1 ? 'mixed' : (sources.values().next().value ?? 'live'),
