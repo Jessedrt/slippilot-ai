@@ -3,14 +3,26 @@ import type { CacheService } from '../services/cache.js';
 
 export type ApiSportsProduct = 'football' | 'basketball';
 
+// API-Sports returns [] for endpoints without query parameters (including /status).
 const envelopeSchema = z
   .object({
     get: z.string(),
-    parameters: z.record(z.string(), z.unknown()),
+    parameters: z.union([z.record(z.string(), z.unknown()), z.array(z.unknown())]),
     errors: z.union([z.array(z.unknown()), z.record(z.string(), z.unknown())]),
     results: z.number().int().nonnegative(),
     paging: z.object({ current: z.number().int().positive(), total: z.number().int().positive() }),
     response: z.unknown(),
+  })
+  .passthrough();
+
+const statusSchema = z
+  .object({
+    subscription: z
+      .object({ active: z.union([z.number(), z.boolean()]) })
+      .passthrough(),
+    requests: z
+      .object({ current: z.number().int().nonnegative(), limit_day: z.number().int().nonnegative() })
+      .passthrough(),
   })
   .passthrough();
 
@@ -180,9 +192,10 @@ export class ApiSportsClient {
             : /limit|quota|request/.test(normalized)
               ? 'quota_exhausted'
               : 'provider_error';
+          // Provider error detail is not sent to the Mini App: it may contain account data.
           throw new ApiSportsError(
             code,
-            `API-Sports ${product} error: ${detail || 'request rejected'}.`,
+            `API-Sports ${product} rejected the request (${code}).`,
           );
         }
         const parsed = responseSchema.safeParse(envelope.data.response);
@@ -233,8 +246,10 @@ export class ApiSportsClient {
       : new ApiSportsError('provider_error', 'API-Sports is unavailable.');
   }
 
-  async verifyEntitlement(product: ApiSportsProduct): Promise<ApiSportsResult<unknown>> {
-    return this.request(product, '/status', {}, z.unknown(), 60);
+  // /status reports account-level data. Call without caching and return only sanitized fields to clients.
+  // Status checks authenticate a subscription; they do not prove coverage for a specific fixture.
+  async verifyEntitlement(product: ApiSportsProduct): Promise<ApiSportsResult<z.infer<typeof statusSchema>>> {
+    return this.request(product, '/status', {}, statusSchema);
   }
 
   private numberHeader(headers: Headers, name: string): number | undefined {

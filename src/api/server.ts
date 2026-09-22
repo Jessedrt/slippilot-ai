@@ -9,6 +9,7 @@ import type { Telegraf } from 'telegraf';
 import { ZodError } from 'zod';
 import { landingPage, landingStyles } from '../web/landing-v4.js';
 import { registerMiniAppRoutes, type MiniAppDependencies } from './mini-app-routes.js';
+import { registerApiSportsDiagnosticRoutes } from './provider-diagnostics.js';
 import { registerBookingCodeAnalysisRoute } from './booking-code-analysis.js';
 import { registerCodeWorkspaceRoutes } from './code-workspace-routes.js';
 import { registerCodeMarketOptions } from './code-market-options.js';
@@ -67,6 +68,7 @@ export async function createServer(
   if (miniApp) {
     // Register the signed Telegram preHandler before every /api/miniapp/* feature.
     registerMiniAppRoutes(app as unknown as FastifyInstance, miniApp);
+    registerApiSportsDiagnosticRoutes(app as unknown as FastifyInstance, dependencies.config);
     registerBookingCodeAnalysisRoute(app as unknown as FastifyInstance, miniApp);
     registerCodeWorkspaceRoutes(app as unknown as FastifyInstance, miniApp);
     registerCodeMarketOptions(app as unknown as FastifyInstance, miniApp.sportyBet);
