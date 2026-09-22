@@ -142,6 +142,7 @@ describe('Mini App odds-first build', () => {
             selections: selections.map((_item, index) => ({
               index: index + 1,
               confidence: 68,
+              statisticalSupport: 'supported' as const,
               risk: 'medium' as const,
               verdict: 'keep' as const,
               reason: 'Test selection.',

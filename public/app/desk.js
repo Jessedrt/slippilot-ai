@@ -288,6 +288,10 @@ function renderInsights() {
   slipInsights.append(grid);
   if (duplicates) slipInsights.append(node('p', 'insight-warning', `${duplicates + 1} or more selections share a fixture. Their outcomes may be correlated; adding them does not diversify the slip.`));
   if (Number(slip.shortfall) > 0) slipInsights.append(node('p', 'insight-warning', `${slip.shortfall} requested selection(s) were not available or accepted. Your actual odds may differ from the target.`));
+  if (slip.targetReached === false) slipInsights.append(node('p', 'insight-warning', String(slip.targetMessage || 'Requested target odds were not reached; no unsupported selection was added.')));
+  if (slip.evidencePipeline) slipInsights.append(node('p', 'desk-note', `Evidence pipeline: ${String(slip.evidencePipeline)}.`));
+  if (slip.analysisTimestamp) slipInsights.append(node('p', 'desk-note', `Analysis completed ${new Date(slip.analysisTimestamp).toLocaleString()}.`));
+  if (slip.verification) slipInsights.append(node('p', 'desk-note', `${Number(slip.verification.fixturesMapped) || 0} fixture(s) mapped to the statistics provider; ${Number(slip.verification.mappingRejected) || 0} mapping rejection(s); ${Number(slip.verification.statisticsRejected) || 0} statistical-evidence rejection(s).`));
   if (slip.summary) slipInsights.append(node('p', 'insight-summary', String(slip.summary)));
   slipInsights.append(node('p', 'desk-note', 'AI quality scores are not probabilities of winning. Check kickoff times, live markets and availability.'));
   if (pendingFor(slip)) {

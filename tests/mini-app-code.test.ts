@@ -74,6 +74,7 @@ describe('Mini App analyzed booking flow', () => {
             selections: selections.map((_selection, index) => ({
               index: index + 1,
               confidence: 82,
+              statisticalSupport: 'supported' as const,
               risk: 'lower' as const,
               verdict: 'keep' as const,
               reason: 'Active lower-variance market.',

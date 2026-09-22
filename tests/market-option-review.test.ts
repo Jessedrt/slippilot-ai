@@ -6,11 +6,14 @@ import { registerCodeMarketOptions } from '../src/api/code-market-options.js';
 import type { SportyBetProvider } from '../src/sportybet/contracts.js';
 import {
   buildReviewedLiveSlipSnapshot,
-  MarketReviewUnavailableError,
+  ResearchProviderUnavailableError,
   shortlistMarketOptions,
 } from '../src/sportybet/market-review.js';
 import type { NormalizedMarket } from '../src/types/domain.js';
 import type { BasketballStatisticsProvider } from '../src/sports/basketball-statistics.js';
+import { FixtureMappingError } from '../src/api-sports/fixture-matcher.js';
+import { ApiSportsError } from '../src/api-sports/client.js';
+import { AnalysisDeadlineError } from '../src/analysis/pipeline-control.js';
 
 const fixture = (id: string) => ({
   providerEventId: id,
@@ -37,6 +40,17 @@ const option = (
   odds,
   status,
   lastUpdated: new Date(),
+});
+const footballOption = (
+  eventId: string,
+  id: string,
+  marketName: string,
+  selectionName: string,
+  odds: number,
+): NormalizedMarket => ({
+  ...option(eventId, id, marketName, selectionName, odds),
+  sport: 'football',
+  category: 'Football',
 });
 const provider = (id: string, markets: NormalizedMarket[]): SportyBetProvider => ({
   name: 'SportyBet',
@@ -94,6 +108,7 @@ const reviewer: SlipAnalyzer = {
       selections: candidates.map((candidate, index) => ({
         index: index + 1,
         confidence: candidate.selectionName.startsWith('Under') ? 88 : 42,
+        statisticalSupport: 'supported' as const,
         risk: candidate.selectionName.startsWith('Under')
           ? ('lower' as const)
           : ('higher' as const),
@@ -210,7 +225,38 @@ describe('automatic market option review', () => {
         'balanced',
         statistics(id),
       ),
-    ).rejects.toBeInstanceOf(MarketReviewUnavailableError);
+    ).rejects.toBeInstanceOf(ResearchProviderUnavailableError);
+  });
+
+  it('ranks supported markets by evidence and risk, not proximity to target odds', async () => {
+    const id = 'sr:match:target-independent';
+    const source = provider(id, [
+      footballOption(id, 'a-strong', 'Match result', 'Evidence leader', 1.25),
+      footballOption(id, 'b-target', 'Goals total', 'Price-near-target', 4.9),
+    ]);
+    const evidenceFirst: SlipAnalyzer = {
+      analyze: (candidates) =>
+        Promise.resolve({
+          model: 'target-independent-test',
+          analyzedAt: new Date().toISOString(),
+          summary: 'Target price is not evidence.',
+          selections: candidates.map((candidate, index) => ({
+            index: index + 1,
+            confidence: candidate.selectionName === 'Evidence leader' ? 92 : 76,
+            evidenceQualityScore: candidate.selectionName === 'Evidence leader' ? 92 : 76,
+            statisticalSupport: 'supported' as const,
+            risk:
+              candidate.selectionName === 'Evidence leader'
+                ? ('lower' as const)
+                : ('medium' as const),
+            verdict: 'keep' as const,
+            reason: 'Deterministic test review.',
+          })),
+        }),
+    };
+    const result = await buildReviewedLiveSlipSnapshot(source, evidenceFirst, 'football', 1, 5);
+    expect(result.slip.selections[0]?.selectionName).toBe('Evidence leader');
+    expect(result.combinedOdds).toBe(1.25);
   });
 
   it('fails safely when basketball statistics are unavailable or contradictory', async () => {
@@ -238,6 +284,113 @@ describe('automatic market option review', () => {
         getSnapshot: () => Promise.reject(new Error('upstream timeout')),
       }),
     ).rejects.toThrow('provider unavailable');
+  });
+
+  it('skips one unmapped fixture and still returns a later independently verified fixture', async () => {
+    const first = 'sr:match:201';
+    const second = 'sr:match:202';
+    const events = [fixture(first), fixture(second)];
+    const source: SportyBetProvider = {
+      ...provider(first, []),
+      listEvents: () => Promise.resolve(events),
+      getMarkets: (eventId) =>
+        Promise.resolve([
+          option(eventId, 'total', 'Over/Under (incl. overtime)', 'Under 165.5', 1.7),
+        ]),
+    };
+    const feed: BasketballStatisticsProvider = {
+      ...statistics(second),
+      getSnapshot: (request) =>
+        request.bookmakerEventId === first
+          ? Promise.reject(new FixtureMappingError('unmapped', 'No exact fixture matched.'))
+          : statistics(second).getSnapshot(request),
+    };
+    const result = await buildReviewedLiveSlipSnapshot(
+      source,
+      reviewer,
+      'basketball',
+      2,
+      undefined,
+      'balanced',
+      feed,
+    );
+    expect(result.slip.selections.map((selection) => selection.eventId)).toEqual([second]);
+    expect(result.verification).toMatchObject({
+      mappingRejected: 1,
+      fixturesMapped: 1,
+      mappingRejections: { unmapped: 1 },
+    });
+  });
+
+  it('fails the complete build for systemic API-Sports failures', async () => {
+    const id = 'sr:match:203';
+    await expect(
+      buildReviewedLiveSlipSnapshot(
+        provider(id, [option(id, 'total', 'Over/Under (incl. overtime)', 'Under 165.5', 1.7)]),
+        reviewer,
+        'basketball',
+        1,
+        undefined,
+        'balanced',
+        {
+          name: 'systemic-failure',
+          getSnapshot: () =>
+            Promise.reject(
+              new ApiSportsError('missing_entitlement', 'Basketball subscription unavailable.'),
+            ),
+        },
+      ),
+    ).rejects.toMatchObject({ reasonCode: 'missing_subscription' });
+  });
+
+  it('stops slow verification at the explicit server deadline', async () => {
+    vi.useRealTimers();
+    const id = 'sr:match:204';
+    const slow: BasketballStatisticsProvider = {
+      name: 'slow-mock',
+      getSnapshot: () => new Promise(() => undefined),
+    };
+    await expect(
+      buildReviewedLiveSlipSnapshot(
+        provider(id, [option(id, 'total', 'Over/Under (incl. overtime)', 'Under 165.5', 1.7)]),
+        reviewer,
+        'basketball',
+        1,
+        undefined,
+        'balanced',
+        slow,
+        undefined,
+        { deadlineAt: Date.now() + 30, concurrency: 2 },
+      ),
+    ).rejects.toBeInstanceOf(AnalysisDeadlineError);
+  });
+
+  it('bounds concurrency and stops a large target before the hosting deadline', async () => {
+    vi.useRealTimers();
+    const events = Array.from({ length: 20 }, (_value, index) => fixture(`sr:match:slow-${index}`));
+    const source: SportyBetProvider = {
+      ...provider(events[0]!.providerEventId, []),
+      listEvents: () => Promise.resolve(events),
+      getMarkets: (eventId) =>
+        Promise.resolve([
+          option(eventId, 'total', 'Over/Under (incl. overtime)', 'Under 165.5', 1.7),
+        ]),
+    };
+    const getSnapshot = vi.fn(() => new Promise<never>(() => undefined));
+    await expect(
+      buildReviewedLiveSlipSnapshot(
+        source,
+        reviewer,
+        'basketball',
+        14,
+        50,
+        'conservative',
+        { name: 'bounded-slow-mock', getSnapshot },
+        undefined,
+        { deadlineAt: Date.now() + 40, concurrency: 2 },
+      ),
+    ).rejects.toBeInstanceOf(AnalysisDeadlineError);
+    expect(getSnapshot).toHaveBeenCalledTimes(2);
   });
 });
 

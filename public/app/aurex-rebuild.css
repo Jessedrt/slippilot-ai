@@ -27,3 +27,12 @@
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.view,.ax-orb,.pulse{animation:none!important}*,*:before,*:after{transition:none!important}}
 @media(prefers-reduced-transparency:reduce){.bottom-nav{background:#fff;backdrop-filter:none;-webkit-backdrop-filter:none}}
 @keyframes axScreenIn{from{opacity:.45;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}@keyframes axOrb{0%,100%{box-shadow:0 0 0 5px #dbf5e7a8,0 6px 17px #03905676,inset 0 2px 3px #ffffff80}50%{box-shadow:0 0 0 7px #d0f7e4bb,0 9px 23px #03905668,inset 0 2px 3px #ffffff80}}@keyframes axPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.75)}}
+
+/* Telegram viewport and long-running analysis hardening. */
+.ax-topbar{padding-top:max(18px,env(safe-area-inset-top,0px),var(--tg-safe-area-inset-top,0px),var(--tg-content-safe-area-inset-top,0px))}
+.app-shell{padding-bottom:calc(96px + max(env(safe-area-inset-bottom,0px),var(--tg-safe-area-inset-bottom,0px)))}
+.bottom-nav{bottom:calc(8px + max(env(safe-area-inset-bottom,0px),var(--tg-safe-area-inset-bottom,0px)));height:61px;padding:5px;border-radius:21px}
+.nav-item{height:48px}.ax-orb{width:44px;height:44px;margin-top:-18px}
+.loading-card>div:nth-child(2){min-width:0;flex:1}.loading-card #loading-elapsed{margin-top:3px;font-variant-numeric:tabular-nums}
+.loading-card #cancel-build{flex:0 0 auto;min-height:36px;padding:7px 11px;border:1px solid #b8dcca;border-radius:10px;background:#f4fbf7;color:#096942;font-weight:720}
+@media(max-width:375px){.view{padding-bottom:24px}.loading-card{align-items:flex-start;flex-wrap:wrap}.loading-card #cancel-build{width:100%}.bottom-nav{width:calc(100% - 16px)}}

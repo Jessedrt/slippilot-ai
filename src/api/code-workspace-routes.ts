@@ -77,6 +77,9 @@ export async function importBookingCode(code: string, deps: Deps, initData: stri
       league: item.fixture.league, startsAt: item.fixture.startsAt.toISOString(),
       marketName: item.marketName, selectionName: item.selectionName,
       odds: item.odds, confidence: Math.max(0, Math.min(99, review.confidence)),
+      evidenceQualityScore: review.evidenceQualityScore ?? review.confidence,
+      ...(review.statisticalSupport ? { statisticalSupport: review.statisticalSupport } : {}),
+      analysisExpiresAt: new Date(new Date(analysis.analyzedAt).getTime() + 30 * 60_000).toISOString(),
       risk: review.risk, verdict: review.verdict, reason: review.reason };
   }).sort((left, right) => right.confidence - left.confidence);
   // An imported, unspecified target is a balanced non-preset. It cannot claim 2.00/5.00
@@ -84,13 +87,17 @@ export async function importBookingCode(code: string, deps: Deps, initData: stri
   const minimum = minimumQualityForTarget(undefined, 'balanced');
   const accepted = all.filter((item) => passesAiQuality(item, minimum));
   const editableSlip = accepted.length ? (() => {
+    const workspaceReviewKey = (selection: (typeof accepted)[number]) =>
+      [key(selection), selection.odds, selection.evidenceQualityScore,
+        selection.statisticalSupport, selection.verdict, selection.analysisExpiresAt].join('\u0000');
     const payload = Buffer.from(JSON.stringify({ expiresAt: Date.now() + 30 * 60_000,
       session: createHash('sha256').update(initData).digest('base64url'),
-      selections: accepted.map(key), minimumScore: minimum })).toString('base64url');
+      selections: accepted.map(key), reviews: accepted.map(workspaceReviewKey),
+      minimumScore: minimum })).toString('base64url');
     const signature = createHmac('sha256', deps.telegramBotToken)
       .update(`aurex-miniapp-analysis-v1.${payload}`).digest('base64url');
-    const selections = accepted.map(({ verdict: _verdict, reason: _reason, ...item }) => {
-      void _verdict; void _reason;
+    const selections = accepted.map(({ reason: _reason, ...item }) => {
+      void _reason;
       return item;
     });
     return { slipId: randomUUID(), sport: accepted[0]!.sport, riskMode: 'balanced' as const,

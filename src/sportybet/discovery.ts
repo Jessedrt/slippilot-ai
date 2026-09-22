@@ -8,6 +8,7 @@ import type {
 } from '../types/domain.js';
 import { isAllowedBasketballOverMarket } from './basketball-over-markets.js';
 import { leagueExclusionReason } from './league-quality.js';
+import { assertBeforeDeadline, beforeDeadline } from '../analysis/pipeline-control.js';
 export { isAllowedBasketballOverMarket } from './basketball-over-markets.js';
 
 export interface LiveSlipSnapshot {
@@ -15,11 +16,22 @@ export interface LiveSlipSnapshot {
   combinedOdds: number;
   scheduleDate: string;
   dayOffset: 0 | 1 | 2;
+  discovery: {
+    eligibleFixtures: number;
+    marketRequests: number;
+    marketFailures: number;
+  };
+}
+
+export interface DiscoveryExecutionOptions {
+  deadlineAt?: number;
+  marketBatchSize?: number;
 }
 
 /** Backwards-compatible error class. No unavailable fixtures or markets are invented. */
 export class NoTodayMarketsError extends Error {
   readonly statusCode = 404;
+  readonly reasonCode = 'no_eligible_fixtures';
   constructor(sport: Sport, excludedLeagues = 0) {
     super(
       `No supported ${sport} matches with eligible active SportyBet markets were found today, tomorrow or the following day in Nigeria (WAT). No later dates were included. Try another sport or check later.${excludedLeagues ? ` The league filter excluded ${excludedLeagues} fixture${excludedLeagues === 1 ? '' : 's'} from youth, reserve, amateur, lower-tier, friendly or simulated competitions; see Explore for the unfiltered fixture list.` : ''}`,
@@ -30,6 +42,7 @@ export class NoTodayMarketsError extends Error {
 
 export class MarketVerificationUnavailableError extends Error {
   readonly statusCode = 424;
+  readonly reasonCode = 'market_verification_unavailable';
   constructor() {
     super(
       'The sports provider could not verify all markets for the selected day. No later day was substituted or fixtures invented. Please retry.',
@@ -189,6 +202,7 @@ export async function buildLiveSlipSnapshot(
   gameCount: number,
   targetOdds?: number,
   _todayOnly = true,
+  execution: DiscoveryExecutionOptions = {},
 ): Promise<LiveSlipSnapshot> {
   void _todayOnly; // Retained for older callers; the explicit three-day fallback applies to all requests.
   if (!Number.isSafeInteger(gameCount) || gameCount < 1) {
@@ -196,7 +210,7 @@ export async function buildLiveSlipSnapshot(
   }
   const now = new Date();
   const seen = new Set<string>();
-  const events = (await provider.listEvents(sport))
+  const events = (await beforeDeadline(provider.listEvents(sport), execution.deadlineAt))
     .filter((event) => {
       if (
         event.status !== 'scheduled' ||
@@ -212,6 +226,7 @@ export async function buildLiveSlipSnapshot(
 
   let excludedLeagues = 0;
   for (const offset of [0, 1, 2] as const) {
+    assertBeforeDeadline(execution.deadlineAt);
     const date = lagosCalendarDay(new Date(now.getTime() + offset * 86_400_000));
     const dayEvents = events.filter((event) => lagosCalendarDay(event.startsAt) === date);
     if (!dayEvents.length) continue;
@@ -232,17 +247,29 @@ export async function buildLiveSlipSnapshot(
     const usedFamilies = new Map<string, number>();
     const usedDirections = new Map<string, number>();
     let marketVerificationFailed = false;
+    let marketRequests = 0;
+    let marketFailures = 0;
+    let marketSuccesses = 0;
     for (let index = 0; index < diverseEvents.length && candidates.length < gameCount;) {
-      const batch = diverseEvents.slice(index, index + Math.min(4, gameCount - candidates.length));
+      assertBeforeDeadline(execution.deadlineAt);
+      const batchSize = Math.min(
+        execution.marketBatchSize ?? 6,
+        Math.max(1, gameCount - candidates.length),
+      );
+      const batch = diverseEvents.slice(index, index + batchSize);
       index += batch.length;
-      const results = await Promise.allSettled(
-        batch.map((event) => provider.getMarkets(event.providerEventId)),
+      marketRequests += batch.length;
+      const results = await beforeDeadline(
+        Promise.allSettled(batch.map((event) => provider.getMarkets(event.providerEventId))),
+        execution.deadlineAt,
       );
       for (const [position, result] of results.entries()) {
         if (result.status !== 'fulfilled') {
           marketVerificationFailed = true;
+          marketFailures += 1;
           continue;
         }
+        marketSuccesses += 1;
         const event = batch[position];
         if (!event) continue;
         const markets = result.value.filter((market) => market.sport === sport);
@@ -283,11 +310,21 @@ export async function buildLiveSlipSnapshot(
       if (marketVerificationFailed) throw new MarketVerificationUnavailableError();
       continue;
     }
+    if (
+      marketFailures > 0 &&
+      (marketSuccesses === 0 || (marketFailures >= 3 && marketFailures > marketSuccesses))
+    )
+      throw new MarketVerificationUnavailableError();
     const selections = candidates.slice(0, gameCount);
     return {
       scheduleDate: date,
       dayOffset: offset,
       combinedOdds: rounded(selections.reduce((total, selection) => total * selection.odds, 1)),
+      discovery: {
+        eligibleFixtures: eligibleDayEvents.length,
+        marketRequests,
+        marketFailures,
+      },
       slip: {
         id: crypto.randomUUID(),
         selections,

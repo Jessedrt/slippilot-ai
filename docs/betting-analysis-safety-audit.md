@@ -133,11 +133,18 @@ cache TTLs. Redis failure affects only the cache, never the mandatory provider r
 - `API_SPORTS_KEY`: newly rotated backend credential. The previously exposed key must not be reused.
 - `API_SPORTS_ENABLED=false`: constructs the client only when explicitly enabled.
 - `API_SPORTS_COMMERCIAL_USE_APPROVED=false`: records that written commercial/publication permissions
-  have been obtained. This is deliberately not inferred from payment or API access.
+  are declared. This legacy flag is deliberately not inferred from payment or API access and is not,
+  by itself, accepted as proof of competition data rights.
+- `API_SPORTS_DATA_RIGHTS_CONFIRMED=false`: separate fail-closed production gate for written provider
+  and any required rights-holder permissions for the configured competitions and uses.
 - `API_SPORTS_FOOTBALL_ENABLED=false`: enables verified API-Football goal-total evaluation.
 - `API_SPORTS_BASKETBALL_TOTALS_ENABLED=false`: enables API-Basketball totals only after field coverage
   and rights are verified.
 - `API_SPORTS_TIMEOUT_MS=8000`, `API_SPORTS_MAX_RETRIES=2`: bounded transport controls.
+- `API_SPORTS_VERIFIED_MAPPINGS_JSON`: operator-reviewed SportyBet names mapped to stable provider IDs;
+  mappings never bypass kickoff, orientation, sport or fixture-status validation.
+- `API_SPORTS_ANALYSIS_CONCURRENCY=2`, `ANALYSIS_DEADLINE_MS=42000`: bounded analysis work and a
+  structured stop before the hosting timeout.
 
 The configuration rejects sport feature flags unless the client and commercial-approval flag are both
 enabled. The key is never returned to the Mini App, included in URLs, or written to logs.

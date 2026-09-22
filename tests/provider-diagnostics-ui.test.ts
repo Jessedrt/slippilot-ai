@@ -11,12 +11,14 @@ describe('Mini App provider diagnostics controls', () => {
     expect(recovery).toContain("import './provider-diagnostics-ui.js'");
     expect(diagnostics).toContain("document.querySelector('#build-error')");
     expect(diagnostics).toContain('Check API connection');
+    expect(diagnostics).toContain('Test selected sport fixture coverage');
   });
 
   it('only requests status after a user click with Telegram init data', () => {
     expect(diagnostics).toContain("button.addEventListener('click', async () => {");
     expect(diagnostics).toContain('window.Telegram?.WebApp?.initData');
     expect(diagnostics).toContain("fetch('/api/miniapp/provider-status'");
+    expect(diagnostics).toContain("fetch('/api/miniapp/provider-coverage'");
     expect(diagnostics).toContain("'x-telegram-init-data': initData");
     expect(diagnostics).toContain("cache: 'no-store'");
     expect(diagnostics).not.toContain('API_SPORTS_KEY');
@@ -27,6 +29,10 @@ describe('Mini App provider diagnostics controls', () => {
     expect(diagnostics).toContain('product.analysisEnabled === true');
     expect(diagnostics).toContain('output.textContent =');
     expect(diagnostics).not.toContain('output.innerHTML');
-    expect(diagnostics).toContain('Status checks do not verify individual match statistics');
+    expect(diagnostics).toContain(
+      'Connection, activation, fixture identity, statistics and selection approval are separate checks.',
+    );
+    expect(diagnostics).toContain('product.operational?.fixtureRetrieval');
+    expect(diagnostics).toContain('product.dataRightsConfirmed === true');
   });
 });

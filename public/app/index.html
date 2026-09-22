@@ -126,8 +126,11 @@
           <div class="loading-card hidden" id="loading">
             <div class="pulse"></div>
             <div>
-              <b>Reviewing markets</b><span id="loading-label">Finding suitable fixtures…</span>
+              <b>Reviewing verified evidence</b
+              ><span id="loading-label">Request accepted. Waiting for provider results…</span>
+              <span id="loading-elapsed">0 seconds elapsed</span>
             </div>
+            <button type="button" id="cancel-build">Cancel</button>
           </div>
           <div class="notice hidden" id="build-error" role="alert"></div>
         </section>
@@ -352,7 +355,7 @@
       </nav>
     </div>
     <div class="toast" id="toast" role="status"></div>
-    <script type="module" src="/app/app.js?v=3.0.4"></script>
+    <script type="module" src="/app/app.js?v=7.1.0"></script>
     <script type="module" src="/app/miniapp-controls.js?v=3.0.4"></script>
     <script type="module" src="/app/experience.js?v=4.1.0"></script>
     <script type="module" src="/app/menu.js?v=4.4.0"></script>

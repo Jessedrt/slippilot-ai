@@ -9,7 +9,12 @@ interface AnalysisDeps {
   slipAnalyzer: SlipAnalyzer;
 }
 
-const requestSchema = z.object({ code: z.string().trim().regex(/^[A-Za-z0-9]{4,20}$/) });
+const requestSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z0-9]{4,20}$/),
+});
 
 /** Resolves the actual bookmaker fixtures and selections before asking AI to review them.
  * A code alone, an odds total or invented team details must never be labelled an analysis. */
@@ -18,49 +23,61 @@ export async function analyzeBookingCode(code: string, deps: AnalysisDeps) {
   if (!resolved.length) throw new Error('This booking code contains no selections to analyze.');
   const eventRequests = new Map<string, ReturnType<SportyBetProvider['getEvent']>>();
   const marketRequests = new Map<string, ReturnType<SportyBetProvider['getMarkets']>>();
-  const candidates = await Promise.all(resolved.map(async (pick): Promise<CandidateSelection> => {
-    if (!eventRequests.has(pick.eventId)) {
-      eventRequests.set(pick.eventId, deps.sportyBet.getEvent(pick.eventId));
-      marketRequests.set(pick.eventId, deps.sportyBet.getMarkets(pick.eventId));
-    }
-    const [event, markets] = await Promise.all([
-      eventRequests.get(pick.eventId)!,
-      marketRequests.get(pick.eventId)!,
-    ]);
-    if (!event) throw new Error('One of this code’s fixtures is no longer available. Full analysis cannot be verified.');
-    const matching = markets.filter((market: NormalizedMarket) =>
-      market.providerMarketId === pick.marketId &&
-      market.providerSelectionId === pick.selectionId &&
-      (pick.specifier == null || (market.specifier ?? null) === pick.specifier),
-    );
-    // An absent or ambiguous market must fail rather than silently inventing an analysis.
-    if (matching.length !== 1) {
-      throw new Error('A selection in this code could not be matched to a unique live market. Try a current code.');
-    }
-    const market = matching[0]!;
-    return {
-      ...market,
-      fixture: {
-        id: event.providerEventId,
-        providerId: event.providerEventId,
-        sport: market.sport,
-        league: event.league || 'League not supplied',
-        homeTeam: event.homeTeam,
-        awayTeam: event.awayTeam,
-        startsAt: event.startsAt,
-        status: event.status,
-      },
-      // No invented pre-analysis probability or evidence-quality score.
-      modelProbability: 0,
-      confidenceScore: 0,
-      dataQuality: 'medium',
-      riskLevel: 'medium',
-      reasoning: [],
-    };
-  }));
+  const candidates = await Promise.all(
+    resolved.map(async (pick): Promise<CandidateSelection> => {
+      if (!eventRequests.has(pick.eventId)) {
+        eventRequests.set(pick.eventId, deps.sportyBet.getEvent(pick.eventId));
+        marketRequests.set(pick.eventId, deps.sportyBet.getMarkets(pick.eventId));
+      }
+      const [event, markets] = await Promise.all([
+        eventRequests.get(pick.eventId)!,
+        marketRequests.get(pick.eventId)!,
+      ]);
+      if (!event || event.status !== 'scheduled' || event.startsAt.getTime() <= Date.now())
+        throw new Error(
+          'One of this code’s fixtures is no longer available or has started. Full analysis cannot be verified.',
+        );
+      const matching = markets.filter(
+        (market: NormalizedMarket) =>
+          market.providerMarketId === pick.marketId &&
+          market.providerSelectionId === pick.selectionId &&
+          (market.specifier ?? null) === (pick.specifier ?? null) &&
+          market.status === 'active',
+      );
+      // An absent or ambiguous market must fail rather than silently inventing an analysis.
+      if (matching.length !== 1) {
+        throw new Error(
+          'A selection in this code could not be matched to a unique live market. Try a current code.',
+        );
+      }
+      const market = matching[0]!;
+      return {
+        ...market,
+        fixture: {
+          id: event.providerEventId,
+          providerId: event.providerEventId,
+          sport: market.sport,
+          league: event.league || 'League not supplied',
+          homeTeam: event.homeTeam,
+          awayTeam: event.awayTeam,
+          startsAt: event.startsAt,
+          status: event.status,
+        },
+        // No invented pre-analysis probability or evidence-quality score.
+        modelProbability: 0,
+        confidenceScore: 0,
+        dataQuality: 'medium',
+        riskLevel: 'medium',
+        reasoning: [],
+      };
+    }),
+  );
   const analysis = await deps.slipAnalyzer.analyze(candidates);
   const byIndex = new Map(analysis.selections.map((item) => [item.index, item]));
-  if (byIndex.size !== candidates.length || candidates.some((_item, index) => !byIndex.has(index + 1))) {
+  if (
+    byIndex.size !== candidates.length ||
+    candidates.some((_item, index) => !byIndex.has(index + 1))
+  ) {
     throw new Error('AI did not assess every selection. Please try again.');
   }
   const selections = candidates.map((pick, index) => {
@@ -88,7 +105,8 @@ export async function analyzeBookingCode(code: string, deps: AnalysisDeps) {
     summary: analysis.summary,
     analyzedAt: analysis.analyzedAt,
     selections,
-    disclaimer: 'AI quality scores are not winning probabilities. Odds and availability may change; no bet was placed.',
+    disclaimer:
+      'AI quality scores are not winning probabilities. Odds and availability may change; no bet was placed.',
   };
 }
 
@@ -99,11 +117,12 @@ export function registerBookingCodeAnalysisRoute(app: FastifyInstance, deps: Ana
     try {
       return await analyzeBookingCode(code.toUpperCase(), deps);
     } catch (error) {
-      if (error instanceof Error && (
-        error.message.includes('no selections') ||
-        error.message.includes('no longer available') ||
-        error.message.includes('unique live market')
-      )) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('no selections') ||
+          error.message.includes('no longer available') ||
+          error.message.includes('unique live market'))
+      ) {
         return reply.status(422).send({ message: error.message });
       }
       throw error;

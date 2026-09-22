@@ -20,10 +20,17 @@ import {
 } from '../sports/football-statistics.js';
 import { ApiSportsError } from '../api-sports/client.js';
 import { FixtureMappingError } from '../api-sports/fixture-matcher.js';
+import {
+  AnalysisDeadlineError,
+  assertBeforeDeadline,
+  beforeDeadline,
+  mapWithConcurrency,
+} from '../analysis/pipeline-control.js';
 
 /** Review confidence measures evidence quality, NOT the probability of winning. */
 export class MarketReviewUnavailableError extends Error {
   readonly statusCode = 424;
+  readonly reasonCode = 'market_review_unavailable';
   constructor() {
     super(
       'Market alternatives could not be reviewed or verified with SportyBet. No unverified selection or booking code was substituted. Retry later.',
@@ -31,10 +38,51 @@ export class MarketReviewUnavailableError extends Error {
     this.name = 'MarketReviewUnavailableError';
   }
 }
+export class ResearchProviderUnavailableError extends Error {
+  readonly statusCode = 424;
+  readonly reasonCode = 'research_provider_unavailable';
+  constructor() {
+    super(
+      'The research provider did not complete a valid review. No unsupported selection or booking code was created.',
+    );
+    this.name = 'ResearchProviderUnavailableError';
+  }
+}
+
+export class NoEligibleSelectionsError extends Error {
+  readonly statusCode = 409;
+  readonly reasonCode = 'no_eligible_selections';
+  constructor(message: string) {
+    super(message);
+    this.name = 'NoEligibleSelectionsError';
+  }
+}
 export interface ReviewedSnapshot extends LiveSlipSnapshot {
   analysis: SlipAnalysis;
   rejectedOptions: number;
   reviewedOptions: number;
+  verification: ReviewVerificationSummary;
+}
+
+export interface ReviewVerificationSummary {
+  fixturesReviewed: number;
+  fixturesMapped: number;
+  mappingRejected: number;
+  mappingRejections: Partial<Record<FixtureMappingError['reason'], number>>;
+  statisticsRejected: number;
+  exactOutcomesVerified: number;
+  statisticsProvider: string | null;
+  discoveryDurationMs: number;
+  statisticsReviewDurationMs: number;
+  aiAnalysisDurationMs: number;
+  bookingPreflightDurationMs: number;
+  durationMs: number;
+  deadlineReached: boolean;
+}
+
+export interface MarketReviewExecutionOptions {
+  deadlineAt?: number;
+  concurrency?: number;
 }
 const identity = (market: NormalizedMarket): string =>
   [
@@ -92,18 +140,10 @@ export function shortlistMarketOptions(
   }
   return result;
 }
-function reviewScore(
-  review: SlipAnalysis['selections'][number],
-  odds: number,
-  target: number,
-  riskMode: RiskMode,
-): number {
+function reviewScore(review: SlipAnalysis['selections'][number], riskMode: RiskMode): number {
   const risk = { lower: 0, medium: 4, higher: 9 }[review.risk];
   const riskWeight = riskMode === 'conservative' ? 1.5 : riskMode === 'aggressive' ? 0.5 : 1;
-  const pricePenalty = Math.min(12, Math.abs(Math.log(odds / target)) * 5);
-  return (
-    (review.verdict === 'keep' ? 15 : 0) + review.confidence - risk * riskWeight - pricePenalty
-  );
+  return (review.verdict === 'keep' ? 15 : 0) + review.confidence - risk * riskWeight;
 }
 /** Refresh the exact outcome. A missing outcome is skippable; outages are not. */
 async function preflightOption(
@@ -142,8 +182,16 @@ export async function buildReviewedLiveSlipSnapshot(
   riskMode: RiskMode = 'balanced',
   basketballStatistics?: BasketballStatisticsProvider,
   footballStatistics?: FootballStatisticsProvider,
+  execution: MarketReviewExecutionOptions = {},
 ): Promise<ReviewedSnapshot> {
+  const startedAt = Date.now();
   if (!Number.isSafeInteger(gameCount) || gameCount < 1) throw new Error('Invalid game count.');
+  assertBeforeDeadline(execution.deadlineAt);
+  if (sport === 'basketball' && !basketballStatistics)
+    throw new BasketballEvidenceError(
+      'Basketball totals are unavailable because no authorized statistics provider is configured. Odds are not used as evidence and no statistics are invented.',
+      'provider_not_configured',
+    );
   const minimum = minimumQualityForTarget(targetOdds, riskMode);
   const cautiousTwoOdds = riskMode === 'conservative' && targetOdds === 2;
   const marketCache = new Map<string, Promise<NormalizedMarket[]>>();
@@ -165,201 +213,279 @@ export async function buildReviewedLiveSlipSnapshot(
     createBookingCode: (selections) => provider.createBookingCode(selections),
     health: () => provider.health(),
   };
-  const inspectCount = Math.min(60, Math.max(gameCount + 8, gameCount * 2));
-  const snapshot = await buildLiveSlipSnapshot(cachedProvider, sport, inspectCount);
+  const inspectCount = Math.min(24, Math.max(gameCount + 6, gameCount * 2));
+  const snapshot = await beforeDeadline(
+    buildLiveSlipSnapshot(cachedProvider, sport, inspectCount, undefined, true, {
+      ...(execution.deadlineAt === undefined ? {} : { deadlineAt: execution.deadlineAt }),
+    }),
+    execution.deadlineAt,
+  );
+  const discoveryCompletedAt = Date.now();
   const targetPerLeg = Math.max(1.05, Math.pow(targetOdds ?? 3, 1 / Math.max(1, gameCount)));
   const options: CandidateSelection[] = [];
   const statisticsCache = new Map<string, Promise<unknown>>();
+  const mappingRejections: ReviewVerificationSummary['mappingRejections'] = {};
+  let mappingRejected = 0;
+  let fixturesMapped = 0;
+  let statisticsRejected = 0;
   const optionsPerFixture = Math.max(
     1,
     Math.min(5, Math.floor(60 / snapshot.slip.selections.length)),
   );
-  for (const original of snapshot.slip.selections) {
-    let markets: NormalizedMarket[];
-    try {
-      markets = await getCachedMarkets(original.eventId);
-    } catch {
-      throw new MarketReviewUnavailableError();
-    }
-    const reviewableMarkets =
-      sport === 'basketball'
-        ? markets.filter((market) =>
-            isBasketballGameTotal({
-              ...original,
-              ...market,
-            }),
-          )
-        : sport === 'football' && footballStatistics
+  const reviewedByFixture = await mapWithConcurrency(
+    snapshot.slip.selections,
+    execution.concurrency ?? 2,
+    async (original): Promise<CandidateSelection[]> => {
+      assertBeforeDeadline(execution.deadlineAt);
+      let markets: NormalizedMarket[];
+      try {
+        markets = await getCachedMarkets(original.eventId);
+      } catch {
+        throw new MarketReviewUnavailableError();
+      }
+      const reviewableMarkets =
+        sport === 'basketball'
           ? markets.filter((market) =>
-              isFootballGameTotal({
+              isBasketballGameTotal({
                 ...original,
                 ...market,
               }),
             )
-          : markets;
-    const choices = shortlistMarketOptions(
-      reviewableMarkets,
-      sport,
-      original.eventId,
-      targetPerLeg,
-      optionsPerFixture,
-    );
-    for (const choice of choices) {
-      let candidate: CandidateSelection = {
-        ...original,
-        ...choice,
-        modelProbability: 0,
-        confidenceScore: 0,
-        reasoning: [
-          'Provider-listed active alternative awaiting evidence review and exact booking verification.',
-        ],
-      };
-      if (sport === 'basketball') {
-        if (!basketballStatistics)
-          throw new BasketballEvidenceError(
-            'Basketball totals are unavailable because no authorized statistics provider is configured. Odds are not used as evidence and no statistics are invented.',
-            'provider_not_configured',
+          : sport === 'football' && footballStatistics
+            ? markets.filter((market) =>
+                isFootballGameTotal({
+                  ...original,
+                  ...market,
+                }),
+              )
+            : markets;
+      const choices = shortlistMarketOptions(
+        reviewableMarkets,
+        sport,
+        original.eventId,
+        targetPerLeg,
+        optionsPerFixture,
+      );
+      const fixtureOptions: CandidateSelection[] = [];
+      let mapped = sport !== 'football' || !footballStatistics ? false : undefined;
+      for (const choice of choices) {
+        assertBeforeDeadline(execution.deadlineAt);
+        let candidate: CandidateSelection = {
+          ...original,
+          ...choice,
+          modelProbability: 0,
+          confidenceScore: 0,
+          reasoning: [
+            'Provider-listed active alternative awaiting evidence review and exact booking verification.',
+          ],
+        };
+        if (sport === 'basketball') {
+          const marketOvertimeIncluded = /(?:incl(?:uding)?\.?\s*overtime|with overtime)/i.test(
+            candidate.marketName,
           );
-        const marketOvertimeIncluded = /(?:incl(?:uding)?\.?\s*overtime|with overtime)/i.test(
-          candidate.marketName,
-        );
-        const statisticsKey = `${candidate.eventId}:ot:${marketOvertimeIncluded}`;
-        let snapshotPromise = statisticsCache.get(statisticsKey);
-        if (!snapshotPromise) {
-          snapshotPromise = basketballStatistics.getSnapshot({
-            bookmakerEventId: candidate.eventId,
-            competition: candidate.fixture.league,
-            homeTeam: candidate.fixture.homeTeam,
-            awayTeam: candidate.fixture.awayTeam,
-            startsAt: candidate.fixture.startsAt,
-            marketOvertimeIncluded,
-          });
-          statisticsCache.set(statisticsKey, snapshotPromise);
-        }
-        let rawSnapshot: unknown;
-        try {
-          rawSnapshot = await snapshotPromise;
-        } catch (error) {
-          if (error instanceof ApiSportsError) {
-            const reason =
-              error.code === 'missing_entitlement' || error.code === 'unauthorized'
-                ? 'missing_subscription'
-                : error.code === 'quota_exhausted' || error.code === 'rate_limited'
-                  ? 'quota_exhausted'
-                  : 'provider_unavailable';
-            throw new BasketballEvidenceError(error.message, reason);
+          const statisticsKey = `${candidate.eventId}:ot:${marketOvertimeIncluded}`;
+          let snapshotPromise = statisticsCache.get(statisticsKey);
+          if (!snapshotPromise) {
+            snapshotPromise = basketballStatistics!.getSnapshot({
+              bookmakerEventId: candidate.eventId,
+              competition: candidate.fixture.league,
+              homeTeam: candidate.fixture.homeTeam,
+              awayTeam: candidate.fixture.awayTeam,
+              startsAt: candidate.fixture.startsAt,
+              marketOvertimeIncluded,
+            });
+            statisticsCache.set(statisticsKey, snapshotPromise);
           }
-          if (error instanceof FixtureMappingError)
+          let rawSnapshot: unknown;
+          try {
+            rawSnapshot = await beforeDeadline(snapshotPromise, execution.deadlineAt);
+          } catch (error) {
+            if (error instanceof AnalysisDeadlineError) throw error;
+            if (error instanceof ApiSportsError) {
+              const reason =
+                error.code === 'missing_entitlement' || error.code === 'unauthorized'
+                  ? 'missing_subscription'
+                  : error.code === 'quota_exhausted' || error.code === 'rate_limited'
+                    ? 'quota_exhausted'
+                    : 'provider_unavailable';
+              throw new BasketballEvidenceError(error.message, reason);
+            }
+            if (error instanceof FixtureMappingError) {
+              mappingRejected += 1;
+              mappingRejections[error.reason] = (mappingRejections[error.reason] ?? 0) + 1;
+              return [];
+            }
+            if (error instanceof BasketballEvidenceError) {
+              if (
+                error.reasonCode === 'fixture_unmapped' ||
+                error.reasonCode === 'unsupported_competition'
+              ) {
+                const reason =
+                  error.reasonCode === 'unsupported_competition'
+                    ? 'unsupported_competition'
+                    : 'unmapped';
+                mappingRejected += 1;
+                mappingRejections[reason] = (mappingRejections[reason] ?? 0) + 1;
+                return [];
+              }
+              throw error;
+            }
             throw new BasketballEvidenceError(
-              error.message,
-              error.reason === 'unsupported_competition'
-                ? 'unsupported_competition'
-                : 'fixture_unmapped',
+              'Basketball statistics provider unavailable. No market was recommended and no target was forced.',
+              'provider_unavailable',
             );
-          throw new BasketballEvidenceError(
-            'Basketball statistics provider unavailable. No market was recommended and no target was forced.',
-            'provider_unavailable',
-          );
-        }
-        try {
-          const assessment = evaluateBasketballTotal(candidate, rawSnapshot);
-          if (
-            assessment.statisticalSupport !== 'supported' ||
-            assessment.recommendationVerdict !== 'keep'
-          )
-            continue;
-          candidate = {
-            ...candidate,
-            assessment,
-            confidenceScore: assessment.evidenceQualityScore,
-            dataQuality: assessment.evidenceQualityScore >= 80 ? 'high' : 'medium',
-            reasoning: [
-              `Statistical projection ${assessment.statisticalProjection}; bookmaker implied probability ${assessment.bookmakerImpliedProbability}%.`,
-              `Verified source: ${assessment.sources[0]!.name}, retrieved ${assessment.sources[0]!.retrievedAt.toISOString()}.`,
-            ],
-          };
-        } catch (error) {
-          if (error instanceof BasketballEvidenceError || error instanceof Error) continue;
-          continue;
-        }
-      } else if (sport === 'football' && footballStatistics) {
-        let snapshotPromise = statisticsCache.get(candidate.eventId);
-        if (!snapshotPromise) {
-          snapshotPromise = footballStatistics.getSnapshot({
-            bookmakerEventId: candidate.eventId,
-            competition: candidate.fixture.league,
-            homeTeam: candidate.fixture.homeTeam,
-            awayTeam: candidate.fixture.awayTeam,
-            startsAt: candidate.fixture.startsAt,
-          });
-          statisticsCache.set(candidate.eventId, snapshotPromise);
-        }
-        let rawSnapshot: unknown;
-        try {
-          rawSnapshot = await snapshotPromise;
-        } catch (error) {
-          if (error instanceof ApiSportsError) {
-            const reason =
-              error.code === 'missing_entitlement' || error.code === 'unauthorized'
-                ? 'missing_subscription'
-                : error.code === 'quota_exhausted' || error.code === 'rate_limited'
-                  ? 'quota_exhausted'
-                  : 'provider_unavailable';
-            throw new FootballEvidenceError(error.message, reason);
           }
-          if (error instanceof FixtureMappingError)
-            throw new FootballEvidenceError(
-              error.message,
-              error.reason === 'unsupported_competition'
-                ? 'unsupported_competition'
-                : 'fixture_unmapped',
-            );
-          throw new FootballEvidenceError(
-            'API-Sports football statistics are unavailable, the subscription lacks access, or the fixture could not be mapped exactly. No target was forced.',
-            'provider_unavailable',
-          );
-        }
-        try {
-          const assessment = evaluateFootballTotal(candidate, rawSnapshot);
-          if (
-            assessment.statisticalSupport !== 'supported' ||
-            assessment.recommendationVerdict !== 'keep'
-          )
+          try {
+            const assessment = evaluateBasketballTotal(candidate, rawSnapshot);
+            if (mapped !== true) {
+              fixturesMapped += 1;
+              mapped = true;
+            }
+            if (
+              assessment.statisticalSupport !== 'supported' ||
+              assessment.recommendationVerdict !== 'keep'
+            ) {
+              statisticsRejected += 1;
+              continue;
+            }
+            candidate = {
+              ...candidate,
+              assessment,
+              confidenceScore: assessment.evidenceQualityScore,
+              dataQuality: assessment.evidenceQualityScore >= 80 ? 'high' : 'medium',
+              reasoning: [
+                `Statistical projection ${assessment.statisticalProjection}; bookmaker implied probability ${assessment.bookmakerImpliedProbability}%.`,
+                `Verified source: ${assessment.sources[0]!.name}, retrieved ${assessment.sources[0]!.retrievedAt.toISOString()}.`,
+              ],
+            };
+          } catch (error) {
+            statisticsRejected += 1;
+            if (error instanceof BasketballEvidenceError || error instanceof Error) continue;
             continue;
-          candidate = {
-            ...candidate,
-            assessment,
-            confidenceScore: assessment.evidenceQualityScore,
-            dataQuality: assessment.evidenceQualityScore >= 80 ? 'high' : 'medium',
-            reasoning: [
-              `API-Sports home/away goal projection ${assessment.statisticalProjection}; bookmaker implied probability ${assessment.bookmakerImpliedProbability}% is shown separately.`,
-              `Verified source: ${assessment.sources[0]!.name}, retrieved ${assessment.sources[0]!.retrievedAt.toISOString()}.`,
-            ],
-          };
-        } catch {
-          continue;
+          }
+        } else if (sport === 'football' && footballStatistics) {
+          let snapshotPromise = statisticsCache.get(candidate.eventId);
+          if (!snapshotPromise) {
+            snapshotPromise = footballStatistics.getSnapshot({
+              bookmakerEventId: candidate.eventId,
+              competition: candidate.fixture.league,
+              homeTeam: candidate.fixture.homeTeam,
+              awayTeam: candidate.fixture.awayTeam,
+              startsAt: candidate.fixture.startsAt,
+            });
+            statisticsCache.set(candidate.eventId, snapshotPromise);
+          }
+          let rawSnapshot: unknown;
+          try {
+            rawSnapshot = await beforeDeadline(snapshotPromise, execution.deadlineAt);
+          } catch (error) {
+            if (error instanceof AnalysisDeadlineError) throw error;
+            if (error instanceof ApiSportsError) {
+              const reason =
+                error.code === 'missing_entitlement' || error.code === 'unauthorized'
+                  ? 'missing_subscription'
+                  : error.code === 'quota_exhausted' || error.code === 'rate_limited'
+                    ? 'quota_exhausted'
+                    : 'provider_unavailable';
+              throw new FootballEvidenceError(error.message, reason);
+            }
+            if (error instanceof FixtureMappingError) {
+              mappingRejected += 1;
+              mappingRejections[error.reason] = (mappingRejections[error.reason] ?? 0) + 1;
+              return [];
+            }
+            if (error instanceof FootballEvidenceError) {
+              if (
+                error.reasonCode === 'fixture_unmapped' ||
+                error.reasonCode === 'unsupported_competition'
+              ) {
+                const reason =
+                  error.reasonCode === 'unsupported_competition'
+                    ? 'unsupported_competition'
+                    : 'unmapped';
+                mappingRejected += 1;
+                mappingRejections[reason] = (mappingRejections[reason] ?? 0) + 1;
+                return [];
+              }
+              throw error;
+            }
+            throw new FootballEvidenceError(
+              'API-Sports football statistics are unavailable, the subscription lacks access, or the fixture could not be mapped exactly. No target was forced.',
+              'provider_unavailable',
+            );
+          }
+          try {
+            const assessment = evaluateFootballTotal(candidate, rawSnapshot);
+            if (mapped !== true) {
+              fixturesMapped += 1;
+              mapped = true;
+            }
+            if (
+              assessment.statisticalSupport !== 'supported' ||
+              assessment.recommendationVerdict !== 'keep'
+            ) {
+              statisticsRejected += 1;
+              continue;
+            }
+            candidate = {
+              ...candidate,
+              assessment,
+              confidenceScore: assessment.evidenceQualityScore,
+              dataQuality: assessment.evidenceQualityScore >= 80 ? 'high' : 'medium',
+              reasoning: [
+                `API-Sports home/away goal projection ${assessment.statisticalProjection}; bookmaker implied probability ${assessment.bookmakerImpliedProbability}% is shown separately.`,
+                `Verified source: ${assessment.sources[0]!.name}, retrieved ${assessment.sources[0]!.retrievedAt.toISOString()}.`,
+              ],
+            };
+          } catch {
+            statisticsRejected += 1;
+            continue;
+          }
         }
+        fixtureOptions.push(candidate);
       }
-      options.push(candidate);
-    }
-  }
+      return fixtureOptions;
+    },
+    execution.deadlineAt,
+  );
+  options.push(...reviewedByFixture.flat());
+  const statisticsReviewCompletedAt = Date.now();
   if (!options.length) {
     if (sport === 'basketball')
-      throw new BasketballEvidenceError(
-        'Insufficient statistical evidence: no basketball total had fresh, consistent, metric-specific support.',
+      throw Object.assign(
+        new BasketballEvidenceError(
+          mappingRejected
+            ? `No eligible basketball totals remained. ${mappingRejected} fixture(s) could not be mapped unambiguously; ${statisticsRejected} market assessment(s) lacked sufficient evidence.`
+            : 'Insufficient statistical evidence: no basketball total had fresh, consistent, metric-specific support.',
+          mappingRejected && statisticsRejected === 0
+            ? 'fixture_unmapped'
+            : 'invalid_or_insufficient_evidence',
+        ),
+        { rejections: { mappingRejected, mappingRejections, statisticsRejected } },
       );
     if (sport === 'football' && footballStatistics)
-      throw new FootballEvidenceError(
-        'Insufficient statistical evidence: no football goal total had fresh, exact, home/away statistical support.',
+      throw Object.assign(
+        new FootballEvidenceError(
+          mappingRejected
+            ? `No eligible football totals remained. ${mappingRejected} fixture(s) could not be mapped unambiguously; ${statisticsRejected} market assessment(s) lacked sufficient evidence.`
+            : 'Insufficient statistical evidence: no football goal total had fresh, exact, home/away statistical support.',
+          mappingRejected && statisticsRejected === 0
+            ? 'fixture_unmapped'
+            : 'invalid_or_insufficient_evidence',
+        ),
+        { rejections: { mappingRejected, mappingRejections, statisticsRejected } },
       );
     throw new MarketReviewUnavailableError();
   }
   let analysis: SlipAnalysis;
+  const aiAnalysisStartedAt = Date.now();
   try {
-    analysis = await analyzer.analyze(options);
-  } catch {
-    throw new MarketReviewUnavailableError();
+    analysis = await beforeDeadline(analyzer.analyze(options), execution.deadlineAt);
+  } catch (error) {
+    if (error instanceof AnalysisDeadlineError) throw error;
+    throw new ResearchProviderUnavailableError();
   }
+  const aiAnalysisCompletedAt = Date.now();
   const reviews = new Map(analysis.selections.map((review) => [review.index, review]));
   if (
     reviews.size !== options.length ||
@@ -377,35 +503,40 @@ export async function buildReviewedLiveSlipSnapshot(
     const review = reviews.get(index + 1)!;
     if (!passesAiQuality(review, minimum)) continue;
     if (cautiousTwoOdds && (review.verdict !== 'keep' || review.risk !== 'lower')) continue;
-    const score = reviewScore(review, candidate.odds, targetPerLeg, riskMode);
+    const score = reviewScore(review, riskMode);
     const alternatives = ranked.get(candidate.eventId) ?? [];
     alternatives.push({ candidate, review, score });
     ranked.set(candidate.eventId, alternatives);
   }
-  const verifiedChoices: RankedChoice[] = [];
-  for (const fixture of snapshot.slip.selections) {
-    if (!cautiousTwoOdds && verifiedChoices.length >= gameCount) break;
-    const alternatives = (ranked.get(fixture.eventId) ?? []).sort((a, b) => b.score - a.score);
-    for (const alternative of alternatives) {
-      const verified = await preflightOption(provider, alternative.candidate);
-      if (!verified) continue;
-      verifiedChoices.push({ ...alternative, candidate: verified });
-      break;
-    }
-  }
+  const bookingPreflightStartedAt = Date.now();
+  const preflighted = await mapWithConcurrency(
+    snapshot.slip.selections,
+    Math.max(1, Math.min(4, execution.concurrency ?? 2)),
+    async (fixture): Promise<RankedChoice | null> => {
+      const alternatives = (ranked.get(fixture.eventId) ?? []).sort((a, b) => b.score - a.score);
+      for (const alternative of alternatives) {
+        const verified = await preflightOption(provider, alternative.candidate);
+        if (verified) return { ...alternative, candidate: verified };
+      }
+      return null;
+    },
+    execution.deadlineAt,
+  );
+  const bookingPreflightCompletedAt = Date.now();
+  const verifiedChoices = preflighted
+    .flatMap((choice) => (choice ? [choice] : []))
+    .slice(0, gameCount);
   const picks = cautiousTwoOdds
     ? selectTwoOddsPicks(verifiedChoices, gameCount, targetPerLeg)
     : verifiedChoices;
   if (!picks.length) {
-    const error = new Error(
+    throw new NoEligibleSelectionsError(
       cautiousTwoOdds
         ? `No fully reviewed lower-risk, bookable selections met the 2.00 preset and ${minimum}/100 AI quality minimum. Try again later or choose a different risk mode; no code was prepared.`
         : ranked.size
           ? 'None of the AI-reviewed markets could be verified for booking. Try rebuilding when SportyBet updates its outcomes; no code was created.'
           : `No AI-reviewed market reached the ${minimum}/100 quality minimum without rejection. Fewer picks are returned rather than lowering the pass mark; no booking code was prepared.`,
     );
-    Object.assign(error, { statusCode: 409 });
-    throw error;
   }
   const selections = picks.map(({ candidate, review }) => ({
     ...candidate,
@@ -414,7 +545,7 @@ export async function buildReviewedLiveSlipSnapshot(
     riskLevel: review.risk,
     assessment: candidate.assessment ?? {
       evidenceQualityScore: review.evidenceQualityScore ?? review.confidence,
-      statisticalSupport: review.statisticalSupport ?? 'supported',
+      statisticalSupport: review.statisticalSupport!,
       recommendationVerdict: review.verdict,
       assessedAt: new Date(analysis.analyzedAt),
       expiresAt: new Date(new Date(analysis.analyzedAt).getTime() + 30 * 60_000),
@@ -454,5 +585,25 @@ export async function buildReviewedLiveSlipSnapshot(
     },
     rejectedOptions: analysis.selections.filter((item) => !passesAiQuality(item, minimum)).length,
     reviewedOptions: options.length,
+    verification: {
+      fixturesReviewed: snapshot.slip.selections.length,
+      fixturesMapped,
+      mappingRejected,
+      mappingRejections,
+      statisticsRejected,
+      exactOutcomesVerified: provider.refreshSelections ? picks.length : 0,
+      statisticsProvider:
+        sport === 'basketball'
+          ? (basketballStatistics?.name ?? null)
+          : sport === 'football'
+            ? (footballStatistics?.name ?? null)
+            : null,
+      discoveryDurationMs: discoveryCompletedAt - startedAt,
+      statisticsReviewDurationMs: statisticsReviewCompletedAt - discoveryCompletedAt,
+      aiAnalysisDurationMs: aiAnalysisCompletedAt - aiAnalysisStartedAt,
+      bookingPreflightDurationMs: bookingPreflightCompletedAt - bookingPreflightStartedAt,
+      durationMs: Date.now() - startedAt,
+      deadlineReached: false,
+    },
   };
 }

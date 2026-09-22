@@ -19,6 +19,10 @@ import {
   FootballEvidenceError,
   type FootballStatisticsProvider,
 } from '../sports/football-statistics.js';
+import { AnalysisDeadlineError } from '../analysis/pipeline-control.js';
+import type { ApiSportsClient } from '../api-sports/client.js';
+import type { VerifiedFixtureIdentityRegistry } from '../api-sports/fixture-identity.js';
+import type { ApiSportsOperations } from '../api-sports/operations.js';
 
 export interface MiniAppDependencies {
   sportyBet: SportyBetProvider;
@@ -27,6 +31,24 @@ export interface MiniAppDependencies {
   telegramBotToken?: string;
   basketballStatistics?: BasketballStatisticsProvider;
   footballStatistics?: FootballStatisticsProvider;
+  analysisDeadlineMs?: number;
+  analysisConcurrency?: number;
+  apiSportsClient?: ApiSportsClient;
+  apiSportsIdentities?: VerifiedFixtureIdentityRegistry;
+  apiSportsOperations?: ApiSportsOperations;
+  apiSportsActivation?: Record<
+    'football' | 'basketball',
+    {
+      requested: boolean;
+      active: boolean;
+      reason?:
+        | 'client_disabled'
+        | 'missing_key'
+        | 'sport_disabled'
+        | 'commercial_use_not_declared'
+        | 'data_rights_unconfirmed';
+    }
+  >;
 }
 const buildSchema = z
   .object({
@@ -64,6 +86,9 @@ const selectionSchema = z
     verifiedStatisticsSource: z.string().max(120).optional(),
     statisticsRetrievedAt: z.string().datetime().optional(),
     missingData: z.array(z.string().max(120)).max(10).optional(),
+    aiResearchSummary: z.string().max(300).optional(),
+    researchSources: z.array(z.string().url()).max(12).optional(),
+    researchRetrievedAt: z.string().datetime().optional(),
     risk: z.enum(['lower', 'medium', 'higher']),
   })
   .strict();
@@ -230,12 +255,40 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
     }
   });
   app.post('/api/miniapp/build', async (request, reply) => {
+    const startedAt = Date.now();
     const input = buildSchema.parse(request.body);
+    if (input.sport === 'football' || input.sport === 'basketball') {
+      const activation = deps.apiSportsActivation?.[input.sport];
+      const mustUseApiSports = input.sport === 'basketball' || activation?.requested === true;
+      if (mustUseApiSports && activation && !activation.active) {
+        return reply.status(424).send({
+          status: 'feature_disabled',
+          reason: activation.reason ?? 'sport_disabled',
+          retryable: false,
+          message:
+            activation.reason === 'data_rights_unconfirmed'
+              ? 'API-Sports analysis is disabled because competition data rights have not been confirmed. Authentication alone does not grant publication or betting-analysis rights. No slip or booking code was created.'
+              : 'API-Sports analysis is not active for this sport in the current deployment. No legacy result was labelled as API-Sports-backed and no booking code was created.',
+          requestId: request.id,
+        });
+      }
+    }
     const minimum = minimumQualityForTarget(input.targetOdds, input.riskMode);
     const plannedGames =
       input.targetOdds === undefined
         ? input.gameCount!
         : automaticLegCount(input.targetOdds, input.riskMode);
+    const deadlineAt = startedAt + (deps.analysisDeadlineMs ?? 42_000);
+    request.log.info(
+      {
+        requestId: request.id,
+        sport: input.sport,
+        targetOdds: input.targetOdds ?? null,
+        riskMode: input.riskMode,
+        requestedGames: plannedGames,
+      },
+      'AUREX analysis build started',
+    );
     let snapshot;
     try {
       snapshot = await buildReviewedLiveSlipSnapshot(
@@ -247,20 +300,62 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
         input.riskMode,
         deps.basketballStatistics,
         deps.footballStatistics,
+        { deadlineAt, concurrency: deps.analysisConcurrency ?? 2 },
       );
     } catch (error) {
+      if (error instanceof AnalysisDeadlineError) {
+        request.log.warn(
+          { requestId: request.id, sport: input.sport, durationMs: Date.now() - startedAt },
+          'AUREX analysis deadline reached',
+        );
+        return reply.status(error.statusCode).send({
+          status: error.reasonCode,
+          reason: error.reasonCode,
+          retryable: true,
+          message: error.message,
+          requestId: request.id,
+        });
+      }
       if (error instanceof FootballEvidenceError) {
+        const rejections = (error as FootballEvidenceError & { rejections?: unknown }).rejections;
+        request.log.info(
+          {
+            requestId: request.id,
+            sport: input.sport,
+            reason: error.reasonCode,
+            rejections,
+            durationMs: Date.now() - startedAt,
+          },
+          'AUREX football analysis produced no eligible slip',
+        );
         return reply.status(error.statusCode).send({
           status: 'football_statistics_unavailable',
           reason: error.reasonCode,
-          message: `${error.message} Try another sport or retry after configuration is verified. No slip or booking code was created.`,
+          retryable: ['provider_unavailable', 'quota_exhausted'].includes(error.reasonCode),
+          message: `${error.message} No slip or booking code was created.`,
+          ...(rejections === undefined ? {} : { rejections }),
+          requestId: request.id,
         });
       }
       if (!(error instanceof BasketballEvidenceError)) throw error;
+      const rejections = (error as BasketballEvidenceError & { rejections?: unknown }).rejections;
+      request.log.info(
+        {
+          requestId: request.id,
+          sport: input.sport,
+          reason: error.reasonCode,
+          rejections,
+          durationMs: Date.now() - startedAt,
+        },
+        'AUREX basketball analysis produced no eligible slip',
+      );
       return reply.status(error.statusCode).send({
         status: 'basketball_totals_unavailable',
         reason: error.reasonCode,
-        message: `${error.message} Try another sport. No slip or booking code was created.`,
+        retryable: ['provider_unavailable', 'quota_exhausted'].includes(error.reasonCode),
+        message: `${error.message} No slip or booking code was created.`,
+        ...(rejections === undefined ? {} : { rejections }),
+        requestId: request.id,
       });
     }
     const analysis = snapshot.analysis;
@@ -313,6 +408,9 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
             ).toISOString(),
             risk: result.risk,
             verdict: 'keep' as const,
+            aiResearchSummary: result.reason,
+            researchSources: result.sourceUrls ?? [],
+            researchRetrievedAt: result.evidenceRetrievedAt ?? analysis.analyzedAt,
           },
         ];
       })
@@ -325,6 +423,28 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
     const dayLabel = ['today', 'tomorrow', 'the following day'][snapshot.dayOffset];
     const combinedOdds = selections.reduce((total, selection) => total * selection.odds, 1);
     const targetReached = input.targetOdds == null || combinedOdds >= input.targetOdds;
+    request.log.info(
+      {
+        requestId: request.id,
+        sport: input.sport,
+        requestedGames: plannedGames,
+        selectedGames: selections.length,
+        targetReached,
+        targetOdds: input.targetOdds ?? null,
+        actualCombinedOdds: Number(combinedOdds.toFixed(2)),
+        discovery: snapshot.discovery,
+        verification: snapshot.verification,
+        aiAnalysisDurationMs: snapshot.verification.aiAnalysisDurationMs,
+        bookingPreflightDurationMs: snapshot.verification.bookingPreflightDurationMs,
+        totalDurationMs: Date.now() - startedAt,
+      },
+      'AUREX analysis build completed',
+    );
+    if (
+      snapshot.verification.statisticsProvider &&
+      (input.sport === 'football' || input.sport === 'basketball')
+    )
+      deps.apiSportsOperations?.recordAnalysis(input.sport, selections.length);
     return {
       slipId: snapshot.slip.id,
       sport: input.sport,
@@ -344,12 +464,17 @@ export function registerMiniAppRoutes(app: FastifyInstance, deps: MiniAppDepende
       targetMessage: targetReached
         ? 'Requested target reached by eligible selections.'
         : 'Target odds not reached; unsupported markets were not added to force the target.',
+      analysisTimestamp: analysis.analyzedAt,
       averageConfidence:
         selections.reduce((total, selection) => total + selection.confidence, 0) /
         selections.length,
       summary: analysis.summary,
       rejected: snapshot.rejectedOptions,
       reviewedOptions: snapshot.reviewedOptions,
+      verification: snapshot.verification,
+      evidencePipeline: snapshot.verification.statisticsProvider
+        ? `${snapshot.verification.statisticsProvider} statistics + ${analysis.model} research review`
+        : `${analysis.model} research review (API-Sports statistics not used)`,
       analysisToken: signAnalysisToken(selections, initData, deps.telegramBotToken!, minimum),
     };
   });

@@ -7,7 +7,9 @@ import type {
   FootballStatisticsProvider,
   FootballStatisticsRequest,
 } from '../sports/football-statistics.js';
-import type { ApiSportsClient } from './client.js';
+import { ApiSportsError, type ApiSportsClient } from './client.js';
+import type { VerifiedFixtureIdentityRegistry } from './fixture-identity.js';
+import type { ApiSportsOperations } from './operations.js';
 import {
   ApiSportsFixtureMatcher,
   basketballGameSchema,
@@ -17,7 +19,6 @@ import {
 } from './fixture-matcher.js';
 
 const footballList = z.array(footballFixtureSchema);
-const basketballList = z.array(basketballGameSchema);
 const completedFootball = new Set(['FT', 'AET', 'PEN']);
 const completedBasketball = new Set(['FT', 'AOT']);
 
@@ -31,62 +32,84 @@ const regulationTotal = (score: BasketballGame['scores']['home']): number | null
 export class ApiSportsFootballStatisticsProvider implements FootballStatisticsProvider {
   readonly name = 'API-Sports API-Football';
   private readonly matcher: ApiSportsFixtureMatcher;
-  constructor(private readonly client: ApiSportsClient) {
-    this.matcher = new ApiSportsFixtureMatcher(client);
+  constructor(
+    private readonly client: ApiSportsClient,
+    identities?: VerifiedFixtureIdentityRegistry,
+    private readonly operations?: ApiSportsOperations,
+  ) {
+    this.matcher = new ApiSportsFixtureMatcher(client, identities, operations);
   }
 
   async getSnapshot(request: FootballStatisticsRequest): Promise<unknown> {
     const fixture = await this.matcher.matchFootball(request);
-    const [home, away] = await Promise.all([
-      this.client.request(
-        'football',
-        '/fixtures',
-        {
-          team: fixture.teams.home.id,
-          league: fixture.league.id,
-          season: fixture.league.season,
-          last: 20,
-          status: 'FT',
+    try {
+      const [home, away] = await Promise.all([
+        this.client.request(
+          'football',
+          '/fixtures',
+          {
+            team: fixture.teams.home.id,
+            league: fixture.league.id,
+            season: fixture.league.season,
+            last: 20,
+            status: 'FT-AET-PEN',
+          },
+          footballList,
+          900,
+        ),
+        this.client.request(
+          'football',
+          '/fixtures',
+          {
+            team: fixture.teams.away.id,
+            league: fixture.league.id,
+            season: fixture.league.season,
+            last: 20,
+            status: 'FT-AET-PEN',
+          },
+          footballList,
+          900,
+        ),
+      ]);
+      const homeGames = this.footballGames(home.data, fixture.teams.home.id, 'home');
+      const awayGames = this.footballGames(away.data, fixture.teams.away.id, 'away');
+      const snapshot = {
+        providerFixtureId: String(fixture.fixture.id),
+        providerCompetitionId: String(fixture.league.id),
+        season: String(fixture.league.season),
+        // The matcher has already verified these identities. Keep the bookmaker
+        // labels so safe aliases do not fail a second exact-name comparison.
+        competition: request.competition,
+        homeTeam: request.homeTeam,
+        awayTeam: request.awayTeam,
+        startsAt: request.startsAt,
+        retrievedAt: new Date(Math.max(home.retrievedAt.getTime(), away.retrievedAt.getTime())),
+        home: { games: homeGames },
+        away: { games: awayGames },
+        lineupStatus: 'unavailable',
+        availabilityStatus: 'unavailable',
+        contradictions: [],
+        source: {
+          name: 'API-Sports API-Football',
+          url: 'https://api-sports.io/documentation/football/v3',
+          authorized: true,
         },
-        footballList,
-        900,
-      ),
-      this.client.request(
+      };
+      this.operations?.recordStatistics(
         'football',
-        '/fixtures',
-        {
-          team: fixture.teams.away.id,
-          league: fixture.league.id,
-          season: fixture.league.season,
-          last: 20,
-          status: 'FT',
-        },
-        footballList,
-        900,
-      ),
-    ]);
-    const homeGames = this.footballGames(home.data, fixture.teams.home.id, 'home');
-    const awayGames = this.footballGames(away.data, fixture.teams.away.id, 'away');
-    return {
-      providerFixtureId: String(fixture.fixture.id),
-      providerCompetitionId: String(fixture.league.id),
-      season: String(fixture.league.season),
-      competition: fixture.league.name,
-      homeTeam: fixture.teams.home.name,
-      awayTeam: fixture.teams.away.name,
-      startsAt: new Date(fixture.fixture.timestamp * 1000),
-      retrievedAt: new Date(Math.max(home.retrievedAt.getTime(), away.retrievedAt.getTime())),
-      home: { games: homeGames },
-      away: { games: awayGames },
-      lineupStatus: 'unavailable',
-      availabilityStatus: 'unavailable',
-      contradictions: [],
-      source: {
-        name: 'API-Sports API-Football',
-        url: 'https://api-sports.io/documentation/football/v3',
-        authorized: true,
-      },
-    };
+        true,
+        home.source === away.source ? home.source : 'mixed',
+      );
+      return snapshot;
+    } catch (error) {
+      this.operations?.recordStatistics(
+        'football',
+        false,
+        undefined,
+        error instanceof ApiSportsError ? error.code : 'invalid_response',
+      );
+      throw error;
+    }
   }
 
   private footballGames(fixtures: FootballFixture[], teamId: number, venue: 'home' | 'away') {
@@ -112,59 +135,79 @@ export class ApiSportsFootballStatisticsProvider implements FootballStatisticsPr
 export class ApiSportsBasketballStatisticsProvider implements BasketballStatisticsProvider {
   readonly name = 'API-Sports API-Basketball';
   private readonly matcher: ApiSportsFixtureMatcher;
-  constructor(private readonly client: ApiSportsClient) {
-    this.matcher = new ApiSportsFixtureMatcher(client);
+  constructor(
+    private readonly client: ApiSportsClient,
+    identities?: VerifiedFixtureIdentityRegistry,
+    private readonly operations?: ApiSportsOperations,
+  ) {
+    this.matcher = new ApiSportsFixtureMatcher(client, identities, operations);
   }
 
   async getSnapshot(request: BasketballStatisticsRequest): Promise<unknown> {
     const game = await this.matcher.matchBasketball(request);
-    const [home, away] = await Promise.all([
-      this.client.request(
+    try {
+      const [home, away] = await Promise.all([
+        this.client.requestAllPages(
+          'basketball',
+          '/games',
+          { team: game.teams.home.id, league: game.league.id, season: game.league.season },
+          basketballGameSchema,
+          900,
+        ),
+        this.client.requestAllPages(
+          'basketball',
+          '/games',
+          { team: game.teams.away.id, league: game.league.id, season: game.league.season },
+          basketballGameSchema,
+          900,
+        ),
+      ]);
+      const homeGames = this.basketballGames(
+        home.data,
+        game.teams.home.id,
+        'home',
+        request.marketOvertimeIncluded,
+      );
+      const awayGames = this.basketballGames(
+        away.data,
+        game.teams.away.id,
+        'away',
+        request.marketOvertimeIncluded,
+      );
+      const snapshot = {
+        providerEventId: String(game.id),
+        providerCompetitionId: String(game.league.id),
+        competition: request.competition,
+        homeTeam: request.homeTeam,
+        awayTeam: request.awayTeam,
+        startsAt: request.startsAt,
+        retrievedAt: new Date(Math.max(home.retrievedAt.getTime(), away.retrievedAt.getTime())),
+        overtimeIncluded: request.marketOvertimeIncluded,
+        lineupStatus: 'unavailable',
+        home: { games: homeGames },
+        away: { games: awayGames },
+        contradictions: [],
+        source: {
+          name: 'API-Sports API-Basketball',
+          url: 'https://api-sports.io/documentation/basketball/v1',
+          authorized: true,
+        },
+      };
+      this.operations?.recordStatistics(
         'basketball',
-        '/games',
-        { team: game.teams.home.id, league: game.league.id, season: game.league.season },
-        basketballList,
-        900,
-      ),
-      this.client.request(
+        true,
+        home.source === away.source ? home.source : 'mixed',
+      );
+      return snapshot;
+    } catch (error) {
+      this.operations?.recordStatistics(
         'basketball',
-        '/games',
-        { team: game.teams.away.id, league: game.league.id, season: game.league.season },
-        basketballList,
-        900,
-      ),
-    ]);
-    const homeGames = this.basketballGames(
-      home.data,
-      game.teams.home.id,
-      'home',
-      request.marketOvertimeIncluded,
-    );
-    const awayGames = this.basketballGames(
-      away.data,
-      game.teams.away.id,
-      'away',
-      request.marketOvertimeIncluded,
-    );
-    return {
-      providerEventId: String(game.id),
-      providerCompetitionId: String(game.league.id),
-      competition: game.league.name,
-      homeTeam: game.teams.home.name,
-      awayTeam: game.teams.away.name,
-      startsAt: new Date(game.timestamp * 1000),
-      retrievedAt: new Date(Math.max(home.retrievedAt.getTime(), away.retrievedAt.getTime())),
-      overtimeIncluded: request.marketOvertimeIncluded,
-      lineupStatus: 'unavailable',
-      home: { games: homeGames },
-      away: { games: awayGames },
-      contradictions: [],
-      source: {
-        name: 'API-Sports API-Basketball',
-        url: 'https://api-sports.io/documentation/basketball/v1',
-        authorized: true,
-      },
-    };
+        false,
+        undefined,
+        error instanceof ApiSportsError ? error.code : 'invalid_response',
+      );
+      throw error;
+    }
   }
 
   private basketballGames(
