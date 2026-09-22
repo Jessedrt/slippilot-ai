@@ -80,7 +80,22 @@ export function createApplication() {
           timeoutMs: config.API_SPORTS_TIMEOUT_MS,
           maxRetries: config.API_SPORTS_MAX_RETRIES,
           cache,
-          onRequest: (event) => apiSportsOperations.recordRequest(event),
+          onRequest: (event) => {
+            apiSportsOperations.recordRequest(event);
+            if (event.outcome === 'failure') {
+              logger.warn(
+                {
+                  provider: 'api-sports',
+                  product: event.product,
+                  endpoint: event.path,
+                  errorCode: event.errorCode ?? 'unknown',
+                  durationMs: event.durationMs,
+                  ...(event.providerDetail ? { providerDetail: event.providerDetail } : {}),
+                },
+                'API-Sports backend request failed',
+              );
+            }
+          },
         })
       : null;
   const apiSportsIdentities = new VerifiedFixtureIdentityRegistry(

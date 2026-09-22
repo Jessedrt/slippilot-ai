@@ -50,6 +50,8 @@ export class ApiSportsError extends Error {
     readonly code: ApiSportsErrorCode,
     message: string,
     readonly retryable = false,
+    /** Redacted provider detail for backend diagnostics only. Never return this to clients. */
+    readonly providerDetail?: string,
   ) {
     super(message);
     this.name = 'ApiSportsError';
@@ -75,6 +77,8 @@ export interface ApiSportsRequestEvent {
   outcome: 'success' | 'failure';
   durationMs: number;
   errorCode?: ApiSportsErrorCode;
+  /** Redacted provider detail for privacy-conscious server logs only. */
+  providerDetail?: string;
 }
 
 export interface ApiSportsResult<T> {
@@ -161,6 +165,9 @@ export class ApiSportsClient {
         outcome: 'failure',
         durationMs: Date.now() - startedAt,
         ...(error instanceof ApiSportsError ? { errorCode: error.code } : {}),
+        ...(error instanceof ApiSportsError && error.providerDetail
+          ? { providerDetail: error.providerDetail }
+          : {}),
       });
       throw error;
     } finally {
@@ -300,7 +307,12 @@ export class ApiSportsClient {
                   ? 'quota_exhausted'
                   : 'provider_error';
           // Provider error detail is not sent to the Mini App: it may contain account data.
-          throw new ApiSportsError(code, `API-Sports ${product} rejected the request (${code}).`);
+          throw new ApiSportsError(
+            code,
+            `API-Sports ${product} rejected the request (${code}).`,
+            false,
+            detail,
+          );
         }
         const parsed = responseSchema.safeParse(envelope.data.response);
         if (
@@ -427,7 +439,13 @@ export class ApiSportsClient {
   private redact(value: string): string {
     return value
       .replaceAll(this.options.apiKey, '[REDACTED]')
-      .replace(/bearer\s+[^\s,;]+/gi, 'Bearer [REDACTED]');
+      .replace(/bearer\s+[^\s,;]+/gi, 'Bearer [REDACTED]')
+      .replace(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/gi, '[REDACTED_EMAIL]')
+      .replace(
+        /((?:api[-_ ]?key|token|authorization|credential)["'\s:=]+)[^\s,;}]+/gi,
+        '$1[REDACTED]',
+      )
+      .slice(0, 240);
   }
 
   private pauseRetry(attempt: number): Promise<void> {
