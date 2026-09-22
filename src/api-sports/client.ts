@@ -10,7 +10,12 @@ const envelopeSchema = z
     parameters: z.union([z.record(z.string(), z.unknown()), z.array(z.unknown())]),
     errors: z.union([z.array(z.unknown()), z.record(z.string(), z.unknown())]),
     results: z.number().int().nonnegative(),
-    paging: z.object({ current: z.number().int().positive(), total: z.number().int().positive() }),
+    // API-Football includes paging. API-Basketball documents and returns
+    // non-paginated envelopes for endpoints such as /games, so product-aware
+    // validation below normalizes only that product to a single page.
+    paging: z
+      .object({ current: z.number().int().positive(), total: z.number().int().positive() })
+      .optional(),
     response: z.unknown(),
   })
   .passthrough();
@@ -316,6 +321,14 @@ export class ApiSportsClient {
             detail,
           );
         }
+        const paging = envelope.data.paging;
+        if (!paging && product !== 'basketball')
+          throw new ApiSportsError(
+            'invalid_response',
+            `API-Sports ${product} returned a malformed response.`,
+            false,
+            'paging:missing',
+          );
         const parsed = responseSchema.safeParse(envelope.data.response);
         if (!parsed.success)
           throw new ApiSportsError(
@@ -334,7 +347,7 @@ export class ApiSportsClient {
         const result: ApiSportsResult<T> = {
           data: parsed.data,
           retrievedAt: new Date(),
-          paging: envelope.data.paging,
+          paging: paging ?? { current: 1, total: 1 },
           source: 'live',
           ...(remainingDaily === undefined ? {} : { remainingDaily }),
           ...(remainingMinute === undefined ? {} : { remainingMinute }),
