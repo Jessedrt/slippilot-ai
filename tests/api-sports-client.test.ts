@@ -125,7 +125,7 @@ describe('API-Sports client', () => {
             envelope(
               [],
               {
-                  request: `Invalid date for user@example.com with ${key} and Bearer token-value`,
+                request: `Invalid date for user@example.com with ${key} and Bearer token-value`,
               },
               0,
             ),
@@ -152,6 +152,40 @@ describe('API-Sports client', () => {
     expect(events[0]?.providerDetail).not.toContain(key);
     expect(events[0]?.providerDetail).not.toContain('user@example.com');
     expect(events[0]?.providerDetail).not.toContain('token-value');
+  });
+
+  it('reports schema issue paths without including rejected response values', async () => {
+    const events: ApiSportsRequestEvent[] = [];
+    const client = new ApiSportsClient({
+      apiKey: 'test-key',
+      maxRetries: 0,
+      onRequest: (event) => events.push(event),
+      fetch: () =>
+        Promise.resolve(
+          json(
+            envelope([
+              {
+                fixture: {
+                  id: 'sensitive-invalid-id',
+                  date: 'invalid-private-date',
+                  timestamp: 1,
+                  status: { short: 'NS' },
+                },
+                league: { id: 1, name: 'League', season: 2026 },
+                teams: {},
+                goals: { home: null, away: null },
+              },
+            ]),
+          ),
+        ),
+    });
+
+    await expect(
+      client.request('football', '/fixtures', {}, z.array(footballFixtureSchema)),
+    ).rejects.toMatchObject({ code: 'invalid_response' });
+    expect(events[0]?.providerDetail).toContain('0.fixture.id:invalid_type');
+    expect(events[0]?.providerDetail).not.toContain('sensitive-invalid-id');
+    expect(events[0]?.providerDetail).not.toContain('invalid-private-date');
   });
 
   it('handles quota exhaustion, missing entitlement and bounded transient retries', async () => {
