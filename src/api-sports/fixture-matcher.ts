@@ -44,6 +44,10 @@ const basketballScoreSchema = z
   })
   .passthrough();
 
+const basketballSeasonSchema = z
+  .union([z.string().trim().min(1), z.number().int().nonnegative()])
+  .transform(String);
+
 export const basketballGameSchema = z
   .object({
     id: z.number().int().positive(),
@@ -54,7 +58,7 @@ export const basketballGameSchema = z
       .object({
         id: z.number().int().positive(),
         name: z.string().min(1),
-        season: z.string().min(1),
+        season: basketballSeasonSchema,
       })
       .passthrough(),
     teams: z.object({ home: teamSchema, away: teamSchema }).strict(),
