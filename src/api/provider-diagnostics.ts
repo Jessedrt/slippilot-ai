@@ -63,12 +63,10 @@ export async function diagnoseApiSports(
     analysisEnabled,
     approvalDeclared: config.API_SPORTS_COMMERCIAL_USE_APPROVED,
   };
-  const state = !config.API_SPORTS_ENABLED
-    ? 'disabled'
-    : !config.API_SPORTS_KEY || !client
-      ? 'missing_key'
-      : null;
-  if (state) return { ...base, state, message: diagnosticMessage[state] };
+  if (!config.API_SPORTS_ENABLED)
+    return { ...base, state: 'disabled', message: diagnosticMessage.disabled };
+  if (!config.API_SPORTS_KEY || !client)
+    return { ...base, state: 'missing_key', message: diagnosticMessage.missing_key };
 
   try {
     // /status is a credentialed, no-cache check; it normally does not consume fixture quota.
