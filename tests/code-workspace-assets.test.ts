@@ -32,24 +32,31 @@ describe('Mini App imported-code workspace and fixture fallback assets', () => {
     expect(chat).toContain("error.data?.status === 'target_exceeded'");
     expect(chat).toContain("error.data?.status !== 'odds_changed'");
     expect(chat).toContain('splitEven(snapshot(), count)');
-    expect(chat).not.toContain('localStorage.setItem(\'telegram');
+    expect(chat).not.toContain("localStorage.setItem('telegram");
     expect(commands).toContain('AurexChatCommands');
     expect(ranker).toContain('rankByScore');
     expect(schedule).toContain('scheduleDay');
     expect(css).toContain('prefers-reduced-motion');
     for (const tab of ['build', 'analyze', 'slip', 'explore'])
       expect(html).toContain(`id="${tab}-tab"`);
-    for (const [name, source] of [['code-workspace', editor], ['conversation-editor', chat],
-      ['chat-edit-commands', commands], ['score-trim', ranker], ['schedule-hints', schedule]] as const)
+    for (const [name, source] of [
+      ['code-workspace', editor],
+      ['conversation-editor', chat],
+      ['chat-edit-commands', commands],
+      ['score-trim', ranker],
+      ['schedule-hints', schedule],
+    ] as const)
       expect(() => new Script(source, { filename: `${name}.js` })).not.toThrow();
-    expect(() => new Script(code.replace(/^import .*;\n/gm, ''), { filename: 'code-analysis.js' }))
-      .not.toThrow();
+    expect(
+      () => new Script(code.replace(/^import .*;\n/gm, ''), { filename: 'code-analysis.js' }),
+    ).not.toThrow();
   });
   it('enforces refreshed odds limits before code creation', () => {
     const server = read('../src/api/mini-app-routes.ts');
     expect(server).toContain('maximumOdds: z.number().finite().min(1.01)');
     expect(server).toContain('preparation.currentOdds > input.maximumOdds');
     expect(server.indexOf("status: 'target_exceeded'")).toBeLessThan(
-      server.indexOf('deps.sportyBet.createBookingCode(preparation.selections)'));
+      server.indexOf('.createCode('),
+    );
   });
 });

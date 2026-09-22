@@ -42,10 +42,14 @@ const successfulResponse = () =>
                   selections: [
                     {
                       index: 1,
-                      confidence: 60,
+                      evidenceQualityScore: 60,
+                      statisticalSupport: 'insufficient',
+                      conflictingEvidence: false,
                       risk: 'medium',
                       verdict: 'caution',
                       reason: 'Outcome uncertain.',
+                      sourceUrls: [],
+                      evidenceRetrievedAt: new Date().toISOString(),
                     },
                   ],
                 }),
@@ -71,7 +75,9 @@ describe('Gemini model fallback', () => {
       models: ['available-model'],
       fetch: fetchMock,
     });
-    await expect(analyzer.analyze([candidate])).resolves.toMatchObject({ model: 'available-model' });
+    await expect(analyzer.analyze([candidate])).resolves.toMatchObject({
+      model: 'available-model',
+    });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0]?.[0]).toEqual(
       expect.stringContaining('/unavailable-model:generateContent'),

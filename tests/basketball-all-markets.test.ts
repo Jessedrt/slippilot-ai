@@ -72,13 +72,19 @@ describe('basketball: user preference excludes handicap, not other markets', () 
     expect(chooseVariedMarket([footballHandicap], 1.55, unused, unused)).toBe(footballHandicap);
   });
 
-  it('can select an Under, winner, player prop or later-period line by target-price proximity', () => {
+  it('does not let target-price proximity decide basketball eligibility', () => {
     const alternatives = categories.map(([name, selection], index) =>
-      market(name, selection, 'basketball', index === 1 ? 1.55 : 1.8));
+      market(name, selection, 'basketball', index === 1 ? 1.55 : 1.8),
+    );
     expect(isBasketballUnderPick(alternatives[1]!)).toBe(true);
-    expect(chooseVariedMarket(alternatives, 1.55, unused, unused)).toBe(alternatives[1]);
-    expect(chooseVariedMarket([market('Winner', 'Home', 'football')], 1.55, unused, unused)?.selectionName)
-      .toBe('Home');
+    const lowTarget = chooseVariedMarket(alternatives, 1.55, unused, unused);
+    const highTarget = chooseVariedMarket(alternatives, 5, unused, unused);
+    expect(lowTarget).toBe(highTarget);
+    expect(lowTarget?.marketName).not.toMatch(/handicap|spread/i);
+    expect(
+      chooseVariedMarket([market('Winner', 'Home', 'football')], 1.55, unused, unused)
+        ?.selectionName,
+    ).toBe('Home');
   });
 
   it('still rejects suspended outcomes and invalid or nonfinite bookmaker odds for every sport', () => {
@@ -104,10 +110,21 @@ describe('basketball: user preference excludes handicap, not other markets', () 
         startsAt: new Date(Date.now() + (index + 1) * 3_600_000),
         status: 'scheduled' as const,
       }));
-      const perFixture = new Map(fixtures.map((fixture, index) => [
-        fixture.providerEventId,
-        [market(categories[index]![0], categories[index]![1], 'basketball', 1.55, 'active', fixture.providerEventId)],
-      ]));
+      const perFixture = new Map(
+        fixtures.map((fixture, index) => [
+          fixture.providerEventId,
+          [
+            market(
+              categories[index]![0],
+              categories[index]![1],
+              'basketball',
+              1.55,
+              'active',
+              fixture.providerEventId,
+            ),
+          ],
+        ]),
+      );
       const provider = {
         listEvents: () => Promise.resolve(fixtures),
         getMarkets: (id: string) => Promise.resolve(perFixture.get(id) ?? []),
@@ -115,29 +132,35 @@ describe('basketball: user preference excludes handicap, not other markets', () 
       const result = await buildLiveSlipSnapshot(provider, 'basketball', 4, 6);
       expect(result.slip.selections).toHaveLength(4);
       expect(new Set(result.slip.selections.map((selection) => selection.eventId)).size).toBe(4);
-      expect(result.slip.selections.map((selection) => selection.selectionName))
-        .toEqual(expect.arrayContaining(['Under 165.5', 'Home', 'Away']));
+      expect(result.slip.selections.map((selection) => selection.selectionName)).toEqual(
+        expect.arrayContaining(['Under 165.5', 'Home', 'Away']),
+      );
 
       const underOnly = {
         ...provider,
         listEvents: () => Promise.resolve(fixtures.slice(1, 2)),
       } as SportyBetProvider;
       const under = await buildLiveSlipSnapshot(underOnly, 'basketball', 2, 3);
-      expect(under.slip.selections.map((selection) => selection.selectionName)).toEqual(['Under 165.5']);
+      expect(under.slip.selections.map((selection) => selection.selectionName)).toEqual([
+        'Under 165.5',
+      ]);
 
       const handicapOnly = {
         ...provider,
         getMarkets: () => Promise.resolve([market('Handicap', 'Home -4.5')]),
       } as SportyBetProvider;
-      await expect(buildLiveSlipSnapshot(handicapOnly, 'basketball', 2, 3))
-        .rejects.toBeInstanceOf(NoTodayMarketsError);
+      await expect(buildLiveSlipSnapshot(handicapOnly, 'basketball', 2, 3)).rejects.toBeInstanceOf(
+        NoTodayMarketsError,
+      );
 
       const suspendedOnly = {
         ...underOnly,
-        getMarkets: () => Promise.resolve([market('Total', 'Under 165.5', 'basketball', 1.55, 'suspended')]),
+        getMarkets: () =>
+          Promise.resolve([market('Total', 'Under 165.5', 'basketball', 1.55, 'suspended')]),
       } as SportyBetProvider;
-      await expect(buildLiveSlipSnapshot(suspendedOnly, 'basketball', 2, 3))
-        .rejects.toBeInstanceOf(NoTodayMarketsError);
+      await expect(buildLiveSlipSnapshot(suspendedOnly, 'basketball', 2, 3)).rejects.toBeInstanceOf(
+        NoTodayMarketsError,
+      );
     } finally {
       vi.useRealTimers();
     }

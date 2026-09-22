@@ -31,6 +31,23 @@ export function candidate(
     dataQuality: 'high',
     riskLevel: probability >= 75 ? 'lower' : 'medium',
     reasoning: ['Test evidence'],
+    assessment: {
+      evidenceQualityScore: 80,
+      statisticalSupport: 'supported',
+      recommendationVerdict: 'keep',
+      assessedAt: new Date('2026-09-15T09:00:00Z'),
+      expiresAt: new Date('2099-09-15T09:30:00Z'),
+      sources: [
+        {
+          name: 'Deterministic test fixture',
+          url: 'https://stats.example.test/event',
+          retrievedAt: new Date('2026-09-15T09:00:00Z'),
+          kind: 'authorized-statistics',
+        },
+      ],
+      conflictingEvidence: false,
+      bookmakerImpliedProbability: Number((100 / odds).toFixed(2)),
+    },
     ...overrides,
   };
 }

@@ -2,6 +2,26 @@ export type Sport = 'football' | 'basketball' | 'tennis' | 'handball';
 export type RiskMode = 'conservative' | 'balanced' | 'aggressive';
 export type RiskLevel = 'lower' | 'medium' | 'higher';
 export type DataQuality = 'low' | 'medium' | 'high';
+export type StatisticalSupport = 'supported' | 'mixed' | 'insufficient';
+
+export interface EvidenceSource {
+  name: string;
+  url: string;
+  retrievedAt: Date;
+  kind: 'authorized-statistics' | 'official-team-news' | 'research';
+}
+
+export interface SelectionAssessment {
+  evidenceQualityScore: number;
+  statisticalSupport: StatisticalSupport;
+  recommendationVerdict: 'keep' | 'caution' | 'reject';
+  assessedAt: Date;
+  expiresAt: Date;
+  sources: EvidenceSource[];
+  statisticalProjection?: number;
+  bookmakerImpliedProbability?: number;
+  conflictingEvidence: boolean;
+}
 
 export interface Fixture {
   id: string;
@@ -36,6 +56,8 @@ export interface CandidateSelection extends NormalizedMarket {
   dataQuality: DataQuality;
   riskLevel: RiskLevel;
   reasoning: string[];
+  /** Structured review metadata. Legacy numeric fields above remain API-compatible aliases. */
+  assessment?: SelectionAssessment;
 }
 
 export interface SlipDraft {

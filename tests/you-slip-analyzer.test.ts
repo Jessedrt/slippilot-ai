@@ -36,10 +36,14 @@ const result = (indices = [1], confidence = 84) => ({
       summary: 'Insufficient statistical evidence; treat this market cautiously.',
       selections: indices.map((index) => ({
         index,
-        confidence,
+        evidenceQualityScore: confidence,
+        statisticalSupport: 'insufficient',
+        conflictingEvidence: false,
         risk: 'medium',
         verdict: 'caution',
         reason: 'Bookmaker odds alone cannot establish outcome probability.',
+        sourceUrls: [],
+        evidenceRetrievedAt: new Date().toISOString(),
       })),
     },
     content_type: 'object',
@@ -102,7 +106,9 @@ describe('You.com primary slip analysis', () => {
     const missing = createAnalyzer(result([]));
     await expect(missing.analyzer.analyze([selection])).rejects.toThrow('exactly once');
     const duplicated = createAnalyzer(result([1, 1]));
-    await expect(duplicated.analyzer.analyze([selection, selection])).rejects.toThrow('exactly once');
+    await expect(duplicated.analyzer.analyze([selection, selection])).rejects.toThrow(
+      'exactly once',
+    );
   });
 
   it('fails closed on malformed output or YDC errors; never invokes Gemini text', async () => {
