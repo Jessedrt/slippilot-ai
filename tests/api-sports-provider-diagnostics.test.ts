@@ -47,8 +47,10 @@ describe('API-Sports provider diagnostics', () => {
     const result = await client.verifyEntitlement('football');
     expect(result.data.requests).toMatchObject({ current: 0, limit_day: 100 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(String(fetchMock.mock.calls[0]![0])).toBe('https://v3.football.api-sports.io/status?');
-    expect(String(fetchMock.mock.calls[0]![0])).not.toContain(key);
+    const requestUrl = fetchMock.mock.calls[0]![0];
+    if (typeof requestUrl !== 'string') throw new Error('Expected a string request URL');
+    expect(requestUrl).toBe('https://v3.football.api-sports.io/status?');
+    expect(requestUrl).not.toContain(key);
     expect(new Headers(fetchMock.mock.calls[0]![1]?.headers).get('x-apisports-key')).toBe(key);
   });
 
