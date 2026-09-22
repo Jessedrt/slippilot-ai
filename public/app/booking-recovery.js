@@ -1,3 +1,5 @@
+import './provider-diagnostics-ui.js';
+
 // AUREX recovery for a provider-reported unverified slip. Never silently
 // delete a selection, substitute a market, generate a code or place a wager.
 const resultPanel = document.querySelector('#code-result');
