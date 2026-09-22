@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { ApiSportsClient, ApiSportsError } from '../src/api-sports/client.js';
+import {
+  ApiSportsClient,
+  ApiSportsError,
+  type ApiSportsRequestEvent,
+} from '../src/api-sports/client.js';
 import { basketballGameSchema, footballFixtureSchema } from '../src/api-sports/fixture-matcher.js';
 
 const envelope = (
@@ -106,6 +110,48 @@ describe('API-Sports client', () => {
     await expect(
       minuteLimit.request('football', '/fixtures', {}, z.array(footballFixtureSchema)),
     ).rejects.toMatchObject({ code: 'rate_limited' });
+  });
+
+  it('emits redacted provider rejection detail only through backend telemetry', async () => {
+    const key = 'secret-api-key-value';
+    const events: ApiSportsRequestEvent[] = [];
+    const client = new ApiSportsClient({
+      apiKey: key,
+      maxRetries: 0,
+      onRequest: (event) => events.push(event),
+      fetch: () =>
+        Promise.resolve(
+          json(
+            envelope(
+              [],
+              {
+                  request: `Invalid date for user@example.com with ${key} and Bearer token-value`,
+              },
+              0,
+            ),
+          ),
+        ),
+    });
+
+    await expect(
+      client.request(
+        'football',
+        '/fixtures',
+        { date: '2026-09-22' },
+        z.array(footballFixtureSchema),
+      ),
+    ).rejects.toMatchObject({ code: 'provider_error' });
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      product: 'football',
+      path: '/fixtures',
+      outcome: 'failure',
+      errorCode: 'provider_error',
+    });
+    expect(events[0]?.providerDetail).toContain('Invalid date');
+    expect(events[0]?.providerDetail).not.toContain(key);
+    expect(events[0]?.providerDetail).not.toContain('user@example.com');
+    expect(events[0]?.providerDetail).not.toContain('token-value');
   });
 
   it('handles quota exhaustion, missing entitlement and bounded transient retries', async () => {
