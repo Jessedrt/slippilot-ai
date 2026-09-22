@@ -399,6 +399,10 @@ export class ApiSportsClient {
     maxPages = 10,
   ): Promise<ApiSportsResult<T[]>> {
     if ('page' in parameters) throw new Error('Pagination is managed by requestAllPages.');
+    // API-Basketball endpoints such as /games reject the Football-only `page`
+    // query parameter and return a non-paginated envelope. Fetch exactly once.
+    if (product === 'basketball')
+      return this.request(product, path, parameters, z.array(itemSchema), cacheTtlSeconds);
     const items: T[] = [];
     let retrievedAt = new Date(0);
     let remainingDaily: number | undefined;
